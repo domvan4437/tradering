@@ -1,11 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/cron/weekly-alert",
-      "schedule": "0 23 * * 5"
-    },
-    {
-      "path": "/api/cron/price-alerts",
+      "path": "/api/cron/competition-housekeeping",
       "schedule": "0 * * * *"
     }
   ]

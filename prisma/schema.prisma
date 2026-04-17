@@ -8,6 +8,9 @@ datasource db {
 }
 
 model User {
+  h2hChallenges   H2HMatch[] @relation("H2HChallenger")
+  h2hOpponents    H2HMatch[] @relation("H2HOpponent")
+  consistency     TraderConsistency?
   id                 String    @id @default(cuid())
   email              String    @unique
   password           String
@@ -443,6 +446,19 @@ model CourseLesson {
 
 // ── Competitions ───────────────────────────────────────────────
 model Tournament {
+  // Trade filter fields
+  traderStyle      String?   // scalper | daytrader | swing | position | macro
+  minHoldHours     Int?      // minimum hours a trade must be held
+  maxHoldHours     Int?      // maximum hours a trade must be held
+  maxTradesPerWeek Int?      // cap on trades submitted per week per user
+  minRiskReward    Float?    // e.g. 1.5 means R:R must be >= 1.5
+  maxRiskPct       Float?    // max % risk per trade (e.g. 3.0 = 3%)
+  allowedAssets    String?   // JSON array of allowed symbols, null = all
+  requireStopLoss  Boolean   @default(true)
+  requireTarget    Boolean   @default(true)
+  h2hMatches      H2HMatch[]
+  // Trade filter fields
+
   id            String    @id @default(cuid())
   creatorId     String
   name          String
@@ -465,6 +481,37 @@ model Tournament {
   calls         TradeCall[]
 }
 
+
+model H2HMatch {
+  id              String   @id @default(cuid())
+  tournamentId    String
+  tournament      Tournament @relation(fields: [tournamentId], references: [id])
+  challengerId    String
+  challenger      User     @relation("H2HChallenger", fields: [challengerId], references: [id])
+  opponentId      String?
+  opponent        User?    @relation("H2HOpponent", fields: [opponentId], references: [id])
+  status          String   @default("waiting") // waiting | active | completed
+  winnerId        String?
+  challengerScore Float    @default(0)
+  opponentScore   Float    @default(0)
+  startDate       DateTime?
+  endDate         DateTime?
+  createdAt       DateTime @default(now())
+}
+
+model TraderConsistency {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  totalTrades     Int      @default(0)
+  winRate         Float    @default(0)
+  avgRR           Float    @default(0)
+  avgHoldHours    Float    @default(0)
+  traderStyle     String?
+  consistencyScore Float   @default(0)
+  lastUpdated     DateTime @default(now())
+}
+
 model TournamentEntry {
   id           String     @id @default(cuid())
   tournamentId String
@@ -485,6 +532,19 @@ model TournamentEntry {
 }
 
 model TradeCall {
+  // Validation fields
+  entryTimestamp   DateTime? // when trade was officially entered
+  closeTimestamp   DateTime? // when trade was closed
+  holdHours        Float?    // calculated hold duration
+  stopLoss         Float?
+  takeProfit       Float?
+  riskPct          Float?
+
+  validationStatus String    @default("pending") // pending | valid | disqualified
+  disqualReason    String?
+  consistencyDelta Float?    // how much this trade moved consistency score
+  // Validation fields
+
   id              String           @id @default(cuid())
   entryId         String
   tournamentId    String

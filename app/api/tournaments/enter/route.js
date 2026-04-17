@@ -1,33 +1,42 @@
-import { getSession } from '../../../../lib/auth'
-import { prisma } from '../../../../lib/prisma'
 
-export async function POST(request) {
-  const session = await getSession()
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const { tournamentId, teamName, groupId } = await request.json()
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/route';
+import { prisma } from '../../../../lib/prisma';
+import { checkAccountEligibility } from '../../../../lib/accountGuard';
 
-  const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } })
-  if (!tournament) return Response.json({ error: 'Tournament not found' }, { status: 404 })
-  if (tournament.status !== 'open') return Response.json({ error: 'Tournament is not open for entries' }, { status: 400 })
+export async function POST(req) {
+  const session = await getServerSession(authOptions);
+  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  try {
-    const entry = await prisma.tournamentEntry.create({
-      data: { tournamentId, userId: session.user.id, teamName: teamName || null, groupId: groupId || null, paid: tournament.buyIn === 0 }
-    })
-    if (tournament.buyIn > 0) {
-      await prisma.tournament.update({ where: { id: tournamentId }, data: { prizePool: { increment: tournament.buyIn * (1 - tournament.platformFee) } } })
-    }
-    return Response.json({ entry })
-  } catch { return Response.json({ error: 'Already entered' }, { status: 400 }) }
-}
+  const { tournamentId } = await req.json();
 
-export async function PATCH(request) {
-  const session = await getSession()
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const { entryId, autoBrokerSync } = await request.json()
-  const entry = await prisma.tournamentEntry.update({
-    where: { id: entryId, userId: session.user.id },
-    data: { autoBrokerSync }
-  })
-  return Response.json({ entry })
+  // Get full user record for eligibility checks
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
+
+  // Account age + verification guard
+  const eligibility = await checkAccountEligibility(user, prisma);
+  if (!eligibility.eligible) {
+    return Response.json({ error: eligibility.errors[0] }, { status: 403 });
+  }
+
+  const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } });
+  if (!tournament) return Response.json({ error: 'Tournament not found' }, { status: 404 });
+
+  // Check not already entered
+  const existing = await prisma.tournamentEntry.findFirst({
+    where: { tournamentId, userId: session.user.id }
+  });
+  if (existing) return Response.json({ error: 'Already entered' }, { status: 400 });
+
+  // Check tournament hasn't ended
+  if (new Date() > new Date(tournament.endDate)) {
+    return Response.json({ error: 'This competition has ended' }, { status: 400 });
+  }
+
+  const entry = await prisma.tournamentEntry.create({
+    data: { tournamentId, userId: session.user.id, score: 0 }
+  });
+
+  return Response.json({ success: true, entry });
 }
