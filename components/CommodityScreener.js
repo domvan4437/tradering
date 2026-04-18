@@ -1,4 +1,6 @@
 'use client'
+// ── TradeRing DS import
+import { LiveDot } from './DS';
 import { useTheme } from './ThemeProvider'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
@@ -8,6 +10,8 @@ import AIAssistant from './AIAssistant'
 import { NotesTab, WeeklyReviewTab, PnLCalendar, ThemeSettings } from './RichTools'
 import ChartWorkspace from './ChartWorkspace'
 import HomePage from './HomePage'
+import NavBar from './NavBar'
+import TickerStrip from './TickerStrip'
 import { UpgradeModal } from './UpgradeModal'
 import { ForexOverviewTab, ForexCOTTab, ForexKeyLevelsTab } from './ForexSection'
 import AICoachTab from './AICoachTab'
@@ -70,6 +74,25 @@ const SECTION_TABS = {
 }
 const TABS = SECTION_TABS.commodities
 const C = {
+  // Hyper-future design tokens (mirrors CSS vars for inline styles)
+  bg:       '#04060a',
+  bg1:      '#080c12',
+  surface:  '#0c1018',
+  surface2: '#111720',
+  surface3: '#161e2a',
+  border:   'rgba(0,212,255,0.08)',
+  border2:  'rgba(0,212,255,0.14)',
+  accent:   '#00d4ff',
+  text:     '#f0f4f8',
+  muted:    '#4a6070',
+  dim:      '#2a3a48',
+  green:    '#00ff88',
+  red:      '#ff3355',
+  gold:     '#ffaa00',
+  mono:     "'Space Mono', monospace",
+  display:  "'Syne', sans-serif",
+  // Legacy keys kept for backward compat with existing tab components:
+  _legacy_surface:  '#0c1018',
   bg:          'var(--bg)',
   bg1:         'var(--bg1)',
   surface:     'var(--surface)',
@@ -174,23 +197,8 @@ export default function App() {
     if (data.url) window.location.href = data.url
   }
 
-  // Ticker symbols for the strip
-  const TICKERS = [
-    {sym:'GC1!',name:'Gold',     base:'GC=F' },
-    {sym:'CL1!',name:'Crude Oil',base:'CL=F' },
-    {sym:'ES1!',name:'S&P 500',  base:'ES=F' },
-    {sym:'NQ1!',name:'Nasdaq',   base:'NQ=F' },
-    {sym:'ZC1!',name:'Corn',     base:'ZC=F' },
-    {sym:'ZW1!',name:'Wheat',    base:'ZW=F' },
-    {sym:'SI1!',name:'Silver',   base:'SI=F' },
-    {sym:'NG1!',name:'Nat Gas',  base:'NG=F' },
-    {sym:'EUR/USD',name:'Euro',  base:'EURUSD=X'},
-    {sym:'DXY',name:'US Dollar', base:'DX-Y.NYB'},
-  ]
-  const [tickerPrices, setTickerPrices] = useState({})
   useEffect(()=>{
-    const syms = TICKERS.map(t=>t.base).join(',')
-    fetch(`/api/prices?symbols=${syms}`).then(r=>r.json()).then(d=>setTickerPrices(d)).catch(()=>{})
+    
   },[])
 
   const navItems = [['Home','home'],['Commodities','commodities'],['Futures','futures'],['Forex','forex'],['Stocks','stocks'],['Tools','tools'],['News','news'],['Community','social'],['Groups','groups'],['Compete','compete'],['Broker','broker'],['Charts','charts']]
@@ -274,30 +282,10 @@ export default function App() {
           </div>
         )}
       </div>
+      <TickerStrip />
 
-      {/* ── Ticker strip ── */}
-      <div style={{ background:'var(--bg1)', borderBottom:'1px solid var(--border)', display:'flex', overflowX:'auto' }}>
-        {TICKERS.map(t=>{
-          const d = tickerPrices[t.base]
-          const chg = d?.changePct
-          const isUp = chg >= 0
-          return (
-            <div key={t.sym} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 14px', borderRight:'1px solid var(--border)', cursor:'pointer', flexShrink:0, transition:'background 0.1s' }}
-              onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.03)'}
-              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-              <div>
-                <div style={{ fontSize:11, fontWeight:600, color:'var(--text)' }}>{t.sym}</div>
-                <div style={{ fontSize:12, fontWeight:500, color:'var(--text)', fontVariantNumeric:'tabular-nums' }}>
-                  {d?.price ? d.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:4}) : '—'}
-                </div>
-                <div style={{ fontSize:11, fontWeight:500, color:isUp?'var(--green)':'var(--red)' }}>
-                  {chg!=null ? `${isUp?'+':''}${chg.toFixed(2)}%` : '—'}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+
+      
 
       {/* Limit banner */}
       {plan==='free' && userInfo && userInfo.screeningsToday >= userInfo.limits?.screeningsPerDay && (

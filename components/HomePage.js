@@ -1,315 +1,279 @@
-'use client'
-import { useState, useEffect } from 'react'
 
-const MOVER_ASSETS = [
-  {sym:'GC=F',   label:'GC1!',    name:'Gold',       cat:'Metals'},
-  {sym:'SI=F',   label:'SI1!',    name:'Silver',     cat:'Metals'},
-  {sym:'CL=F',   label:'CL1!',    name:'Crude Oil',  cat:'Energy'},
-  {sym:'NG=F',   label:'NG1!',    name:'Nat Gas',    cat:'Energy'},
-  {sym:'ES=F',   label:'ES1!',    name:'S&P 500',    cat:'Index Futures'},
-  {sym:'NQ=F',   label:'NQ1!',    name:'Nasdaq',     cat:'Index Futures'},
-  {sym:'ZC=F',   label:'ZC1!',    name:'Corn',       cat:'Grains'},
-  {sym:'ZW=F',   label:'ZW1!',    name:'Wheat',      cat:'Grains'},
-  {sym:'ZS=F',   label:'ZS1!',    name:'Soybeans',   cat:'Grains'},
-  {sym:'BTC-USD',label:'BTC',     name:'Bitcoin',    cat:'Crypto'},
-  {sym:'ETH-USD',label:'ETH',     name:'Ethereum',   cat:'Crypto'},
-  {sym:'EURUSD=X',label:'EUR/USD',name:'Euro',       cat:'Forex'},
-  {sym:'GBPUSD=X',label:'GBP/USD',name:'Pound',      cat:'Forex'},
-]
+'use client';
+import { useState, useEffect } from 'react';
+import { Panel, PanelHeader, StatCard, Badge, LiveDot, SectionTitle, Btn, EmptyState } from './DS';
 
-const BRIEF_ASSETS = [
-  {label:'Gold',      sym:'GC=F'},
-  {label:'Crude Oil', sym:'CL=F'},
-  {label:'S&P 500',   sym:'ES=F'},
-  {label:'EUR/USD',   sym:'EURUSD=X'},
-  {label:'Bitcoin',   sym:'BTC-USD'},
-  {label:'Nat Gas',   sym:'NG=F'},
-  {label:'Corn',      sym:'ZC=F'},
-  {label:'Wheat',     sym:'ZW=F'},
-  {label:'Silver',    sym:'SI=F'},
-]
+const PRIORITY_COLOR = {
+  High:   'var(--accent)',
+  Medium: 'var(--green)',
+  Low:    'var(--text-muted)',
+};
 
-const FLAG = {US:'🇺🇸',EU:'🇪🇺',GB:'🇬🇧',CA:'🇨🇦',JP:'🇯🇵',AU:'🇦🇺',DE:'🇩🇪',FR:'🇫🇷',CN:'🇨🇳'}
+export default function HomePage({ user }) {
+  const [brief, setBrief]       = useState(null);
+  const [movers, setMovers]     = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [positions, setPos]     = useState([]);
+  const [alerts, setAlerts]     = useState([]);
+  const [loading, setLoading]   = useState(true);
 
-const FALLBACK_EVENTS = [
-  {day:'MON',time:'8:30 AM', name:'Core PPI m/m',          impact:'HIGH',  country:'US'},
-  {day:'MON',time:'10:00 AM',name:'ISM Manufacturing PMI',  impact:'MED',   country:'US'},
-  {day:'TUE',time:'8:30 AM', name:'CPI m/m',               impact:'HIGH',  country:'US'},
-  {day:'TUE',time:'8:30 AM', name:'Core CPI m/m',          impact:'HIGH',  country:'US'},
-  {day:'WED',time:'10:30 AM',name:'Crude Oil Inventories',  impact:'HIGH',  country:'US'},
-  {day:'WED',time:'2:00 PM', name:'FOMC Meeting Minutes',   impact:'HIGH',  country:'US'},
-  {day:'THU',time:'7:45 AM', name:'ECB Rate Decision',      impact:'HIGH',  country:'EU'},
-  {day:'THU',time:'8:30 AM', name:'Jobless Claims',         impact:'MED',   country:'US'},
-  {day:'FRI',time:'8:30 AM', name:'Retail Sales m/m',       impact:'HIGH',  country:'US'},
-  {day:'FRI',time:'1:15 PM', name:'BOC Governor Speech',    impact:'MED',   country:'CA'},
-]
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/brief').then(r => r.json()).catch(() => ({})),
+      fetch('/api/prices').then(r => r.json()).catch(() => ({})),
+      fetch('/api/screenings?limit=6').then(r => r.json()).catch(() => ({})),
+      fetch('/api/positions').then(r => r.json()).catch(() => ({})),
+      fetch('/api/alerts').then(r => r.json()).catch(() => ({})),
+    ]).then(([b, p, a, pos, al]) => {
+      setBrief(b.brief || b.text || null);
+      setMovers(p.prices
+        ? Object.entries(p.prices)
+            .map(([sym, d]) => ({ sym, ...d }))
+            .sort((a, b) => Math.abs(b.changePercent || 0) - Math.abs(a.changePercent || 0))
+            .slice(0, 8)
+        : []);
+      setActivity(a.screenings || []);
+      setPos(pos.positions || []);
+      setAlerts(al.alerts || []);
+      setLoading(false);
+    });
+  }, []);
 
-// Shared style primitives
-const s = {
-  card:    { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)', overflow:'hidden' },
-  hdr:     { padding:'14px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' },
-  body:    { padding:'14px 18px' },
-  title:   { fontSize:13, fontWeight:600, color:'var(--text)', letterSpacing:'-0.2px' },
-  seeAll:  { fontSize:11, color:'var(--accent)', cursor:'pointer', background:'transparent', border:'none', fontFamily:'var(--font)', letterSpacing:'-0.1px' },
-  dayLbl:  { fontSize:10, fontWeight:700, color:'var(--text-dim)', letterSpacing:'0.8px', textTransform:'uppercase', padding:'8px 0 4px' },
-  subHdr:  { fontSize:10, fontWeight:700, color:'var(--text-dim)', letterSpacing:'0.7px', textTransform:'uppercase', marginBottom:8 },
-  actLbl:  { fontSize:12, color:'var(--text-muted)', fontWeight:400, letterSpacing:'-0.1px' },
-  actVal:  { fontSize:13, fontWeight:600, color:'var(--text-dim)', fontVariantNumeric:'tabular-nums' },
-  divider: { borderBottom:'1px solid var(--border)' },
-  briefLbl:{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:8 },
-}
+  const hour = new Date().getHours();
+  const session = hour < 6 ? 'Asian Session' : hour < 12 ? 'London Session' : hour < 17 ? 'New York Session' : 'After Hours';
 
-function Row({ children, last }) {
-  return <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:last?'none':'1px solid var(--border)' }}>{children}</div>
-}
+  const openPnl = positions.reduce((s, p) => s + (p.unrealizedPnl || 0), 0);
+  const pnlUp   = openPnl >= 0;
 
-function PctBadge({ v }) {
-  if (v == null) return <span style={{ color:'var(--text-dim)', fontSize:11 }}>—</span>
-  const up = v >= 0
-  return (
-    <span style={{ fontSize:11, fontWeight:600, color:up?'var(--green)':'var(--red)', background:up?'var(--green-bg)':'var(--red-bg)', padding:'2px 8px', borderRadius:5, fontVariantNumeric:'tabular-nums', display:'inline-block', minWidth:56, textAlign:'right' }}>
-      {up?'+':''}{v.toFixed(2)}%
-    </span>
-  )
-}
-
-function FilterPills({ options, value, onChange }) {
-  return (
-    <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:12 }}>
-      {options.map(o => (
-        <button key={o} onClick={()=>onChange(o)}
-          style={{ padding:'3px 10px', borderRadius:5, border:`1px solid ${value===o?'var(--accent)':'var(--border2)'}`, background:value===o?'var(--accent)':'transparent', color:value===o?'#fff':'var(--text-muted)', fontSize:11, fontWeight:value===o?500:400, cursor:'pointer', fontFamily:'var(--font)', transition:'all 0.15s' }}>
-          {o}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function EconomicCalendar() {
-  const [filter, setFilter] = useState('All')
-  const [events] = useState(FALLBACK_EVENTS)
-
-  const impactColor = { HIGH:'var(--red)', MED:'var(--gold)' }
-  const impactBg    = { HIGH:'var(--red-bg)', MED:'var(--gold-bg)' }
-
-  const filtered = events.filter(e => {
-    if (filter === 'All')    return true
-    if (filter === 'High')   return e.impact === 'HIGH'
-    if (filter === 'Forex')  return ['EU','GB','JP','AU','CA'].includes(e.country)
-    if (filter === 'Futures')return ['Crude','Gold','Corn','Wheat'].some(k=>e.name.includes(k))
-    return true
-  })
-
-  const grouped = filtered.reduce((acc, e) => { (acc[e.day] = acc[e.day]||[]).push(e); return acc }, {})
+  // Economic calendar — static scaffold (replace with /api/calendar when ready)
+  const calendar = [
+    { event: 'FOMC Minutes',          time: 'Wed 14:00', priority: 'High' },
+    { event: 'CPI Data Release',      time: 'Thu 08:30', priority: 'High' },
+    { event: 'EIA Crude Inventories', time: 'Wed 10:30', priority: 'Medium' },
+    { event: 'Initial Jobless Claims', time: 'Thu 08:30', priority: 'Medium' },
+    { event: 'Retail Sales',          time: 'Fri 08:30', priority: 'Low' },
+  ];
 
   return (
-    <div style={s.card}>
-      <div style={s.hdr}>
-        <span style={s.title}>Economic Calendar</span>
-        <button style={s.seeAll}>Full calendar</button>
-      </div>
-      <div style={s.body}>
-        <FilterPills options={['All','High','Forex','Futures']} value={filter} onChange={setFilter} />
-        <div style={{ maxHeight:340, overflowY:'auto' }}>
-          {Object.entries(grouped).map(([day, evts]) => (
-            <div key={day}>
-              <div style={s.dayLbl}>{day}</div>
-              {evts.map((e, i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 0', borderBottom:'1px solid var(--border)' }}>
-                  <span style={{ fontSize:13, lineHeight:1 }}>{FLAG[e.country]||'🌐'}</span>
-                  <span style={{ fontSize:11, color:'var(--text-dim)', minWidth:56, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.1px' }}>{e.time}</span>
-                  <span style={{ flex:1, fontSize:12, color:'var(--text-muted)', fontWeight:450, letterSpacing:'-0.1px' }}>{e.name}</span>
-                  <span style={{ fontSize:10, fontWeight:700, color:impactColor[e.impact]||'var(--text-dim)', background:impactBg[e.impact]||'transparent', padding:'2px 6px', borderRadius:4, letterSpacing:'0.3px' }}>{e.impact}</span>
-                </div>
-              ))}
-            </div>
-          ))}
+    <div style={{ padding: '20px 24px 40px', maxWidth: 1240, margin: '0 auto' }}>
+
+      {/* ── Header ── */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+        marginBottom: 24, paddingBottom: 18, borderBottom: '1px solid var(--border)',
+      }}>
+        <div>
+          <SectionTitle style={{ marginBottom: 8 }}>dashboard_overview</SectionTitle>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:30, fontWeight:800, color:'var(--text)', letterSpacing:'-0.03em', lineHeight:1 }}>
+            Market{' '}
+            <span style={{ color:'transparent', WebkitTextStroke:'1px rgba(240,244,248,0.2)' }}>Intelligence</span>
+          </div>
+        </div>
+        <div style={{ textAlign:'right', fontFamily:'var(--font-mono)', fontSize:10, color:'var(--text-muted)' }}>
+          <div><LiveDot />LIVE · {new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+          <div style={{ marginTop:4, color:'var(--text-dim)' }}>{session}</div>
         </div>
       </div>
-    </div>
-  )
-}
 
-function MarketMovers({ prices, loading }) {
-  const enriched = MOVER_ASSETS.map(a => ({ ...a, d: prices[a.sym] })).filter(a => a.d?.changePct != null)
-  const gainers = [...enriched].sort((a,b) => b.d.changePct - a.d.changePct).slice(0,5)
-  const losers  = [...enriched].sort((a,b) => a.d.changePct - b.d.changePct).slice(0,5)
-
-  return (
-    <div style={s.card}>
-      <div style={s.hdr}>
-        <span style={s.title}>Market Movers</span>
-        <span style={{ fontSize:11, color:'var(--text-dim)' }}>Today</span>
+      {/* ── Stat cards ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:18 }}>
+        <StatCard
+          label="open positions"
+          value={positions.length || 0}
+          delta={positions.length > 0 ? `${pnlUp ? '+' : ''}$${Math.abs(openPnl).toFixed(0)} unrealized` : 'No open trades'}
+          deltaUp={pnlUp}
+          sparkPoints="0,35 60,30 120,26 180,20 240,15 280,10"
+        />
+        <StatCard
+          label="screenings today"
+          value={activity.length || 0}
+          delta="AI analyses run"
+          deltaUp
+          sparkPoints="0,38 60,34 120,28 180,22 240,16 280,12"
+        />
+        <StatCard
+          label="active alerts"
+          value={alerts.length || 0}
+          delta={alerts.length > 0 ? 'Monitoring markets' : 'Set price alerts'}
+          deltaUp={alerts.length > 0}
+          sparkPoints="0,32 80,28 160,22 240,16 280,12"
+        />
+        <StatCard
+          label="session"
+          value={<span style={{ fontSize:15, fontFamily:'var(--font-mono)' }}>{session.split(' ')[0]}</span>}
+          delta={session}
+          deltaUp
+        />
       </div>
-      <div style={s.body}>
-        {loading ? (
-          <div style={{ color:'var(--text-dim)', fontSize:12, padding:'8px 0' }}>Loading...</div>
-        ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 24px' }}>
-            {[['Gainers', gainers], ['Losers', losers]].map(([label, list]) => (
-              <div key={label}>
-                <div style={s.subHdr}>{label}</div>
-                {list.map((a, i) => (
-                  <Row key={a.sym} last={i===list.length-1}>
-                    <div>
-                      <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', letterSpacing:'-0.2px' }}>{a.label}</div>
-                      <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:1 }}>{a.cat}</div>
-                    </div>
-                    <div style={{ textAlign:'right' }}>
-                      <div style={{ fontSize:11, color:'var(--text-muted)', fontVariantNumeric:'tabular-nums', fontFamily:'var(--font-mono)', marginBottom:3, letterSpacing:'-0.2px' }}>
-                        {a.d.price?.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
-                      </div>
-                      <PctBadge v={a.d.changePct} />
-                    </div>
-                  </Row>
-                ))}
+
+      {/* ── Row 1: Movers + Brief ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 300px', gap:14, marginBottom:14 }}>
+
+        {/* Market movers */}
+        <Panel>
+          <PanelHeader title="market_movers" />
+          {loading ? (
+            <div style={{ padding:40, textAlign:'center', fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-muted)' }}>
+              Fetching live data…
+            </div>
+          ) : movers.length === 0 ? (
+            <EmptyState icon="◎" title="No data" subtitle="market_data_unavailable" />
+          ) : (
+            <table className="tr-table">
+              <thead><tr><th>Asset</th><th>Price</th><th>Change</th><th>Signal</th></tr></thead>
+              <tbody>
+                {movers.map(m => {
+                  const up = (m.changePercent || 0) >= 0;
+                  return (
+                    <tr key={m.sym}>
+                      <td style={{ color:'var(--text)', fontWeight:700, fontFamily:'var(--font-display)', fontSize:13 }}>{m.sym}</td>
+                      <td className="tr-num" style={{ color:'var(--text-secondary)' }}>
+                        {m.price ? m.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:4}) : '—'}
+                      </td>
+                      <td className="tr-num" style={{ color: up ? 'var(--green)' : 'var(--red)' }}>
+                        {m.changePercent != null ? `${up?'+':''}${m.changePercent.toFixed(2)}%` : '—'}
+                      </td>
+                      <td><Badge type={up ? 'buy' : 'sell'}>{up ? 'Bull' : 'Bear'}</Badge></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+
+        {/* AI Daily Brief */}
+        <Panel>
+          <PanelHeader title="ai_daily_brief" />
+          <div style={{ padding:16 }}>
+            {loading ? (
+              <div style={{ fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-muted)' }}>Generating brief…</div>
+            ) : brief ? (
+              <div style={{ fontSize:12, color:'var(--text-secondary)', lineHeight:1.75 }}>{brief}</div>
+            ) : (
+              <EmptyState icon="◎" title="No brief yet" subtitle="run_a_screening_first" />
+            )}
+          </div>
+          {activity.length > 0 && (
+            <>
+              <div style={{ borderTop:'1px solid var(--border)', padding:'10px 16px 4px' }}>
+                <span className="tr-label">Recent screenings</span>
+              </div>
+              {activity.slice(0,5).map((s,i) => (
+                <div key={i} style={{
+                  display:'flex', justifyContent:'space-between', alignItems:'center',
+                  padding:'8px 16px', borderBottom:'1px solid var(--border)',
+                }}>
+                  <span style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:600, color:'var(--text)' }}>
+                    {s.commodity}
+                  </span>
+                  <Badge type={
+                    s.overallSignal?.toLowerCase().includes('buy')  ? 'buy'  :
+                    s.overallSignal?.toLowerCase().includes('sell') ? 'sell' : 'neutral'
+                  }>
+                    {s.overallSignal || 'Analyzed'}
+                  </Badge>
+                </div>
+              ))}
+            </>
+          )}
+        </Panel>
+      </div>
+
+      {/* ── Row 2: Positions + Calendar + Quick Actions ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 220px', gap:14, marginBottom:14 }}>
+
+        {/* Open positions */}
+        <Panel>
+          <PanelHeader title="open_positions" action="View All →" />
+          {loading ? (
+            <div style={{ padding:30, textAlign:'center', fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-muted)' }}>Loading…</div>
+          ) : positions.length === 0 ? (
+            <EmptyState icon="◎" title="No open positions" subtitle="go_to_commodities_→_positions" />
+          ) : (
+            <table className="tr-table">
+              <thead><tr><th>Asset</th><th>Dir</th><th>Entry</th><th>P&L</th></tr></thead>
+              <tbody>
+                {positions.slice(0,5).map((p,i) => {
+                  const up = (p.unrealizedPnl || 0) >= 0;
+                  return (
+                    <tr key={i}>
+                      <td style={{ color:'var(--text)', fontWeight:700 }}>{p.commodity || p.symbol}</td>
+                      <td><Badge type={p.direction === 'LONG' ? 'buy' : 'sell'}>{p.direction}</Badge></td>
+                      <td className="tr-num" style={{ color:'var(--text-muted)' }}>{p.entryPrice?.toFixed(2) || '—'}</td>
+                      <td className="tr-num" style={{ color: up ? 'var(--green)' : 'var(--red)', fontWeight:700 }}>
+                        {p.unrealizedPnl != null ? `${up?'+':''}$${p.unrealizedPnl.toFixed(0)}` : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+
+        {/* Economic calendar */}
+        <Panel>
+          <PanelHeader title="economic_calendar" />
+          <div style={{ padding:'4px 0' }}>
+            {calendar.map((e,i) => (
+              <div key={i} style={{
+                display:'flex', alignItems:'center', justifyContent:'space-between',
+                padding:'10px 18px',
+                borderBottom: i < calendar.length-1 ? '1px solid var(--border)' : 'none',
+              }}>
+                <div>
+                  <div style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{e.event}</div>
+                  <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--text-muted)', marginTop:2 }}>{e.time}</div>
+                </div>
+                <span style={{
+                  fontFamily:'var(--font-mono)', fontSize:9, fontWeight:700,
+                  letterSpacing:'0.1em', textTransform:'uppercase',
+                  color: PRIORITY_COLOR[e.priority] || 'var(--text-muted)',
+                  border: `1px solid ${PRIORITY_COLOR[e.priority] || 'var(--border2)'}44`,
+                  background: `${PRIORITY_COLOR[e.priority] || 'var(--border2)'}11`,
+                  padding:'3px 8px', borderRadius:3,
+                }}>{e.priority}</span>
               </div>
             ))}
           </div>
-        )}
-      </div>
-    </div>
-  )
-}
+        </Panel>
 
-function ActivityPanel({ userInfo }) {
-  const items = [
-    { label:'Screenings today', value:userInfo ? `${userInfo.screeningsToday} / ${userInfo.limits?.screeningsPerDay||3}` : '—', accent:true },
-    { label:'Journal entries',  value:'—' },
-    { label:'Open positions',   value:'—' },
-    { label:'Watchlist items',  value:'—' },
-    { label:'Active competitions', value:'—' },
-    { label:'COT alerts set',   value:'—' },
-  ]
-  return (
-    <div style={s.card}>
-      <div style={s.hdr}>
-        <span style={s.title}>Your Activity</span>
-      </div>
-      <div style={s.body}>
-        {items.map((item, i) => (
-          <Row key={i} last={i===items.length-1}>
-            <span style={s.actLbl}>{item.label}</span>
-            <span style={{ ...s.actVal, color: item.accent && item.value !== '—' ? 'var(--accent)' : 'var(--text-dim)' }}>
-              {item.value}
-            </span>
-          </Row>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function DailyBrief() {
-  const [selected, setSelected] = useState(BRIEF_ASSETS[0])
-  const [brief, setBrief] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [genTime, setGenTime] = useState(null)
-
-  const fetchBrief = async (asset) => {
-    setLoading(true); setBrief(null)
-    try {
-      const res = await fetch('/api/brief', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ commodity: asset.label })
-      })
-      const data = await res.json()
-      if (data.brief) { setBrief(data.brief); setGenTime(new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})) }
-    } catch {}
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchBrief(BRIEF_ASSETS[0]) }, [])
-
-  const sections = [
-    { key:'overview',  label:'Market Overview',  accent:false },
-    { key:'catalysts', label:'Catalysts & Risks', accent:false },
-    { key:'focus',     label:"Trader's Focus",    accent:true  },
-    { key:'cot',       label:'COT Signal',        accent:false },
-  ]
-
-  return (
-    <div style={s.card}>
-      {/* Header */}
-      <div style={{ ...s.hdr, flexWrap:'wrap', gap:10 }}>
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={s.title}>Daily Market Brief</span>
-            <span style={{ fontSize:13, fontWeight:600, color:'var(--accent)', letterSpacing:'-0.2px' }}>{selected.label}</span>
+        {/* Quick actions */}
+        <Panel>
+          <PanelHeader title="quick_actions" />
+          <div style={{ padding:16, display:'flex', flexDirection:'column', gap:10 }}>
+            <Btn>Run Screener</Btn>
+            <Btn ghost>AI Coach</Btn>
+            <Btn ghost>Trade Plan</Btn>
+            <Btn ghost>Competitions</Btn>
+            <Btn ghost>Journal</Btn>
           </div>
-          {genTime && <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:3, letterSpacing:'-0.1px' }}>Generated {genTime} · AI-powered · select a market to refresh</div>}
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-          {BRIEF_ASSETS.map(a => (
-            <button key={a.sym}
-              onClick={()=>{ setSelected(a); fetchBrief(a) }}
-              style={{ padding:'4px 11px', borderRadius:6, border:`1px solid ${selected.sym===a.sym?'var(--accent)':'var(--border2)'}`, background:selected.sym===a.sym?'var(--accent)':'transparent', color:selected.sym===a.sym?'#fff':'var(--text-muted)', fontSize:11, fontWeight:selected.sym===a.sym?500:400, cursor:'pointer', fontFamily:'var(--font)', transition:'all 0.15s', letterSpacing:'-0.1px' }}>
-              {a.label}
-            </button>
-          ))}
-          <button onClick={()=>fetchBrief(selected)} disabled={loading}
-            style={{ padding:'4px 12px', borderRadius:6, border:'1px solid var(--border2)', background:'transparent', color:'var(--text-muted)', fontSize:11, cursor:'pointer', fontFamily:'var(--font)', letterSpacing:'-0.1px' }}>
-            {loading ? 'Generating...' : 'Refresh'}
-          </button>
-        </div>
+        </Panel>
       </div>
 
-      {/* Content grid */}
-      {loading ? (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr' }}>
-          {[0,1,2,3].map(i => (
-            <div key={i} style={{ padding:'16px 18px', borderRight:i%2===0?'1px solid var(--border)':'none', borderBottom:i<2?'1px solid var(--border)':'none' }}>
-              <div style={{ height:9, background:'var(--surface2)', borderRadius:3, marginBottom:10, width:'35%' }} />
-              <div style={{ height:8, background:'var(--surface2)', borderRadius:3, marginBottom:5 }} />
-              <div style={{ height:8, background:'var(--surface2)', borderRadius:3, marginBottom:5, width:'85%' }} />
-              <div style={{ height:8, background:'var(--surface2)', borderRadius:3, width:'65%' }} />
-            </div>
-          ))}
-        </div>
-      ) : brief ? (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr' }}>
-          {sections.map((sec, i) => brief[sec.key] && (
-            <div key={sec.key} style={{
-              padding:'16px 18px',
-              borderRight:i%2===0?'1px solid var(--border)':'none',
-              borderBottom:i<2?'1px solid var(--border)':'none',
-            }}>
-              <div style={{ ...s.briefLbl, color:sec.accent?'var(--accent)':'var(--text-dim)' }}>{sec.label}</div>
-              <div style={{ fontSize:12, color:sec.accent?'#93c5fd':'var(--text-muted)', lineHeight:1.75, fontWeight:400, letterSpacing:'-0.1px' }}>
-                {brief[sec.key]}
+      {/* ── Row 3: Active alerts ── */}
+      {alerts.length > 0 && (
+        <Panel>
+          <PanelHeader title="active_alerts" action="Manage →" />
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:0 }}>
+            {alerts.slice(0,6).map((a,i) => (
+              <div key={i} style={{
+                padding:'12px 18px',
+                borderRight: (i+1) % 3 !== 0 ? '1px solid var(--border)' : 'none',
+                borderBottom:'1px solid var(--border)',
+              }}>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:4 }}>
+                  {a.commodity}
+                </div>
+                <div style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--text-muted)' }}>
+                  {a.condition} {a.targetPrice}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ padding:'24px 18px', color:'var(--text-dim)', fontSize:12, letterSpacing:'-0.1px' }}>
-          No brief available. Click Refresh to generate.
-        </div>
+            ))}
+          </div>
+        </Panel>
       )}
     </div>
-  )
-}
-
-export default function HomePage() {
-  const [prices, setPrices] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [userInfo, setUserInfo] = useState(null)
-
-  useEffect(() => {
-    const syms = MOVER_ASSETS.map(a=>a.sym).join(',')
-    fetch(`/api/prices?symbols=${syms}`).then(r=>r.json()).then(d=>{ setPrices(d); setLoading(false) }).catch(()=>setLoading(false))
-    fetch('/api/user').then(r=>r.json()).then(d=>{ if(!d.error) setUserInfo(d) }).catch(()=>{})
-  }, [])
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 300px', gap:16, alignItems:'start' }}>
-        <EconomicCalendar />
-        <MarketMovers prices={prices} loading={loading} />
-        <ActivityPanel userInfo={userInfo} />
-      </div>
-      <DailyBrief />
-    </div>
-  )
+  );
 }
