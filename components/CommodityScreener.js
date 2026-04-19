@@ -1,4 +1,6 @@
 'use client'
+import { MarketsLanding, CommunityLanding, ToolsLanding, NewsLanding } from './SectionLanding'
+import CryptoTab from './CryptoTab'
 // ── TradeRing DS import
 import { LiveDot } from './DS';
 import { useTheme } from './ThemeProvider'
@@ -171,6 +173,107 @@ function UpgradeGate({ feature, onUpgrade }) {
   )
 }
 
+
+// ── Markets Layout — must be defined before App()
+function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
+  const [subTab, setSubTab] = React.useState('Asset Screener');
+  const showLanding = !tab || tab === 'Markets';
+
+  React.useEffect(() => {
+    const defaults = {
+      commodities: 'Asset Screener',
+      forex: 'Overview',
+      stocks: 'Overview',
+      crypto: 'Overview',
+      charts: '',
+    };
+    setSubTab(defaults[tab?.toLowerCase()] || 'Asset Screener');
+  }, [tab]);
+
+  const section = (tab || 'commodities').toLowerCase();
+
+  const SUB_TABS = {
+    commodities: ['Asset Screener','Custom Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
+    forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
+    stocks:      ['Overview','Sectors','Earnings','Key Levels'],
+    crypto:      ['Overview'],
+    charts:      [],
+  };
+
+  const subTabs = SUB_TABS[section] || [];
+
+  if (showLanding) {
+    return <MarketsLanding onSelect={(t) => setTab(t)} />;
+  }
+
+  return (
+    <div>
+      {subTabs.length > 0 && (
+        <div style={{ display:'flex', borderBottom:'1px solid var(--border)', padding:'0 24px', background:'var(--surface)', position:'sticky', top:46, zIndex:50, overflowX:'auto' }}>
+          {subTabs.map(t => (
+            <button key={t} onClick={() => setSubTab(t)} style={{
+              background:'transparent',
+              color: subTab===t ? 'var(--accent)' : 'var(--text-muted)',
+              border:'none',
+              borderBottom: subTab===t ? '2px solid var(--accent)' : '2px solid transparent',
+              padding:'0 14px', height:38,
+              fontSize:12, fontWeight: subTab===t ? 600 : 400,
+              cursor:'pointer', fontFamily:'var(--font)',
+              whiteSpace:'nowrap', flexShrink:0,
+              transition:'all 0.15s', marginBottom:-1,
+            }}>{t}</button>
+          ))}
+        </div>
+      )}
+      <div style={{ padding:'20px 24px' }}>
+        {section === 'charts' && <ChartWorkspace />}
+        {section === 'crypto' && <CryptoTab />}
+        {section === 'commodities' && <>
+          {subTab==='Asset Screener'    && <ScreenerTab plan={plan} onUpgrade={onUpgrade} />}
+          {subTab==='Custom Screener'   && <ScreenerBuilder user={null} />}
+          {subTab==='COT Index'         && <COTIndexTab />}
+          {subTab==='Seasonal'          && <SeasonalTab />}
+          {subTab==='Watchlist'         && <WatchlistTab plan={plan} onUpgrade={onUpgrade} />}
+          {subTab==='Positions'         && <PositionsTab />}
+          {subTab==='Journal'           && <JournalTab />}
+          {subTab==='Ideas'             && <IdeasTab />}
+          {subTab==='Economic Calendar' && <CalendarTab />}
+          {subTab==='Analytics'         && <AnalyticsTab />}
+          {subTab==='Alerts'            && <AlertsTab plan={plan} onUpgrade={onUpgrade} />}
+          {subTab==='Checklist'         && <ChecklistTab />}
+        </>}
+        {section === 'forex' && <>
+          {subTab==='Overview'          && <ForexOverviewTab />}
+          {subTab==='COT Data'          && <ForexCOTTab />}
+          {subTab==='Key Levels'        && <ForexKeyLevelsTab />}
+          {subTab==='Economic Calendar' && <CalendarTab />}
+        </>}
+        {section === 'stocks' && <>
+          {subTab==='Overview'   && <StocksOverviewTab />}
+          {subTab==='Sectors'    && <StocksSectorsTab />}
+          {subTab==='Earnings'   && <StocksEarningsTab />}
+          {subTab==='Key Levels' && <StocksKeyLevelsTab />}
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ── Community Layout
+function CommunityLayout({ tab, setTab, currentUserId }) {
+  if (!tab || tab === 'Community') {
+    return <CommunityLanding onSelect={(t) => setTab(t)} />;
+  }
+  return (
+    <div style={{ padding:'20px 24px' }}>
+      {tab==='Feed'    && <SocialTab currentUserId={currentUserId} />}
+      {tab==='Groups'  && <GroupsTab currentUserId={currentUserId} />}
+      {tab==='Compete' && <CompetitionsTab currentUserId={currentUserId} />}
+    </div>
+  );
+}
+
+
 export default function App() {
   const { data: session } = useSession()
   const [tab, setTab] = useState('Asset Screener')
@@ -234,7 +337,7 @@ export default function App() {
                   onMouseLeave={() => setHoveredSection(null)}
                 >
                   <button
-                    onClick={() => { setSection(sec); setTab(tabs[0] || ''); setHoveredSection(null); }}
+                    onClick={() => { setSection(sec); setTab(''); setHoveredSection(null); }}
                     style={{
                       background: isActive ? 'var(--accent-bg)' : 'transparent',
                       color: isActive ? 'var(--accent)' : 'var(--text-muted)',
@@ -380,6 +483,8 @@ export default function App() {
       <div style={{ padding:'20px 24px' }} onClick={()=>setShowAccount(false)}>
         {section==='home' ? (
           <HomePage />
+        ) : section==='news' && !tab ? (
+          <NewsLanding onSelect={(t) => setTab(t)} />
         ) : section==='news' ? (
           <NewsTab />
         ) : section==='markets' ? (
@@ -392,7 +497,7 @@ export default function App() {
             currentUserId={session?.user?.id}
           />
         ) : section==='community' ? (
-          <CommunityLayout tab={tab} currentUserId={session?.user?.id} />
+          <CommunityLayout tab={tab} setTab={setTab} currentUserId={session?.user?.id} />
         ) : (
           <>
             {/* Commodities tabs */}
@@ -409,6 +514,7 @@ export default function App() {
             {tab==='Alerts'         && <AlertsTab plan={plan} onUpgrade={()=>handleUpgrade()} />}
             {tab==='Checklist'      && <ChecklistTab />}
             {/* Tools tabs */}
+            {(!tab || tab === 'Tools') && <ToolsLanding onSelect={(t) => setTab(t)} />}
             {tab==='Trade Calc'     && <TradeCalcTab />}
             {tab==='AI Coach'           && <AICoachTab />}
             {tab==='Trade Plan Builder'  && <TradePlanTab />}
