@@ -160,7 +160,7 @@ button { font-family: var(--font); cursor: pointer; }
 /* -- Ticker strip -- */
 .tr-ticker-wrap {
   position: fixed;
-  top: 54px;
+  top: 46px;
   left: 0;
   right: 0;
   height: 32px;

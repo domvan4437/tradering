@@ -2,7 +2,7 @@
 // ── TradeRing DS import
 import { LiveDot } from './DS';
 import { useTheme } from './ThemeProvider'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import MarketsSection from './MarketsSection'
@@ -18,6 +18,7 @@ import AICoachTab from './AICoachTab'
 import COTAlertsTab from './COTAlertsTab'
 import TradePlanTab from './TradePlanTab'
 import BacktestTab from './BacktestTab'
+import ScreenerBuilder from './ScreenerBuilder'
 import StrategyBacktestTab from './StrategyBacktestTab'
 import NewsTab from './NewsTab'
 import SocialTab from './SocialTab'
@@ -60,17 +61,15 @@ const STAGES = [
 const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil','Natural Gas','Gasoline','Heating Oil','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Lean Hogs','Rice','Oats','Lumber']
 const SECTION_TABS = {
   home:        ['Dashboard'],
-  commodities: ['Asset Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
-  futures:     ['Overview','Financial COT','Yield Curve','Key Levels','Options & VIX'],
+  markets:     ['Commodities','Forex','Stocks','Crypto','Charts'],
+  community:   ['Feed','Groups','Compete'],
+  news:        ['All Markets','Forex','Commodities','Stocks','Crypto'],
+  tools:       ['Trade Calc','AI Coach','Trade Plan Builder','COT Alerts','Backtesting','Strategy Backtest','Weekly Review','Personal Calendar','Notes','Reference','Creator Studio','Broker','Settings'],
+  // Sub-sections rendered inside markets tab
+  commodities: ['Asset Screener','Custom Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
   forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
   stocks:      ['Overview','Sectors','Earnings','Key Levels'],
-  tools:       ['Trade Calc','AI Coach','Trade Plan Builder','COT Alerts','Backtesting','Strategy Backtest','Weekly Review','Personal Calendar','Notes','Reference','Community','Creator Studio','Settings'],
-  charts:      ['Chart Workspace'],
-  news:        ['All Markets','Forex','Commodities','Stocks','Crypto'],
-  social:      ['Feed & Leaderboard'],
-  groups:      ['Groups'],
-  compete:     ['Competitions'],
-  broker:      ['Broker Accounts','Trade History'],
+  crypto:      ['Overview','Watchlist','News'],
 }
 const TABS = SECTION_TABS.commodities
 const C = {
@@ -126,7 +125,7 @@ const C = {
 }
 
 function Label({ children, style }) { return <p style={{ fontSize:11,fontWeight:600,letterSpacing:0.5,color:C.muted,margin:'0 0 8px',textTransform:'uppercase',fontFamily:C.font,...style }}>{children}</p> }
-function Card({ children, style }) { return <div style={{ background:C.surface,border:`1px solid ${C.border}`,padding:'20px 24px',borderRadius:'var(--radius)',boxShadow:'var(--shadow-sm)',...style }}>{children}</div> }
+function Card({ children, style }) { return <div style={{ background:C.surface,border:`1px solid ${C.border}`,paddingTop: '100px', paddingLeft: '24px', paddingRight: '24px', paddingBottom: '24px',borderRadius:'var(--radius)',boxShadow:'var(--shadow-sm)',...style }}>{children}</div> }
 function InfoTooltip({ text }) {
   const [show, setShow] = useState(false)
   return (
@@ -177,6 +176,8 @@ export default function App() {
   const [tab, setTab] = useState('Asset Screener')
   const [userInfo, setUserInfo] = useState(null)
   const [showAccount, setShowAccount] = useState(false)
+  const [hoveredSection, setHoveredSection] = useState(null)
+  const [marketSection, setMarketSection] = useState('commodities') // commodities|forex|stocks|crypto|charts
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [upgradeFeature, setUpgradeFeature] = useState(null)
   const handleUpgrade = (feature) => { setUpgradeFeature(feature||null); setShowUpgrade(true) }
@@ -201,14 +202,14 @@ export default function App() {
     
   },[])
 
-  const navItems = [['Home','home'],['Commodities','commodities'],['Futures','futures'],['Forex','forex'],['Stocks','stocks'],['Tools','tools'],['News','news'],['Community','social'],['Groups','groups'],['Compete','compete'],['Broker','broker'],['Charts','charts']]
+  const navItems = [['Home','home'],['Markets','markets'],['News','news'],['Community','community'],['Tools','tools']]
 
   return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontFamily:'var(--font)', fontSize:13 }}>
 
       {/* ── Navbar — TradingView style ── */}
-      <div style={{ background:'var(--bg1)', position:'sticky', top:0, zIndex:100, borderBottom:'1px solid var(--border)' }}>
-        <div style={{ display:'flex', alignItems:'center', height:46, padding:'0 16px', gap:0 }}>
+      <div style={{ background:'var(--bg1)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)' }}>
+        <div style={{ display:'flex', alignItems:'center', height:46, padding:'0 16px', gap:0, overflow:'visible' }}>
 
           {/* Logo with ring */}
           <div style={{ display:'flex', alignItems:'center', gap:7, marginRight:20, flexShrink:0 }}>
@@ -218,14 +219,104 @@ export default function App() {
             <span style={{ fontSize:15, fontWeight:700, color:'var(--text)', letterSpacing:'-0.4px' }}>TradeRing</span>
           </div>
 
-          {/* Nav links */}
-          <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
-            {navItems.map(([label,sec])=>(
-              <button key={sec} onClick={()=>{setSection(sec);setTab((SECTION_TABS[sec]||[''])[0])}}
-                style={{ background:'transparent', color:section===sec?'var(--accent)':'var(--text-muted)', border:'none', borderBottom:section===sec?'2px solid var(--accent)':'2px solid transparent', padding:'0 10px', height:46, fontSize:13, fontWeight:section===sec?600:450, cursor:'pointer', fontFamily:'var(--font)', whiteSpace:'nowrap', flexShrink:0, transition:'color 0.15s', marginBottom:-1, letterSpacing:'-0.1px' }}>
-                {label}
-              </button>
-            ))}
+          {/* Nav links with hover dropdowns */}
+          <div style={{ display:'flex', flex:1, overflow:'visible' }}>
+            {navItems.map(([label,sec])=>{
+              const tabs = SECTION_TABS[sec] || [];
+              const hasDropdown = tabs.length > 1;
+              const isActive = section === sec;
+              const isHovered = hoveredSection === sec;
+              return (
+                <div
+                  key={sec}
+                  style={{ position:'relative', flexShrink:0 }}
+                  onMouseEnter={() => setHoveredSection(sec)}
+                  onMouseLeave={() => setHoveredSection(null)}
+                >
+                  <button
+                    onClick={() => { setSection(sec); setTab(tabs[0] || ''); setHoveredSection(null); }}
+                    style={{
+                      background: isActive ? 'var(--accent-bg)' : 'transparent',
+                      color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                      border: 'none',
+                      borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                      padding: '0 12px',
+                      height: 46,
+                      fontSize: 12,
+                      fontWeight: isActive ? 600 : 400,
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font)',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      transition: 'all 0.15s',
+                      marginBottom: -1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    {label}
+                    {hasDropdown && (
+                      <span style={{ fontSize: 8, opacity: 0.5, marginTop: 1 }}>▾</span>
+                    )}
+                  </button>
+
+                  {/* Dropdown */}
+                  {hasDropdown && isHovered && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border2)',
+                      borderRadius: '0 0 8px 8px',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+                      zIndex: 500,
+                      minWidth: 200,
+                      padding: '6px 0',
+                      animation: 'tr-fadeUp 0.12s ease both',
+                    }}>
+                      {tabs.map(t => (
+                        <button
+                          key={t}
+                          onClick={() => { setSection(sec); setTab(t); setHoveredSection(null); }}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            textAlign: 'left',
+                            background: tab === t && section === sec ? 'var(--accent-bg)' : 'transparent',
+                            color: tab === t && section === sec ? 'var(--accent)' : 'var(--text-secondary)',
+                            border: 'none',
+                            borderLeft: tab === t && section === sec ? '2px solid var(--accent)' : '2px solid transparent',
+                            padding: '9px 16px',
+                            fontSize: 13,
+                            fontFamily: 'var(--font)',
+                            fontWeight: tab === t && section === sec ? 600 : 400,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            transition: 'all 0.1s',
+                          }}
+                          onMouseEnter={e => {
+                            if (!(tab === t && section === sec)) {
+                              e.currentTarget.style.background = 'var(--surface2)';
+                              e.currentTarget.style.color = 'var(--text)';
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            if (!(tab === t && section === sec)) {
+                              e.currentTarget.style.background = 'transparent';
+                              e.currentTarget.style.color = 'var(--text-secondary)';
+                            }
+                          }}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Right side */}
@@ -270,17 +361,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Sub-tabs */}
-        {(SECTION_TABS[section]||[]).length > 1 && (
-          <div style={{ display:'flex', padding:'0 16px', borderTop:'1px solid var(--border)', overflowX:'auto', background:'var(--bg1)' }}>
-            {(SECTION_TABS[section]||[]).map(t=>(
-              <button key={t} onClick={()=>setTab(t)}
-                style={{ background:'transparent', color:tab===t?'var(--accent)':'var(--text-muted)', border:'none', borderBottom:tab===t?'2px solid var(--accent)':'2px solid transparent', padding:'0 12px', height:34, fontSize:12, fontWeight:tab===t?500:400, cursor:'pointer', fontFamily:'var(--font)', whiteSpace:'nowrap', flexShrink:0, transition:'color 0.15s', letterSpacing:'-0.1px' }}>
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
+        
       </div>
       <TickerStrip />
 
@@ -297,26 +378,26 @@ export default function App() {
 
       {/* Main content — full width, no max-width cap on outer, padding on inner */}
       <div style={{ padding:'20px 24px' }} onClick={()=>setShowAccount(false)}>
-        {section==='charts' ? (
-          <ChartWorkspace />
-        ) : section==='markets' || section==='futures' ? (
-          <MarketsSection section={section} tab={tab} />
+        {section==='home' ? (
+          <HomePage />
         ) : section==='news' ? (
           <NewsTab />
-        ) : section==='social' ? (
-          <SocialTab currentUserId={session?.user?.id} />
-        ) : section==='groups' ? (
-          <GroupsTab currentUserId={session?.user?.id} />
-        ) : section==='compete' ? (
-          <CompetitionsTab currentUserId={session?.user?.id} />
-        ) : section==='broker' ? (
-          <BrokerIntegrationTab />
-        ) : section==='home' ? (
-          <HomePage />
+        ) : section==='markets' ? (
+          <MarketsLayout
+            tab={tab}
+            marketSection={marketSection}
+            setMarketSection={setMarketSection}
+            plan={plan}
+            onUpgrade={()=>handleUpgrade()}
+            currentUserId={session?.user?.id}
+          />
+        ) : section==='community' ? (
+          <CommunityLayout tab={tab} currentUserId={session?.user?.id} />
         ) : (
           <>
             {/* Commodities tabs */}
             {tab==='Asset Screener' && <ScreenerTab plan={plan} onUpgrade={()=>handleUpgrade()} />}
+            {tab==='Custom Screener' && <ScreenerBuilder user={userInfo} />}
             {tab==='Watchlist'      && <WatchlistTab plan={plan} onUpgrade={()=>handleUpgrade()} />}
             {tab==='Seasonal'       && <SeasonalTab />}
             {tab==='COT Index'      && <COTIndexTab />}
@@ -340,6 +421,7 @@ export default function App() {
             {tab==='Community'      && <CommunityTab />}
             {tab==='Settings'       && <ThemeSettings />}
             {tab==='Creator Studio'  && <CreatorDashboard currentUserId={session?.user?.id} />}
+            {tab==='Broker'           && <BrokerIntegrationTab />}
             {tab==='Personal Calendar' && <PersonalCalendarTab />}
             {/* Forex tabs */}
             {section==='forex' && tab==='Overview'          && <ForexOverviewTab />}

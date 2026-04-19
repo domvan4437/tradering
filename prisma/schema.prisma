@@ -11,6 +11,7 @@ model User {
   h2hChallenges   H2HMatch[] @relation("H2HChallenger")
   h2hOpponents    H2HMatch[] @relation("H2HOpponent")
   consistency     TraderConsistency?
+  screenerTemplates ScreenerTemplate[] @relation("UserScreeners")
   id                 String    @id @default(cuid())
   email              String    @unique
   password           String
@@ -643,6 +644,66 @@ model CreatorPayout {
   paidOut     Boolean  @default(false)
   createdAt   DateTime @default(now())
   creator     User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+
+model ScreenerTemplate {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation("UserScreeners", fields: [userId], references: [id])
+  name          String
+  description   String?
+  assetClass    String?   // commodities | forex | futures | stocks | any
+  traderStyle   String?   // scalper | daytrader | swing | position | macro
+  minScore      Float     @default(60)
+  isPublic      Boolean   @default(false)
+  isPinned      Boolean   @default(false)
+  useCount      Int       @default(0)
+  forkCount     Int       @default(0)
+  forkedFromId  String?
+  signals       ScreenerSignal[]
+  runs          ScreenerRun[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ScreenerSignal {
+  id           String   @id @default(cuid())
+  templateId   String
+  template     ScreenerTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  sortOrder    Int      @default(0)
+  // What data point
+  dataSource   String   // price | cot | seasonal | technical | fundamental | custom
+  metric       String   // exact metric name trader types in
+  // The condition
+  operator     String   // gt | lt | gte | lte | between | crosses_above | crosses_below | equals
+  valueA       Float    // primary threshold
+  valueB       Float?   // secondary threshold for 'between'
+  unit         String?  // % | percentile | raw | score
+  // Scoring
+  weight       Int      @default(1)  // 1-5, how much this matters
+  isRequired   Boolean  @default(false)
+  // Trader's own notes on why they use this number
+  notes        String?
+  createdAt    DateTime @default(now())
+}
+
+model ScreenerRun {
+  id           String   @id @default(cuid())
+  templateId   String
+  template     ScreenerTemplate @relation(fields: [templateId], references: [id])
+  userId       String
+  assets       String   // JSON array of assets scanned
+  results      String   // JSON array of {asset, score, passed, signals}
+  flaggedCount Int      @default(0)
+  ranAt        DateTime @default(now())
+}
+
+model ScreenerFork {
+  id           String   @id @default(cuid())
+  originalId   String
+  forkedById   String
+  forkedAt     DateTime @default(now())
 }
 
 model TradeIdea {
