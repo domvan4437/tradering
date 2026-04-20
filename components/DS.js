@@ -1,7 +1,7 @@
 
 /**
- * TradeRing Design System — Option A
- * DM Sans (body/display) + IBM Plex Mono (numbers/labels)
+ * TradeRing Design System — Hybrid (B + D)
+ * Light bg, indigo accent, gradient heroes, minimal tables
  */
 
 export const C = {
@@ -45,6 +45,15 @@ export function SectionTitle({ children, style }) {
   return <div className="tr-section-title" style={style}>{children}</div>;
 }
 
+// Hero gradient card — D style
+export function HeroCard({ children, style }) {
+  return (
+    <div className="tr-hero" style={style}>
+      {children}
+    </div>
+  );
+}
+
 export function StatCard({ label, value, delta, deltaUp, sparkPoints, style }) {
   return (
     <div className="tr-stat-card tr-fade-up" style={style}>
@@ -56,11 +65,23 @@ export function StatCard({ label, value, delta, deltaUp, sparkPoints, style }) {
         </div>
       )}
       {sparkPoints && (
-        <svg style={{ position:'absolute', bottom:0, right:0, width:80, height:40, opacity:0.18 }} viewBox="0 0 80 40">
+        <svg style={{ position:'absolute', bottom:0, right:0, width:80, height:36, opacity:0.15 }} viewBox="0 0 80 36">
           <polyline points={sparkPoints} fill="none"
             stroke={deltaUp ? 'var(--green)' : 'var(--red)'} strokeWidth="1.5" />
         </svg>
       )}
+    </div>
+  );
+}
+
+// Score circle — buy/sell/neutral
+export function ScoreCircle({ score }) {
+  const color = score >= 65 ? { bg:'var(--green-bg)', text:'var(--green)' }
+              : score >= 40 ? { bg:'var(--surface3)',  text:'var(--text-muted)' }
+              :               { bg:'var(--red-bg)',    text:'var(--red)' };
+  return (
+    <div className="tr-score-circle" style={{ background: color.bg, color: color.text }}>
+      {score}
     </div>
   );
 }
@@ -76,13 +97,15 @@ export function Badge({ type = 'neutral', children }) {
 }
 
 export function SignalBar({ value, type = 'bull' }) {
-  const fill = type === 'bull' ? 'tr-signal-fill-bull' : type === 'bear' ? 'tr-signal-fill-bear' : 'tr-signal-fill-neut';
+  const fill = type === 'bull' ? 'tr-signal-fill-bull'
+             : type === 'bear' ? 'tr-signal-fill-bear'
+             : 'tr-signal-fill-neut';
   return (
     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
       <div className="tr-signal-track">
         <div className={fill} style={{ width:`${value}%` }} />
       </div>
-      <span style={{ fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-muted)', width:34, textAlign:'right' }}>
+      <span style={{ fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-muted)', width:32, textAlign:'right' }}>
         {value}%
       </span>
     </div>
@@ -92,21 +115,17 @@ export function SignalBar({ value, type = 'bull' }) {
 export function Sparkline({ points, color = 'var(--accent)', height = 40 }) {
   return (
     <svg width="100%" height={height} viewBox={`0 0 280 ${height}`} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
 
 export function Btn({ children, onClick, disabled, ghost, style, className = '' }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={style}
-      className={`${ghost ? 'tr-btn-ghost' : 'tr-btn-primary'} ${className}`}>
+    <button
+      onClick={onClick} disabled={disabled} style={style}
+      className={`${ghost ? 'tr-btn-ghost' : 'tr-btn-primary'} ${className}`}
+    >
       {children}
     </button>
   );
@@ -120,8 +139,9 @@ export function Tabs({ tabs, active, onSelect }) {
   return (
     <div className="tr-tabs">
       {tabs.map(t => (
-        <button key={t} className={`tr-tab ${active === t ? 'active' : ''}`}
-          onClick={() => onSelect(t)}>{t}</button>
+        <button key={t} className={`tr-tab ${active === t ? 'active' : ''}`} onClick={() => onSelect(t)}>
+          {t}
+        </button>
       ))}
     </div>
   );
@@ -130,12 +150,14 @@ export function Tabs({ tabs, active, onSelect }) {
 export function EmptyState({ icon = '◎', title, subtitle }) {
   return (
     <div style={{ textAlign:'center', padding:'52px 24px' }}>
-      <div style={{ fontSize:26, marginBottom:12, opacity:0.2 }}>{icon}</div>
-      <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:600,
-        color:'var(--text)', marginBottom:5, letterSpacing:'-0.2px' }}>{title}</div>
+      <div style={{ fontSize:32, marginBottom:12, opacity:0.15 }}>{icon}</div>
+      <div style={{ fontFamily:'var(--font)', fontSize:16, fontWeight:600, color:'var(--text)', marginBottom:6 }}>
+        {title}
+      </div>
       {subtitle && (
-        <div style={{ fontSize:12, color:'var(--text-muted)',
-          fontFamily:'var(--font-mono)', letterSpacing:'0.08em' }}>{subtitle}</div>
+        <div style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)' }}>
+          {subtitle}
+        </div>
       )}
     </div>
   );
@@ -146,8 +168,30 @@ export function Num({ value, prefix = '', suffix = '', decimals = 2 }) {
   const color = num > 0 ? 'var(--green)' : num < 0 ? 'var(--red)' : 'var(--text-muted)';
   const sign = num > 0 ? '+' : '';
   return (
-    <span style={{ fontFamily:'var(--font-mono)', color, fontWeight:500 }}>
+    <span style={{ fontFamily:'var(--font-mono)', color, fontWeight:600 }}>
       {prefix}{sign}{isNaN(num) ? value : num.toFixed(decimals)}{suffix}
     </span>
+  );
+}
+
+// Pill filter button — D style
+export function PillFilter({ label, active, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '5px 16px',
+      borderRadius: 20,
+      border: active ? 'none' : '1px solid var(--border2)',
+      background: active ? 'var(--accent)' : 'var(--surface)',
+      color: active ? '#fff' : 'var(--text-muted)',
+      fontFamily: 'var(--font)',
+      fontSize: 12,
+      fontWeight: active ? 600 : 400,
+      cursor: 'pointer',
+      transition: 'all 0.15s',
+      whiteSpace: 'nowrap',
+      flexShrink: 0,
+    }}>
+      {label}
+    </button>
   );
 }
