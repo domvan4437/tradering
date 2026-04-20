@@ -1,6 +1,8 @@
 'use client'
 import { MarketsLanding, CommunityLanding, ToolsLanding, NewsLanding } from './SectionLanding'
 import CryptoTab from './CryptoTab'
+import ProfileTab from './ProfileTab'
+import GlobalLeaderboard from './GlobalLeaderboard'
 // ── TradeRing DS import
 import { LiveDot } from './DS';
 import { useTheme } from './ThemeProvider'
@@ -64,9 +66,9 @@ const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil'
 const SECTION_TABS = {
   home:        ['Dashboard'],
   markets:     ['Commodities','Forex','Stocks','Crypto','Charts'],
-  community:   ['Feed','Groups','Compete'],
+  community:   ['Feed','Groups','Compete','Leaderboard'],
   news:        ['All Markets','Forex','Commodities','Stocks','Crypto'],
-  tools:       ['Trade Calc','AI Coach','Trade Plan Builder','COT Alerts','Backtesting','Strategy Backtest','Weekly Review','Personal Calendar','Notes','Reference','Creator Studio','Broker','Settings'],
+  tools:       ['Trade Calc','AI Coach','Trade Plan Builder','COT Alerts','Backtesting','Strategy Backtest','Weekly Review','Personal Calendar','Notes','Reference','Creator Studio','Broker','My Profile','Settings'],
   // Sub-sections rendered inside markets tab
   commodities: ['Asset Screener','Custom Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
   forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
@@ -268,7 +270,8 @@ function CommunityLayout({ tab, setTab, currentUserId }) {
     <div style={{ padding:'20px 24px' }}>
       {tab==='Feed'    && <SocialTab currentUserId={currentUserId} />}
       {tab==='Groups'  && <GroupsTab currentUserId={currentUserId} />}
-      {tab==='Compete' && <CompetitionsTab currentUserId={currentUserId} />}
+      {tab==='Compete'     && <CompetitionsTab currentUserId={currentUserId} />}
+      {tab==='Leaderboard' && <GlobalLeaderboard />}
     </div>
   );
 }
@@ -528,6 +531,7 @@ export default function App() {
             {tab==='Settings'       && <ThemeSettings />}
             {tab==='Creator Studio'  && <CreatorDashboard currentUserId={session?.user?.id} />}
             {tab==='Broker'           && <BrokerIntegrationTab />}
+            {tab==='My Profile'       && <ProfileTab user={userInfo} session={session} />}
             {tab==='Personal Calendar' && <PersonalCalendarTab />}
             {/* Forex tabs */}
             {section==='forex' && tab==='Overview'          && <ForexOverviewTab />}

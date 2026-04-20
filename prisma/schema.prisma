@@ -8,15 +8,24 @@ datasource db {
 }
 
 model User {
-  h2hChallenges   H2HMatch[] @relation("H2HChallenger")
-  h2hOpponents    H2HMatch[] @relation("H2HOpponent")
-  consistency     TraderConsistency?
-  screenerTemplates ScreenerTemplate[] @relation("UserScreeners")
   id                 String    @id @default(cuid())
   email              String    @unique
   password           String
   name               String?
   username           String?   @unique
+
+  // Profile & verification fields
+  displayName      String?
+  tradingStyle     String?   // scalper | daytrader | swing | position | macro
+  primaryAssets    String?   // JSON array e.g. ["Gold","Crude Oil","EUR/USD"]
+  profileVisibility String   @default("private") // private | invite | public
+  verifiedBadge    Boolean   @default(false)
+  badgeEarnedAt    DateTime?
+  profileSlug      String?   @unique // custom URL e.g. tradering.com/p/dominic
+  twitterHandle    String?
+  propFirmInterest Boolean   @default(false)
+  propFirmReferredAt DateTime?
+  propFirmPartnerId String?
   bio                String?
   createdAt          DateTime  @default(now())
   stripeCustomerId   String?   @unique
@@ -64,6 +73,14 @@ model User {
   theme         String   @default("dark-gold")
   dashboardLayout Json?
   customFields  Json?
+  propFirmReferrals PropFirmReferral[] @relation("PropFirmReferrals")
+  leaderboardSnapshots LeaderboardSnapshot[] @relation("LeaderboardSnapshots")
+
+  // Relations
+  h2hChallenges        H2HMatch[]            @relation("H2HChallenger")
+  h2hOpponents         H2HMatch[]            @relation("H2HOpponent")
+  consistency          TraderConsistency?
+  screenerTemplates    ScreenerTemplate[]    @relation("UserScreeners")
 }
 
 model Screening {
@@ -704,6 +721,34 @@ model ScreenerFork {
   originalId   String
   forkedById   String
   forkedAt     DateTime @default(now())
+}
+
+
+model PropFirmReferral {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation("PropFirmReferrals", fields: [userId], references: [id])
+  firmName    String
+  firmSlug    String
+  status      String   @default("pending") // pending | submitted | accepted | funded
+  referredAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  notes       String?
+}
+
+model LeaderboardSnapshot {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation("LeaderboardSnapshots", fields: [userId], references: [id])
+  period       String   // monthly | quarterly | annual | alltime
+  periodKey    String   // e.g. "2026-04" for April 2026
+  assetClass   String   // commodities | forex | stocks | crypto | overall
+  rank         Int
+  score        Float
+  winRate      Float
+  avgRR        Float
+  totalTrades  Int
+  snappedAt    DateTime @default(now())
 }
 
 model TradeIdea {
