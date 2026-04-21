@@ -1,4 +1,5 @@
 'use client'
+import MarketOverview from './MarketOverview'
 import { MarketsLanding, CommunityLanding, ToolsLanding, NewsLanding } from './SectionLanding'
 import CryptoTab from './CryptoTab'
 import ProfileTab from './ProfileTab'
@@ -70,7 +71,7 @@ const SECTION_TABS = {
   news:        ['All Markets','Forex','Commodities','Stocks','Crypto'],
   tools:       ['Trade Calc','AI Coach','Trade Plan Builder','COT Alerts','Backtesting','Strategy Backtest','Weekly Review','Personal Calendar','Notes','Reference','Creator Studio','Broker','My Profile','Settings'],
   // Sub-sections rendered inside markets tab
-  commodities: ['Asset Screener','Custom Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
+  commodities: ['Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
   forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
   stocks:      ['Overview','Sectors','Earnings','Key Levels'],
   crypto:      ['Overview','Watchlist','News'],
@@ -322,24 +323,18 @@ function FuturesOverviewTab() {
 
 // ── Markets Layout — must be defined before App()
 function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
-  const [subTab, setSubTab] = React.useState('Asset Screener');
+  const [subTab, setSubTab] = React.useState('Screener');
   const showLanding = !tab || tab === 'Markets';
 
   React.useEffect(() => {
-    const defaults = {
-      commodities: 'Asset Screener',
-      forex: 'Overview',
-      stocks: 'Overview',
-      crypto: 'Overview',
-      charts: '',
-    };
-    setSubTab(defaults[tab?.toLowerCase()] || 'Asset Screener');
+    // Default to empty subTab so MarketOverview shows first
+    setSubTab('');
   }, [tab]);
 
   const section = (tab || 'commodities').toLowerCase();
 
   const SUB_TABS = {
-    commodities: ['Asset Screener','Custom Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
+    commodities: ['Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
     forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
     stocks:      ['Overview','Sectors','Earnings','Key Levels'],
     crypto:      ['Overview'],
@@ -350,7 +345,16 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
   const subTabs = SUB_TABS[section] || [];
 
   if (showLanding) {
+    const mkt = (tab || '').toLowerCase();
+    if (['commodities','futures','forex','stocks','crypto'].includes(mkt)) {
+      return <MarketOverview market={mkt} />;
+    }
     return <MarketsLanding onSelect={(t) => setTab(t)} />;
+  }
+
+  // Show market overview when no subTab selected
+  if (!subTab && section !== 'charts') {
+    return <MarketOverview market={section} />;
   }
 
   return (
@@ -376,8 +380,7 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
         {section === 'charts' && <ChartWorkspace />}
         {section === 'crypto' && <CryptoTab />}
         {section === 'commodities' && <>
-          {subTab==='Asset Screener'    && <ScreenerTab plan={plan} onUpgrade={onUpgrade} />}
-          {subTab==='Custom Screener'   && <ScreenerBuilder user={null} />}
+          {subTab==='Screener'          && <ScreenerBuilder user={null} />}
           {subTab==='COT Index'         && <COTIndexTab />}
           {subTab==='Seasonal'          && <SeasonalTab />}
           {subTab==='Watchlist'         && <WatchlistTab plan={plan} onUpgrade={onUpgrade} />}
@@ -430,7 +433,7 @@ function CommunityLayout({ tab, setTab, currentUserId }) {
 
 export default function App() {
   const { data: session } = useSession()
-  const [tab, setTab] = useState('Asset Screener')
+  const [tab, setTab] = useState('')
   const [userInfo, setUserInfo] = useState(null)
   const [showAccount, setShowAccount] = useState(false)
   const [hoveredSection, setHoveredSection] = useState(null)
@@ -644,8 +647,7 @@ export default function App() {
         ) : section==='markets' ? (
           <MarketsLayout
             tab={tab}
-            marketSection={marketSection}
-            setMarketSection={setMarketSection}
+            setTab={setTab}
             plan={plan}
             onUpgrade={()=>handleUpgrade()}
             currentUserId={session?.user?.id}
@@ -655,8 +657,7 @@ export default function App() {
         ) : (
           <>
             {/* Commodities tabs */}
-            {tab==='Asset Screener' && <ScreenerTab plan={plan} onUpgrade={()=>handleUpgrade()} />}
-            {tab==='Custom Screener' && <ScreenerBuilder user={userInfo} />}
+            {tab==='Screener' && <ScreenerBuilder user={userInfo} />}
             {tab==='Watchlist'      && <WatchlistTab plan={plan} onUpgrade={()=>handleUpgrade()} />}
             {tab==='Seasonal'       && <SeasonalTab />}
             {tab==='COT Index'      && <COTIndexTab />}

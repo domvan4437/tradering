@@ -226,6 +226,20 @@ export function MarketsLanding({ onSelect }) {
       ),
     },
     {
+      title: 'Futures',
+      description: 'Financial, equity index, rates, and FX futures. Live prices across all major CME and CBOT contracts.',
+      accent: '#0891b2',
+      tab: 'Futures',
+      preview: (
+        <UiThumb label="futures">
+          <ThumbRow sym="ES" up={true} wide />
+          <ThumbRow sym="NQ" up={true} wide />
+          <ThumbRow sym="ZB" up={false} wide />
+          <ThumbRow sym="GC" up={true} wide />
+        </UiThumb>
+      ),
+    },
+    {
       title: 'Forex',
       description: 'Currency pair analysis with COT positioning, key levels, and economic calendar.',
       accent: 'var(--accent)',
