@@ -65,7 +65,7 @@ const STAGES = [
 const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil','Natural Gas','Gasoline','Heating Oil','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Lean Hogs','Rice','Oats','Lumber']
 const SECTION_TABS = {
   home:        ['Dashboard'],
-  markets:     ['Commodities','Forex','Stocks','Crypto','Charts'],
+  markets:     ['Commodities','Futures','Forex','Stocks','Crypto','Charts'],
   community:   ['Feed','Groups','Compete','Leaderboard'],
   news:        ['All Markets','Forex','Commodities','Stocks','Crypto'],
   tools:       ['Trade Calc','AI Coach','Trade Plan Builder','COT Alerts','Backtesting','Strategy Backtest','Weekly Review','Personal Calendar','Notes','Reference','Creator Studio','Broker','My Profile','Settings'],
@@ -74,6 +74,7 @@ const SECTION_TABS = {
   forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
   stocks:      ['Overview','Sectors','Earnings','Key Levels'],
   crypto:      ['Overview','Watchlist','News'],
+  futures:     ['Overview','Financial COT','Yield Curve','Key Levels'],
 }
 const TABS = SECTION_TABS.commodities
 const C = {
@@ -176,6 +177,149 @@ function UpgradeGate({ feature, onUpgrade }) {
 }
 
 
+
+// ── Futures Overview Tab
+function FuturesOverviewTab() {
+  const FUTURES = [
+    { sym:'ES=F',  name:'E-mini S&P 500',   cat:'Financial' },
+    { sym:'NQ=F',  name:'E-mini Nasdaq',     cat:'Financial' },
+    { sym:'YM=F',  name:'Dow Jones Mini',    cat:'Financial' },
+    { sym:'RTY=F', name:'Russell 2000',      cat:'Financial' },
+    { sym:'ZB=F',  name:'30-Year T-Bond',    cat:'Rates'     },
+    { sym:'ZN=F',  name:'10-Year T-Note',    cat:'Rates'     },
+    { sym:'ZF=F',  name:'5-Year T-Note',     cat:'Rates'     },
+    { sym:'GC=F',  name:'Gold',              cat:'Metals'    },
+    { sym:'SI=F',  name:'Silver',            cat:'Metals'    },
+    { sym:'HG=F',  name:'Copper',            cat:'Metals'    },
+    { sym:'CL=F',  name:'Crude Oil WTI',     cat:'Energy'    },
+    { sym:'NG=F',  name:'Natural Gas',       cat:'Energy'    },
+    { sym:'RB=F',  name:'RBOB Gasoline',     cat:'Energy'    },
+    { sym:'ZW=F',  name:'Wheat',             cat:'Grains'    },
+    { sym:'ZC=F',  name:'Corn',              cat:'Grains'    },
+    { sym:'ZS=F',  name:'Soybeans',          cat:'Grains'    },
+    { sym:'CT=F',  name:'Cotton',            cat:'Softs'     },
+    { sym:'KC=F',  name:'Coffee',            cat:'Softs'     },
+    { sym:'SB=F',  name:'Sugar',             cat:'Softs'     },
+    { sym:'6E=F',  name:'Euro FX',           cat:'FX Futures'},
+    { sym:'6B=F',  name:'British Pound',     cat:'FX Futures'},
+    { sym:'6J=F',  name:'Japanese Yen',      cat:'FX Futures'},
+  ];
+
+  const [prices, setPrices] = React.useState({});
+  const [loading, setLoading] = React.useState(true);
+  const [catFilter, setCatFilter] = React.useState('All');
+
+  React.useEffect(() => {
+    const syms = FUTURES.map(f => f.sym).join(',');
+    fetch(`/api/prices?symbols=${syms}`)
+      .then(r => r.json())
+      .then(d => { setPrices(d || {}); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const cats = ['All', ...new Set(FUTURES.map(f => f.cat))];
+  const filtered = catFilter === 'All' ? FUTURES : FUTURES.filter(f => f.cat === catFilter);
+
+  const fmt = (p) => {
+    if (!p) return '—';
+    if (p >= 1000) return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (p >= 1) return p.toFixed(2);
+    return p.toFixed(4);
+  };
+
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 6 }}>Markets</div>
+          <h2 style={{ fontFamily: 'var(--font)', fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0, letterSpacing: '-0.3px' }}>Futures Overview</h2>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {cats.map(c => (
+            <button key={c} onClick={() => setCatFilter(c)} style={{
+              padding: '5px 14px', borderRadius: 20,
+              background: catFilter === c ? 'var(--accent)' : 'var(--surface)',
+              color: catFilter === c ? '#fff' : 'var(--text-muted)',
+              border: catFilter === c ? 'none' : '1px solid var(--border2)',
+              fontFamily: 'var(--font)', fontSize: 12,
+              fontWeight: catFilter === c ? 600 : 400,
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}>{c}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 100px 80px', padding: '9px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
+          {['Contract','Price','24h Change','Category'].map((h, i) => (
+            <span key={h} style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: i > 1 ? 'right' : 'left' }}>{h}</span>
+          ))}
+        </div>
+
+        {loading ? (
+          Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 100px 80px', padding: '13px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ width: 120, height: 14, background: 'var(--surface3)', borderRadius: 4, opacity: 0.5 }} />
+              <div style={{ width: 70, height: 14, background: 'var(--surface3)', borderRadius: 4, opacity: 0.5 }} />
+              <div style={{ width: 60, height: 14, background: 'var(--surface3)', borderRadius: 4, opacity: 0.5, marginLeft: 'auto' }} />
+              <div style={{ width: 50, height: 14, background: 'var(--surface3)', borderRadius: 4, opacity: 0.5, marginLeft: 'auto' }} />
+            </div>
+          ))
+        ) : filtered.map((f, i) => {
+          const d = prices[f.sym];
+          const up = (d?.changePct || 0) >= 0;
+          return (
+            <div key={f.sym} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 20px',
+              borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none',
+              transition: 'background 0.12s', cursor: 'pointer',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-bg)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '-0.2px' }}>{f.name}</span>
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 500, background: '#F9FAFB', color: '#374151', border: '0.5px solid #e5e7eb', padding: '2px 8px', borderRadius: 20 }}>{f.cat}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', background: '#F9FAFB', border: '0.5px solid #e5e7eb', padding: '2px 7px', borderRadius: 3 }}>CME</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.06em' }}>{f.sym}</span>
+                  {d?.high && d?.low && d?.price && d.high !== d.low && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1, maxWidth: 180 }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{fmt(d.low)}</span>
+                      <div style={{ flex: 1, height: 3, background: 'var(--surface3)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, ((d.price - d.low) / (d.high - d.low)) * 100))}%`, background: up ? '#16a34a' : '#dc2626', borderRadius: 2 }} />
+                      </div>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{fmt(d.high)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 20 }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 500, color: 'var(--text)', letterSpacing: '-0.5px', marginBottom: 5 }}>
+                  {d?.price ? fmt(d.price) : '—'}
+                </div>
+                {d?.changePct != null ? (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, background: up ? 'var(--green-bg)' : 'var(--red-bg)', color: up ? 'var(--green)' : 'var(--red)', padding: '3px 10px', borderRadius: 20 }}>
+                    {up ? '▲' : '▼'} {Math.abs(d.changePct).toFixed(2)}%
+                  </span>
+                ) : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 12, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' }}>
+        {filtered.length} contracts · Prices via Yahoo Finance · Updates every 60s
+      </div>
+    </div>
+  );
+}
+
 // ── Markets Layout — must be defined before App()
 function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
   const [subTab, setSubTab] = React.useState('Asset Screener');
@@ -199,6 +343,7 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
     forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
     stocks:      ['Overview','Sectors','Earnings','Key Levels'],
     crypto:      ['Overview'],
+    futures:     ['Overview','Financial COT','Yield Curve','Key Levels'],
     charts:      [],
   };
 
@@ -255,6 +400,12 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
           {subTab==='Sectors'    && <StocksSectorsTab />}
           {subTab==='Earnings'   && <StocksEarningsTab />}
           {subTab==='Key Levels' && <StocksKeyLevelsTab />}
+        </>}
+        {section === 'futures' && <>
+          {subTab==='Overview'      && <FuturesOverviewTab />}
+          {subTab==='Financial COT' && <COTIndexTab />}
+          {subTab==='Yield Curve'   && <ComingSoonTab section="futures" tab="Yield Curve" />}
+          {subTab==='Key Levels'    && <ComingSoonTab section="futures" tab="Key Levels" />}
         </>}
       </div>
     </div>
