@@ -1,5 +1,6 @@
 'use client'
 import MarketOverview from './MarketOverview'
+import FeedTab from './FeedTab'
 import { MarketsLanding, CommunityLanding, ToolsLanding, NewsLanding } from './SectionLanding'
 import CryptoTab from './CryptoTab'
 import ProfileTab from './ProfileTab'
@@ -422,7 +423,7 @@ function CommunityLayout({ tab, setTab, currentUserId }) {
   }
   return (
     <div style={{ padding:'20px 24px' }}>
-      {tab==='Feed'    && <SocialTab currentUserId={currentUserId} />}
+      {tab==='Feed'    && <FeedTab />}
       {tab==='Groups'  && <GroupsTab currentUserId={currentUserId} />}
       {tab==='Compete'     && <CompetitionsTab currentUserId={currentUserId} />}
       {tab==='Leaderboard' && <GlobalLeaderboard />}
