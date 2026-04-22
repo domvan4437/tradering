@@ -29,7 +29,7 @@ import StrategyBacktestTab from './StrategyBacktestTab'
 import NewsTab from './NewsTab'
 import SocialTab from './SocialTab'
 import GroupsTab from './GroupsTab'
-import CompetitionsTab from './CompetitionsTab'
+import CompeteTab from './CompeteTab'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
 import CreatorDashboard from './CreatorDashboard'
 import { StocksOverviewTab, StocksSectorsTab, StocksEarningsTab, StocksKeyLevelsTab } from './StocksSection'
@@ -425,7 +425,7 @@ function CommunityLayout({ tab, setTab, currentUserId }) {
     <div style={{ padding:'20px 24px' }}>
       {tab==='Feed'    && <FeedTab />}
       {tab==='Groups'  && <GroupsTab currentUserId={currentUserId} />}
-      {tab==='Compete'     && <CompetitionsTab currentUserId={currentUserId} />}
+      {tab==='Compete'     && <CompeteTab currentUserId={currentUserId} />}
       {tab==='Leaderboard' && <GlobalLeaderboard />}
     </div>
   );
