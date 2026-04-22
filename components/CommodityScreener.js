@@ -67,9 +67,9 @@ const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil'
 const SECTION_TABS = {
   home:        ['Dashboard'],
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','Charts'],
-  community:   ['Feed','Groups','Compete','Leaderboard'],
-  news:        ['All Markets','Forex','Commodities','Stocks','Crypto'],
-  tools:       ['Trade Calc','AI Coach','Trade Plan Builder','COT Alerts','Backtesting','Strategy Backtest','Weekly Review','Personal Calendar','Notes','Reference','Creator Studio','Broker','My Profile','Settings'],
+  community:   ['Feed','Groups','Compete','Leaderboard','Creator Studio'],
+  news:        ['All Markets','Forex','Commodities','Futures','Stocks','Crypto'],
+  tools:       ['Trade Calc','AI Coach','Trade Plan Builder','COT Alerts','Backtesting','Strategy Backtest','Weekly Review','Personal Calendar','Notes','Reference','Broker','My Profile','Settings'],
   // Sub-sections rendered inside markets tab
   commodities: ['Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
   forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
@@ -640,10 +640,8 @@ export default function App() {
       <div style={{ padding:'20px 24px' }} onClick={()=>setShowAccount(false)}>
         {section==='home' ? (
           <HomePage />
-        ) : section==='news' && !tab ? (
-          <NewsLanding onSelect={(t) => setTab(t)} />
         ) : section==='news' ? (
-          <NewsTab />
+          <NewsTab initialTab={tab || 'All Markets'} />
         ) : section==='markets' ? (
           <MarketsLayout
             tab={tab}

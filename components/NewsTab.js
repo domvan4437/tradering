@@ -1,248 +1,276 @@
-'use client'
-import { useState, useEffect, useCallback } from 'react'
 
-const C = {
-  bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)',
-  surface3:'var(--surface3)', border:'var(--border)', border2:'var(--border2)',
-  accent:'var(--accent)', text:'var(--text)', muted:'var(--text-muted)',
-  dim:'var(--text-dim)', green:'var(--green)', red:'var(--red)', gold:'var(--gold)',
-  font:'var(--font)', mono:'var(--font-mono)',
-}
+'use client';
+import { useState } from 'react';
 
-const CATEGORIES = [
-  { id:'general',     label:'All Markets',  icon:'🌍', color:'#4A6FA5' },
-  { id:'forex',       label:'Forex',        icon:'💱', color:'#7c3aed' },
-  { id:'commodities', label:'Commodities',  icon:'🌾', color:'#059669' },
-  { id:'stocks',      label:'Stocks',       icon:'📈', color:'#2563eb' },
-  { id:'crypto',      label:'Crypto',       icon:'₿',  color:'#f59e0b' },
-]
+const DAYS = ['Mon','Tue','Wed','Thu','Fri'];
+const TODAY_IDX = 1; // Tuesday
 
-const KEYWORDS = {
-  bullish:  ['rally','surge','climb','rise','gain','high','bull','strong','beat','record','growth','up'],
-  bearish:  ['fall','drop','plunge','decline','loss','low','bear','weak','miss','crash','down','sell'],
-  neutral:  ['hold','flat','stable','unchanged','sideways','mixed','steady'],
-  warning:  ['warning','risk','concern','threat','uncertain','volatile','fear','crisis'],
-}
+const COUNTRIES = [
+  { code:'US', flag:'🇺🇸', label:'USD' },
+  { code:'EU', flag:'🇪🇺', label:'EUR' },
+  { code:'GB', flag:'🇬🇧', label:'GBP' },
+  { code:'JP', flag:'🇯🇵', label:'JPY' },
+  { code:'CA', flag:'🇨🇦', label:'CAD' },
+  { code:'AU', flag:'🇦🇺', label:'AUD' },
+  { code:'CH', flag:'🇨🇭', label:'CHF' },
+  { code:'NZ', flag:'🇳🇿', label:'NZD' },
+];
 
-function getSentiment(title) {
-  const t = title.toLowerCase()
-  if (KEYWORDS.bearish.some(w => t.includes(w))) return { label:'Bearish', color:'#dc2626', bg:'var(--red-bg)' }
-  if (KEYWORDS.bullish.some(w => t.includes(w))) return { label:'Bullish', color:'#059669', bg:'var(--green-bg)' }
-  if (KEYWORDS.warning.some(w => t.includes(w))) return { label:'Watch',   color:'#d97706', bg:'#fef3c7' }
-  return null
-}
+const MARKET_FILTERS = ['All Markets','Forex','Commodities','Futures','Stocks','Crypto'];
 
-function timeAgo(dateStr) {
-  if (!dateStr) return ''
-  try {
-    const diff = (Date.now() - new Date(dateStr)) / 1000
-    if (diff < 60) return 'Just now'
-    if (diff < 3600) return `${Math.floor(diff/60)}m ago`
-    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`
-    return `${Math.floor(diff/86400)}d ago`
-  } catch { return '' }
-}
+const EVENTS = [
+  // Tuesday
+  { day:1, time:'08:30', country:'US', flag:'🇺🇸', impact:'high',   name:'CPI m/m',                    sub:'Consumer Price Index · Inflation',              market:'Forex',       prev:'0.4%',  fore:'0.3%',  actual:'0.4%',  actualUp:true  },
+  { day:1, time:'08:30', country:'US', flag:'🇺🇸', impact:'high',   name:'Core CPI m/m',               sub:'Excluding food and energy',                     market:'Forex',       prev:'0.4%',  fore:'0.3%',  actual:'0.3%',  actualUp:null  },
+  { day:1, time:'10:00', country:'US', flag:'🇺🇸', impact:'medium', name:'Existing Home Sales',        sub:'Monthly housing market data',                   market:'Stocks',      prev:'4.26M', fore:'4.13M', actual:'4.02M', actualUp:false },
+  { day:1, time:'10:30', country:'US', flag:'🇺🇸', impact:'high',   name:'EIA Crude Oil Inventories',  sub:'Weekly crude inventory change · Crude Oil',     market:'Commodities', prev:'-2.1M', fore:'-1.4M', actual:null,    actualUp:null  },
+  { day:1, time:'13:15', country:'EU', flag:'🇪🇺', impact:'high',   name:'ECB Rate Decision',          sub:'European Central Bank interest rate · EUR',     market:'Forex',       prev:'4.50%', fore:'4.25%', actual:null,    actualUp:null  },
+  { day:1, time:'13:45', country:'EU', flag:'🇪🇺', impact:'high',   name:'ECB Press Conference',       sub:'ECB President statement and Q&A',               market:'Forex',       prev:null,    fore:null,    actual:null,    actualUp:null  },
+  { day:1, time:'14:00', country:'GB', flag:'🇬🇧', impact:'medium', name:'UK Retail Sales m/m',        sub:'Monthly retail spending change · GBP',          market:'Forex',       prev:'0.2%',  fore:'0.3%',  actual:null,    actualUp:null  },
+  // Wednesday
+  { day:2, time:'08:30', country:'US', flag:'🇺🇸', impact:'high',   name:'Jobless Claims',             sub:'Weekly unemployment filings · USD',             market:'Forex',       prev:'215K',  fore:'210K',  actual:null,    actualUp:null  },
+  { day:2, time:'10:30', country:'US', flag:'🇺🇸', impact:'high',   name:'EIA Natural Gas Storage',    sub:'Weekly nat gas inventory change · Nat Gas',     market:'Commodities', prev:'-62B',  fore:'-48B',  actual:null,    actualUp:null  },
+  { day:2, time:'14:00', country:'US', flag:'🇺🇸', impact:'high',   name:'FOMC Meeting Minutes',       sub:'Federal Reserve policy notes · USD, Equities',  market:'Futures',     prev:null,    fore:null,    actual:null,    actualUp:null  },
+  { day:2, time:'15:00', country:'US', flag:'🇺🇸', impact:'medium', name:'Fed Chair Speech',           sub:'Powell remarks on monetary policy outlook',     market:'Forex',       prev:null,    fore:null,    actual:null,    actualUp:null  },
+  // Thursday
+  { day:3, time:'08:30', country:'US', flag:'🇺🇸', impact:'high',   name:'GDP q/q (Prelim)',           sub:'Preliminary GDP growth estimate · USD',         market:'Forex',       prev:'3.2%',  fore:'2.8%',  actual:null,    actualUp:null  },
+  { day:3, time:'08:30', country:'US', flag:'🇺🇸', impact:'medium', name:'PCE Price Index q/q',        sub:'Fed preferred inflation measure',               market:'Forex',       prev:'1.8%',  fore:'2.1%',  actual:null,    actualUp:null  },
+  { day:3, time:'10:00', country:'US', flag:'🇺🇸', impact:'medium', name:'CB Consumer Confidence',     sub:'Consumer sentiment survey',                     market:'Stocks',      prev:'92.9',  fore:'94.1',  actual:null,    actualUp:null  },
+  { day:3, time:'All Day',country:'US', flag:'🇺🇸', impact:'high',  name:'USDA Weekly Export Sales',   sub:'Grain and soybean export data · Grains',        market:'Commodities', prev:null,    fore:null,    actual:null,    actualUp:null  },
+  // Friday
+  { day:4, time:'08:30', country:'US', flag:'🇺🇸', impact:'high',   name:'Core PCE Price Index m/m',   sub:'Fed inflation target measure · USD, Gold',      market:'Forex',       prev:'0.3%',  fore:'0.3%',  actual:null,    actualUp:null  },
+  { day:4, time:'08:30', country:'US', flag:'🇺🇸', impact:'medium', name:'Personal Spending m/m',      sub:'Consumer spending data',                        market:'Stocks',      prev:'0.4%',  fore:'0.5%',  actual:null,    actualUp:null  },
+  { day:4, time:'10:00', country:'US', flag:'🇺🇸', impact:'medium', name:'Michigan Consumer Sentiment', sub:'University of Michigan survey final',          market:'Stocks',      prev:'57.0',  fore:'54.5',  actual:null,    actualUp:null  },
+  { day:4, time:'15:30', country:'US', flag:'🇺🇸', impact:'high',   name:'CFTC COT Report',            sub:'Commitment of Traders positioning data',        market:'Futures',     prev:null,    fore:null,    actual:null,    actualUp:null  },
+];
 
-function NewsCard({ item, index }) {
-  const sentiment = getSentiment(item.title)
-  const isNew = (() => {
-    try { return (Date.now() - new Date(item.pubDate)) / 3600000 < 2 } catch { return false }
-  })()
+const DAY_LABELS = ['Monday Apr 21','Tuesday Apr 22','Wednesday Apr 23','Thursday Apr 24','Friday Apr 25'];
+const DAY_SHORT  = ['Mon','Tue','Wed','Thu','Fri'];
 
-  return (
-    <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none', display:'block' }}>
-      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:'var(--radius)', padding:'16px 18px', transition:'all 0.15s', cursor:'pointer' }}
-        onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.accent; e.currentTarget.style.boxShadow='var(--shadow-md)' }}
-        onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.border; e.currentTarget.style.boxShadow='none' }}>
-        <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
-          {/* Index number */}
-          <div style={{ fontSize:11, color:C.dim, fontFamily:C.mono, minWidth:20, paddingTop:2, flexShrink:0 }}>{index+1}</div>
-          <div style={{ flex:1, minWidth:0 }}>
-            {/* Top row: source + time + badges */}
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:7, flexWrap:'wrap' }}>
-              <span style={{ fontSize:11, fontWeight:700, color:C.accent, textTransform:'uppercase', letterSpacing:0.5 }}>{item.source}</span>
-              <span style={{ fontSize:10, color:C.dim }}>·</span>
-              <span style={{ fontSize:11, color:C.dim }}>{timeAgo(item.pubDate)}</span>
-              {isNew && <span style={{ fontSize:10, fontWeight:700, color:'#fff', background:C.accent, padding:'1px 7px', borderRadius:99 }}>NEW</span>}
-              {sentiment && <span style={{ fontSize:10, fontWeight:600, color:sentiment.color, background:sentiment.bg, padding:'2px 8px', borderRadius:99 }}>{sentiment.label}</span>}
-            </div>
-            {/* Title */}
-            <div style={{ fontSize:14, fontWeight:600, color:C.text, lineHeight:1.5, marginBottom:6 }}>
-              {item.title}
-            </div>
-            {/* Description */}
-            {item.description && (
-              <div style={{ fontSize:12, color:C.muted, lineHeight:1.6, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
-                {item.description}
-              </div>
-            )}
-          </div>
-          {/* External link icon */}
-          <div style={{ color:C.dim, fontSize:12, flexShrink:0, paddingTop:2 }}>↗</div>
-        </div>
-      </div>
-    </a>
-  )
-}
+const IMPACT_COLORS = {
+  high:   { dot:'#dc2626', pill:'#fee2e2', text:'#991b1b', label:'HIGH'   },
+  medium: { dot:'#d97706', pill:'#FEF3C7', text:'#78350f', label:'MED'    },
+  low:    { dot:'#9ca3af', pill:'#F9FAFB', text:'#6b7280', label:'LOW'    },
+};
 
-export default function NewsTab() {
-  const [category, setCategory] = useState('general')
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
-  const [fetchedAt, setFetchedAt] = useState('')
-  const [sentimentFilter, setSentimentFilter] = useState('all')
-  const [sourceFilter, setSourceFilter] = useState('all')
+export default function NewsTab({ initialTab }) {
+  const [dayIdx,      setDayIdx]      = useState(TODAY_IDX);
+  const [showImpact,  setShowImpact]  = useState({ high:true, medium:true, low:false });
+  const [activeCCs,   setActiveCCs]   = useState({ US:true, EU:true, GB:true, JP:false, CA:false, AU:false, CH:false, NZ:false });
+  const [mktFilter,   setMktFilter]   = useState(initialTab || 'All Markets');
+  const [viewMode,    setViewMode]    = useState('week'); // 'day' | 'week'
 
-  const fetchNews = useCallback(async (cat) => {
-    setLoading(true); setError(''); setItems([])
-    try {
-      const res = await fetch(`/api/news?category=${cat}`)
-      const data = await res.json()
-      if (data.error) { setError(data.error); return }
-      setItems(data.items || [])
-      if (data.fetchedAt) setFetchedAt(new Date(data.fetchedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}))
-    } catch { setError('Failed to load news. Please try again.') }
-    setLoading(false)
-  }, [])
+  const daysToShow = viewMode === 'day' ? [dayIdx] : [0,1,2,3,4];
 
-  useEffect(() => { fetchNews(category) }, [category])
+  const filtered = EVENTS.filter(e => {
+    if (!daysToShow.includes(e.day)) return false;
+    if (!showImpact[e.impact]) return false;
+    if (!activeCCs[e.country]) return false;
+    if (mktFilter !== 'All Markets' && e.market !== mktFilter) return false;
+    return true;
+  });
 
-  const sources = ['all', ...Array.from(new Set(items.map(i => i.source)))]
+  const byDay = daysToShow.map(d => ({
+    dayIdx: d,
+    label: DAY_LABELS[d],
+    isToday: d === TODAY_IDX,
+    events: filtered.filter(e => e.day === d),
+    highCount: filtered.filter(e => e.day === d && e.impact === 'high').length,
+  }));
 
-  const filtered = items.filter(item => {
-    const matchSearch = !search || item.title.toLowerCase().includes(search.toLowerCase()) || item.description?.toLowerCase().includes(search.toLowerCase())
-    const matchSource = sourceFilter === 'all' || item.source === sourceFilter
-    const sentiment = getSentiment(item.title)
-    const matchSentiment = sentimentFilter === 'all'
-      || (sentimentFilter === 'bullish' && sentiment?.label === 'Bullish')
-      || (sentimentFilter === 'bearish' && sentiment?.label === 'Bearish')
-      || (sentimentFilter === 'watch'   && sentiment?.label === 'Watch')
-    return matchSearch && matchSource && matchSentiment
-  })
+  const toggleCC = (cc) => setActiveCCs(p => ({ ...p, [cc]: !p[cc] }));
+  const toggleImpact = (k) => setShowImpact(p => ({ ...p, [k]: !p[k] }));
 
-  const catInfo = CATEGORIES.find(c => c.id === category)
-
-  // Stats
-  const bullishCount = items.filter(i => getSentiment(i.title)?.label === 'Bullish').length
-  const bearishCount = items.filter(i => getSentiment(i.title)?.label === 'Bearish').length
-  const watchCount   = items.filter(i => getSentiment(i.title)?.label === 'Watch').length
+  const colStyle = (align='left') => ({
+    fontFamily: 'var(--font)', fontSize: 10, fontWeight: 500,
+    letterSpacing: '0.08em', textTransform: 'uppercase',
+    color: 'var(--text-muted)', textAlign: align, padding: '0 10px',
+  });
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-        <div>
-          <h2 style={{ fontSize:28, fontWeight:400, margin:'0 0 6px' }}>
-            Market <span style={{ color:C.gold }}>News</span>
-          </h2>
-          <p style={{ fontSize:13, color:C.muted, margin:0 }}>
-            Live news across all asset classes — sorted by recency with AI sentiment tagging.
-            {fetchedAt && <span style={{ color:C.dim }}> · Updated {fetchedAt}</span>}
-          </p>
+    <div style={{ fontFamily: 'var(--font)' }}>
+
+      {/* ── Top bar ── */}
+      <div style={{ padding:'12px 22px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+        <div style={{ display:'flex', alignItems:'baseline', gap:12 }}>
+          <span style={{ fontSize:22, fontWeight:800, color:'var(--accent)', letterSpacing:'-0.5px' }}>News</span>
+          <span style={{ fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-muted)' }}>
+            {DAY_LABELS[dayIdx].split(' ')[0]} · New York Session
+          </span>
         </div>
-        <button onClick={() => fetchNews(category)} disabled={loading} style={{ background:C.surface2, color:C.text, border:`1px solid ${C.border}`, padding:'7px 16px', borderRadius:'var(--radius-sm)', fontSize:12, fontWeight:500, cursor:'pointer', fontFamily:C.font }}>
-          {loading ? '⏳ Loading...' : '↻ Refresh'}
-        </button>
-      </div>
-
-      {/* Category tabs */}
-      <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
-        {CATEGORIES.map(cat => (
-          <button key={cat.id} onClick={() => { setCategory(cat.id); setSearch(''); setSentimentFilter('all'); setSourceFilter('all') }}
-            style={{ background:category===cat.id?cat.color:C.surface, color:category===cat.id?'#fff':C.muted, border:`1px solid ${category===cat.id?cat.color:C.border}`, padding:'8px 16px', borderRadius:99, fontSize:13, fontWeight:category===cat.id?600:400, cursor:'pointer', fontFamily:C.font, transition:'all 0.15s', display:'flex', alignItems:'center', gap:6 }}>
-            <span>{cat.icon}</span>{cat.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Sentiment summary */}
-      {items.length > 0 && (
-        <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
-          <div style={{ background:'var(--green-bg)', border:'1px solid var(--green-border)', borderRadius:8, padding:'8px 16px', display:'flex', gap:8, alignItems:'center' }}>
-            <span style={{ fontSize:12, fontWeight:700, color:C.green }}>{bullishCount}</span>
-            <span style={{ fontSize:11, color:C.muted }}>Bullish</span>
-          </div>
-          <div style={{ background:'var(--red-bg)', border:'1px solid var(--red-border)', borderRadius:8, padding:'8px 16px', display:'flex', gap:8, alignItems:'center' }}>
-            <span style={{ fontSize:12, fontWeight:700, color:C.red }}>{bearishCount}</span>
-            <span style={{ fontSize:11, color:C.muted }}>Bearish</span>
-          </div>
-          <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:8, padding:'8px 16px', display:'flex', gap:8, alignItems:'center' }}>
-            <span style={{ fontSize:12, fontWeight:700, color:'#d97706' }}>{watchCount}</span>
-            <span style={{ fontSize:11, color:C.muted }}>Watch</span>
-          </div>
-          <div style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:8, padding:'8px 16px', display:'flex', gap:8, alignItems:'center' }}>
-            <span style={{ fontSize:12, fontWeight:700, color:C.text }}>{items.length}</span>
-            <span style={{ fontSize:11, color:C.muted }}>Total Stories</span>
-          </div>
-        </div>
-      )}
-
-      {/* Filters row */}
-      <div style={{ display:'flex', gap:10, marginBottom:20, flexWrap:'wrap', alignItems:'center' }}>
-        {/* Search */}
-        <div style={{ position:'relative', flex:1, minWidth:200 }}>
-          <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.dim, fontSize:13 }}>🔍</span>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search headlines..." style={{ width:'100%', background:C.surface2, color:C.text, border:`1px solid ${C.border2}`, padding:'8px 12px 8px 32px', borderRadius:'var(--radius-sm)', fontSize:13, fontFamily:C.font, outline:'none', boxSizing:'border-box' }} />
-        </div>
-        {/* Sentiment filter */}
-        <select value={sentimentFilter} onChange={e=>setSentimentFilter(e.target.value)} style={{ background:C.surface2, color:C.text, border:`1px solid ${C.border2}`, padding:'8px 12px', borderRadius:'var(--radius-sm)', fontSize:12, fontFamily:C.font, cursor:'pointer' }}>
-          <option value="all">All Sentiment</option>
-          <option value="bullish">🟢 Bullish Only</option>
-          <option value="bearish">🔴 Bearish Only</option>
-          <option value="watch">🟡 Watch Only</option>
-        </select>
-        {/* Source filter */}
-        <select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} style={{ background:C.surface2, color:C.text, border:`1px solid ${C.border2}`, padding:'8px 12px', borderRadius:'var(--radius-sm)', fontSize:12, fontFamily:C.font, cursor:'pointer' }}>
-          {sources.map(s => <option key={s} value={s}>{s==='all'?'All Sources':s}</option>)}
-        </select>
-        {(search || sentimentFilter!=='all' || sourceFilter!=='all') && (
-          <button onClick={()=>{setSearch('');setSentimentFilter('all');setSourceFilter('all')}} style={{ background:'transparent', color:C.muted, border:`1px solid ${C.border}`, padding:'8px 12px', borderRadius:'var(--radius-sm)', fontSize:12, cursor:'pointer', fontFamily:C.font }}>
-            Clear Filters
-          </button>
-        )}
-      </div>
-
-      {/* Results count */}
-      {!loading && items.length > 0 && (
-        <div style={{ fontSize:12, color:C.dim, marginBottom:12 }}>
-          Showing {filtered.length} of {items.length} stories
-          {search && ` matching "${search}"`}
-        </div>
-      )}
-
-      {/* News feed */}
-      {loading ? (
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {[...Array(8)].map((_,i) => (
-            <div key={i} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:'var(--radius)', padding:'16px 18px', opacity: 1 - i*0.1 }}>
-              <div style={{ height:12, background:C.surface2, borderRadius:4, width:'30%', marginBottom:10 }} />
-              <div style={{ height:16, background:C.surface2, borderRadius:4, width:'85%', marginBottom:8 }} />
-              <div style={{ height:12, background:C.surface2, borderRadius:4, width:'65%' }} />
-            </div>
+        {/* Market tabs */}
+        <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+          {MARKET_FILTERS.map(f => (
+            <button key={f} onClick={() => setMktFilter(f)} style={{
+              padding:'5px 12px', borderRadius:20, border:'1px solid var(--border2)',
+              background: mktFilter===f ? 'var(--accent)' : 'var(--surface)',
+              color: mktFilter===f ? '#fff' : 'var(--text-muted)',
+              fontFamily:'var(--font)', fontSize:11, fontWeight: mktFilter===f?600:400,
+              cursor:'pointer', transition:'all 0.15s',
+            }}>{f}</button>
           ))}
         </div>
-      ) : error ? (
-        <div style={{ background:'var(--red-bg)', border:'1px solid var(--red-border)', borderRadius:'var(--radius)', padding:'16px 20px', color:C.red, fontSize:13 }}>
-          ⚠️ {error}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:'var(--radius)', padding:48, textAlign:'center' }}>
-          <div style={{ fontSize:32, marginBottom:12 }}>📰</div>
-          <div style={{ fontSize:14, color:C.muted }}>
-            {items.length === 0 ? 'No news available for this category right now.' : 'No stories match your filters.'}
-          </div>
-        </div>
-      ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          {filtered.map((item, i) => <NewsCard key={`${item.link}-${i}`} item={item} index={i} />)}
-        </div>
-      )}
+      </div>
 
-      <div style={{ fontSize:11, color:C.dim, textAlign:'center', marginTop:20, paddingBottom:8 }}>
-        News sourced from public RSS feeds. Stories open in a new tab. TradeRing does not endorse any specific outlets.
+      {/* ── Filter bar ── */}
+      <div style={{ padding:'10px 22px', borderBottom:'1px solid var(--border)', background:'var(--surface2)', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+
+        {/* Date nav */}
+        <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+          <button onClick={() => setDayIdx(d => Math.max(0, d-1))} style={{ padding:'5px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:13, color:'var(--text-muted)' }}>‹</button>
+          {DAYS.map((d,i) => (
+            <button key={d} onClick={() => { setDayIdx(i); setViewMode('day'); }} style={{
+              padding:'5px 12px', borderRadius:6,
+              border: dayIdx===i && viewMode==='day' ? '1px solid var(--accent)' : '1px solid var(--border)',
+              background: dayIdx===i && viewMode==='day' ? 'var(--accent)' : 'var(--surface)',
+              color: dayIdx===i && viewMode==='day' ? '#fff' : 'var(--text-muted)',
+              fontFamily:'var(--font)', fontSize:11, fontWeight: dayIdx===i && viewMode==='day' ? 600 : 400,
+              cursor:'pointer', transition:'all 0.12s',
+            }}>{d}</button>
+          ))}
+          <button onClick={() => setDayIdx(d => Math.min(4, d+1))} style={{ padding:'5px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontSize:13, color:'var(--text-muted)' }}>›</button>
+          <button onClick={() => setViewMode('week')} style={{
+            marginLeft:4, padding:'5px 12px', borderRadius:6,
+            border: viewMode==='week' ? '1px solid var(--accent)' : '1px solid var(--border)',
+            background: viewMode==='week' ? 'var(--accent-bg)' : 'var(--surface)',
+            color: viewMode==='week' ? 'var(--accent)' : 'var(--text-muted)',
+            fontFamily:'var(--font)', fontSize:11, fontWeight: viewMode==='week' ? 600 : 400,
+            cursor:'pointer', transition:'all 0.12s',
+          }}>This Week</button>
+        </div>
+
+        <div style={{ width:1, height:20, background:'var(--border)' }} />
+
+        {/* Impact filters */}
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ fontSize:10, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-muted)' }}>Impact</span>
+          {Object.entries(IMPACT_COLORS).map(([k, v]) => (
+            <button key={k} onClick={() => toggleImpact(k)} style={{
+              display:'flex', alignItems:'center', gap:5,
+              padding:'4px 10px', borderRadius:6,
+              border: showImpact[k] ? `1px solid ${v.dot}50` : '1px solid var(--border)',
+              background: showImpact[k] ? `${v.dot}12` : 'var(--surface)',
+              cursor:'pointer', transition:'all 0.12s',
+            }}>
+              <div style={{ width:7, height:7, borderRadius:'50%', background: showImpact[k] ? v.dot : 'var(--text-dim)', transition:'background 0.12s' }} />
+              <span style={{ fontFamily:'var(--font)', fontSize:11, color: showImpact[k] ? v.dot : 'var(--text-muted)', fontWeight: showImpact[k] ? 600 : 400 }}>{v.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ width:1, height:20, background:'var(--border)' }} />
+
+        {/* Country filters */}
+        <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+          <span style={{ fontSize:10, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-muted)' }}>Country</span>
+          {COUNTRIES.map(c => (
+            <button key={c.code} onClick={() => toggleCC(c.code)} style={{
+              padding:'4px 10px', borderRadius:6,
+              border: activeCCs[c.code] ? '1px solid var(--accent-border)' : '1px solid var(--border)',
+              background: activeCCs[c.code] ? 'var(--accent-bg)' : 'var(--surface)',
+              color: activeCCs[c.code] ? 'var(--accent)' : 'var(--text-muted)',
+              fontFamily:'var(--font)', fontSize:11, fontWeight: activeCCs[c.code] ? 600 : 400,
+              cursor:'pointer', transition:'all 0.12s',
+            }}>{c.flag} {c.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Column headers ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'80px 36px 36px 1fr 70px 90px 90px 90px', padding:'8px 0', background:'var(--surface2)', borderBottom:'1px solid var(--border)' }}>
+        <div style={colStyle()}>Time</div>
+        <div style={colStyle('center')}></div>
+        <div style={colStyle('center')}></div>
+        <div style={colStyle()}>Event</div>
+        <div style={colStyle('right')}>Impact</div>
+        <div style={colStyle('right')}>Previous</div>
+        <div style={colStyle('right')}>Forecast</div>
+        <div style={colStyle('right')}>Actual</div>
+      </div>
+
+      {/* ── Event rows ── */}
+      {byDay.map(({ dayIdx: di, label, isToday, events, highCount }) => (
+        <div key={di}>
+          {/* Day header */}
+          <div style={{ padding:'7px 22px', background:'var(--surface2)', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:12 }}>
+            <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:700, color:'var(--text)' }}>{label}</span>
+            {isToday && <span style={{ fontFamily:'var(--font-mono)', fontSize:9, fontWeight:600, color:'var(--accent)', background:'var(--accent-bg)', padding:'2px 8px', borderRadius:3, letterSpacing:'0.1em', textTransform:'uppercase' }}>Today</span>}
+            {highCount > 0 && (
+              <span style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:600, color:'#dc2626', background:'#fee2e2', padding:'2px 9px', borderRadius:3 }}>
+                {highCount} High Impact
+              </span>
+            )}
+            {events.length === 0 && <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-dim)' }}>No events matching filters</span>}
+          </div>
+
+          {events.map((e, i) => {
+            const ic = IMPACT_COLORS[e.impact];
+            const hasActual = e.actual != null;
+            const actualColor = hasActual
+              ? (e.actualUp === true ? 'var(--green)' : e.actualUp === false ? 'var(--red)' : 'var(--text)')
+              : 'var(--text-dim)';
+
+            return (
+              <div key={i}
+                style={{ display:'grid', gridTemplateColumns:'80px 36px 36px 1fr 70px 90px 90px 90px', padding:'11px 0', borderBottom:'1px solid var(--border)', alignItems:'center', transition:'background 0.1s', cursor:'pointer' }}
+                onMouseEnter={e2 => e2.currentTarget.style.background = 'var(--accent-bg)'}
+                onMouseLeave={e2 => e2.currentTarget.style.background = 'transparent'}
+              >
+                {/* Time */}
+                <div style={{ padding:'0 10px', fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-muted)' }}>{e.time}</div>
+
+                {/* Flag */}
+                <div style={{ textAlign:'center', fontSize:16 }}>{e.flag}</div>
+
+                {/* Impact dot */}
+                <div style={{ display:'flex', justifyContent:'center' }}>
+                  <div style={{ width:8, height:8, borderRadius:'50%', background:ic.dot }} />
+                </div>
+
+                {/* Event name */}
+                <div style={{ padding:'0 10px' }}>
+                  <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)', marginBottom:2 }}>{e.name}</div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{e.sub}</div>
+                </div>
+
+                {/* Impact pill */}
+                <div style={{ textAlign:'right', padding:'0 10px' }}>
+                  <span style={{ fontFamily:'var(--font-mono)', fontSize:9, fontWeight:700, background:ic.pill, color:ic.text, padding:'2px 7px', borderRadius:3 }}>{ic.label}</span>
+                </div>
+
+                {/* Previous */}
+                <div style={{ textAlign:'right', padding:'0 10px', fontFamily:'var(--font-mono)', fontSize:12, color:'var(--text-secondary)' }}>{e.prev || '—'}</div>
+
+                {/* Forecast */}
+                <div style={{ textAlign:'right', padding:'0 10px', fontFamily:'var(--font-mono)', fontSize:12, color:'var(--text-secondary)' }}>{e.fore || '—'}</div>
+
+                {/* Actual */}
+                <div style={{ textAlign:'right', padding:'0 10px' }}>
+                  {hasActual ? (
+                    <span style={{ fontFamily:'var(--font-mono)', fontSize:13, fontWeight:700, color:actualColor }}>
+                      {e.actual} {e.actualUp === true ? '▲' : e.actualUp === false ? '▼' : ''}
+                    </span>
+                  ) : (
+                    <span style={{ fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-dim)' }}>
+                      {di === TODAY_IDX ? 'Pending' : di > TODAY_IDX ? '—' : '—'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+
+      {/* Footer */}
+      <div style={{ padding:'10px 22px', borderTop:'1px solid var(--border)', background:'var(--surface2)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <span style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--text-muted)' }}>
+          {filtered.length} events · {filtered.filter(e=>e.impact==='high').length} high impact
+        </span>
+        <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>
+          Times shown in your local timezone
+        </span>
       </div>
     </div>
-  )
+  );
 }
