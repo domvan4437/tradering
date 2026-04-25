@@ -30,6 +30,8 @@ import NewsTab from './NewsTab'
 import SocialTab from './SocialTab'
 import GroupsTab from './GroupsTab'
 import CompeteTab from './CompeteTab'
+import CreatorStudioTab from './CreatorStudioTab'
+import BrokerTab from './BrokerTab'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
 import CreatorDashboard from './CreatorDashboard'
 import { StocksOverviewTab, StocksSectorsTab, StocksEarningsTab, StocksKeyLevelsTab } from './StocksSection'
@@ -427,6 +429,7 @@ function CommunityLayout({ tab, setTab, currentUserId }) {
       {tab==='Groups'  && <GroupsTab currentUserId={currentUserId} />}
       {tab==='Compete'     && <CompeteTab currentUserId={currentUserId} />}
       {tab==='Leaderboard' && <GlobalLeaderboard />}
+      {tab==='Creator Studio' && <CreatorStudioTab user={userInfo} />}
     </div>
   );
 }
@@ -682,6 +685,7 @@ export default function App() {
             {tab==='Settings'       && <ThemeSettings />}
             {tab==='Creator Studio'  && <CreatorDashboard currentUserId={session?.user?.id} />}
             {tab==='Broker'           && <BrokerIntegrationTab />}
+            {tab==='Broker' && <BrokerTab />}
             {tab==='My Profile'       && <ProfileTab user={userInfo} session={session} />}
             {tab==='Personal Calendar' && <PersonalCalendarTab />}
             {/* Forex tabs */}
