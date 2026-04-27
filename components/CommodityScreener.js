@@ -21,6 +21,9 @@ import TickerStrip from './TickerStrip'
 import { UpgradeModal } from './UpgradeModal'
 import { ForexOverviewTab, ForexCOTTab, ForexKeyLevelsTab } from './ForexSection'
 import AICoachTab from './AICoachTab'
+import { JournalLanding } from './JournalLanding'
+import { ToolsLanding2 } from './ToolsLanding2'
+import { AccountLanding } from './AccountLanding'
 import COTAlertsTab from './COTAlertsTab'
 import TradePlanTab from './TradePlanTab'
 import BacktestTab from './BacktestTab'
@@ -72,9 +75,13 @@ const SECTION_TABS = {
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','Charts'],
   community:   ['Feed','Groups','Compete','Leaderboard','Creator Studio'],
   news:        ['All Markets','Forex','Commodities','Futures','Stocks','Crypto'],
-  tools:       ['Trade Calc','AI Coach','Trade Plan Builder','COT Alerts','Backtesting','Strategy Backtest','Weekly Review','Personal Calendar','Notes','Reference','Broker','My Profile','Settings'],
+  coach:       ['AI Coach'],
+  journal:     ['Notes','Weekly Review','AI Coach'],
+  tools2:      ['Trade Calc','Trade Plan Builder','Strategy Backtest','COT Alerts','Screener'],
+  account:     ['Broker','My Profile','Settings'],
+
   // Sub-sections rendered inside markets tab
-  commodities: ['Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
+  commodities: ['Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist','Backtesting'],
   forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
   stocks:      ['Overview','Sectors','Earnings','Key Levels'],
   crypto:      ['Overview','Watchlist','News'],
@@ -429,7 +436,7 @@ function CommunityLayout({ tab, setTab, currentUserId }) {
       {tab==='Groups'  && <GroupsTab currentUserId={currentUserId} />}
       {tab==='Compete'     && <CompeteTab currentUserId={currentUserId} />}
       {tab==='Leaderboard' && <GlobalLeaderboard />}
-      {tab==='Creator Studio' && <CreatorStudioTab user={userInfo} />}
+      {tab==='Creator Studio' && <CreatorStudioTab  />}
     </div>
   );
 }
@@ -466,7 +473,7 @@ export default function App() {
     
   },[])
 
-  const navItems = [['Home','home'],['Markets','markets'],['News','news'],['Community','community'],['Tools','tools']]
+  const navItems = [['Home','home'],['Markets','markets'],['News','news'],['Community','community'],['AI Coach','coach'],['Journal','journal'],['Tools','tools2'],['Account','account']]
 
   return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontFamily:'var(--font)', fontSize:13 }}>
@@ -656,6 +663,31 @@ export default function App() {
           />
         ) : section==='community' ? (
           <CommunityLayout tab={tab} setTab={setTab} currentUserId={session?.user?.id} />
+        ) : section==='coach' ? (
+          <div style={{padding:'20px 24px'}}><AICoachTab /></div>
+        ) : section==='journal' ? (
+          <div style={{padding:'20px 24px'}}>
+            {!tab && <JournalLanding onSelect={t=>setTab(t)} />}
+            {tab==='Notes' && <NotesTab />}
+            {tab==='Weekly Review'           && <WeeklyReviewTab />}
+            {tab==='AI Coach'               && <AICoachTab />}
+          </div>
+        ) : section==='tools2' ? (
+          <div style={{padding:'20px 24px'}}>
+            {!tab && <ToolsLanding2 onSelect={t=>setTab(t)} />}
+            {tab==='Trade Calc' && <TradeCalcTab />}
+            {tab==='Trade Plan Builder'      && <TradePlanTab />}
+            {tab==='Strategy Backtest'       && <StrategyBacktestTab />}
+            {tab==='COT Alerts'              && <COTAlertsTab />}
+            {tab==='Screener'               && <ScreenerBuilder user={userInfo} />}
+          </div>
+        ) : section==='account' ? (
+          <div style={{padding:'20px 24px'}}>
+            {!tab && <AccountLanding onSelect={t=>setTab(t)} />}
+            {tab==='My Profile' && <ProfileTab user={userInfo} session={session} />}
+            {tab==='Broker'                 && <BrokerTab />}
+            {tab==='Settings'               && <ThemeSettings />}
+          </div>
         ) : (
           <>
             {/* Commodities tabs */}
@@ -670,6 +702,7 @@ export default function App() {
             {tab==='Analytics'      && <AnalyticsTab />}
             {tab==='Alerts'         && <AlertsTab plan={plan} onUpgrade={()=>handleUpgrade()} />}
             {tab==='Checklist'      && <ChecklistTab />}
+            {tab==='Backtesting'      && <BacktestTab />}
             {/* Tools tabs */}
             {(!tab || tab === 'Tools') && <ToolsLanding onSelect={(t) => setTab(t)} />}
             {tab==='Trade Calc'     && <TradeCalcTab />}

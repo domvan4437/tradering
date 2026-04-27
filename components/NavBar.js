@@ -4,8 +4,8 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState } from 'react';
 import { LiveDot } from './DS';
 
-const SECTIONS = ['home','markets','news','community','tools'];
-const LABELS   = { home:'Home', markets:'Markets', news:'News', community:'Community', tools:'Tools' };
+const SECTIONS = ['home','markets','news','community','coach','journal','trading','account'];
+const LABELS   = { home:'Home', markets:'Markets', news:'News', community:'Community', coach:'AI Coach', journal:'Journal', trading:'Trading', account:'Account' };
 
 export default function NavBar({ activeSection, onSelect, user, hoveredSection, setHoveredSection, SECTION_TABS, setTab }) {
   const { data: session } = useSession();
