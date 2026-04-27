@@ -349,7 +349,7 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
     stocks:      ['Overview','Sectors','Earnings','Key Levels'],
     crypto:      ['Overview'],
     futures:     ['Overview','Financial COT','Yield Curve','Key Levels'],
-    charts:      [],
+    charts:      ['Workspace'],
   };
 
   const subTabs = SUB_TABS[section] || [];
@@ -473,7 +473,7 @@ export default function App() {
     
   },[])
 
-  const navItems = [['Home','home'],['Markets','markets'],['News','news'],['Community','community'],['AI Coach','coach'],['Journal','journal'],['Tools','tools2'],['Account','account']]
+  const navItems = [['Home','home'],['Markets','markets'],['Charts','charts'],['News','news'],['Community','community'],['AI Coach','coach'],['Journal','journal'],['Tools','tools2'],['Account','account']]
 
   return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontFamily:'var(--font)', fontSize:13 }}>
@@ -663,6 +663,8 @@ export default function App() {
           />
         ) : section==='community' ? (
           <CommunityLayout tab={tab} setTab={setTab} currentUserId={session?.user?.id} />
+        ) : section==='charts' ? (
+          <div style={{padding:'20px 24px'}}><ChartWorkspace /></div>
         ) : section==='coach' ? (
           <div style={{padding:'20px 24px'}}><AICoachTab /></div>
         ) : section==='journal' ? (
