@@ -222,7 +222,7 @@ export default function NewsTab({ initialTab }) {
         {/* Date nav */}
         <div style={{ display:'flex', gap:4, alignItems:'center' }}>
           <div style={{ position:'relative', marginRight:8 }}>
-            <button onClick={() => setCalendarOpen(o=>!o)} style={{ padding:'5px 12px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:5 }}>
+            <button onClick={() => { const cur=weekMondayRef.current||(()=>{const t=new Date();const d=t.getDay();const m=new Date(t);m.setDate(t.getDate()-(d===0?6:d-1));return m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0')+'-'+String(m.getDate()).padStart(2,'0');})();const pts=cur.split('-');const dt=new Date(parseInt(pts[0]),parseInt(pts[1])-1,parseInt(pts[2]));dt.setDate(dt.getDate()-7);const ms=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');weekMondayRef.current=ms;setSelectedMonday(ms);fetchWeek(ms);setDayIdx(0);setViewMode('week'); }} style={{ padding:'6px 14px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>
               ← Prev Week
             </button>
             <button onClick={() => { weekMondayRef.current=null;setSelectedMonday(null);fetchWeek(null);setDayIdx(TODAY_IDX);setViewMode('week'); }} style={{ padding:'4px 10px', borderRadius:6, border:'1px solid var(--accent)', background:'var(--accent-bg)', cursor:'pointer', fontFamily:'var(--font)', fontSize:11, color:'var(--accent)', fontWeight:600 }}>This Week</button>

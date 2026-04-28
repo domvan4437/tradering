@@ -33,6 +33,8 @@ import NewsTab from './NewsTab'
 import SocialTab from './SocialTab'
 import GroupsTab from './GroupsTab'
 import CompeteTab from './CompeteTab'
+import CommunityLayout from './CommunityLayout'
+import CompeteLayout from './CompeteLayout'
 import CreatorStudioTab from './CreatorStudioTab'
 import BrokerTab from './BrokerTab'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
@@ -73,7 +75,9 @@ const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil'
 const SECTION_TABS = {
   home:        ['Dashboard'],
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','Charts'],
-  community:   ['Feed','Groups','Compete','Leaderboard','Creator Studio'],
+  community:   ['Feed','Groups'],
+  compete:     ['Compete','Leaderboard'],
+  creator:     ['Creator Studio'],
   news:        ['All Markets','Forex','Commodities','Futures','Stocks','Crypto'],
   coach:       ['AI Coach'],
   journal:     ['Notes','Weekly Review','AI Coach'],
@@ -426,21 +430,7 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
 }
 
 // ── Community Layout
-function CommunityLayout({ tab, setTab, currentUserId }) {
-  if (!tab || tab === 'Community') {
-    return <CommunityLanding onSelect={(t) => setTab(t)} />;
-  }
-  return (
-    <div style={{ padding:'20px 24px' }}>
-      {tab==='Feed'    && <FeedTab />}
-      {tab==='Groups'  && <GroupsTab currentUserId={currentUserId} />}
-      {tab==='Compete'     && <CompeteTab currentUserId={currentUserId} />}
-      {tab==='Leaderboard' && <GlobalLeaderboard />}
-      {tab==='Creator Studio' && <CreatorStudioTab  />}
-    </div>
-  );
-}
-
+// CommunityLayout imported from ./CommunityLayout
 
 export default function App() {
   const { data: session } = useSession()
@@ -473,7 +463,7 @@ export default function App() {
     
   },[])
 
-  const navItems = [['Home','home'],['Markets','markets'],['Charts','charts'],['News','news'],['Community','community'],['AI Coach','coach'],['Journal','journal'],['Tools','tools2'],['Account','account']]
+  const navItems = [['Home','home'],['Markets','markets'],['Charts','charts'],['News','news'],['Community','community'],['Compete','compete'],['Creator','creator'],['AI Coach','coach'],['Journal','journal'],['Tools','tools2'],['Account','account']]
 
   return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontFamily:'var(--font)', fontSize:13 }}>
@@ -663,6 +653,10 @@ export default function App() {
           />
         ) : section==='community' ? (
           <CommunityLayout tab={tab} setTab={setTab} currentUserId={session?.user?.id} />
+        ) : section==='compete' ? (
+          <CompeteLayout currentUserId={session?.user?.id} />
+        ) : section==='creator' ? (
+          <div style={{padding:'20px 24px'}}><CreatorStudioTab /></div>
         ) : section==='charts' ? (
           <div style={{padding:'20px 24px'}}><ChartWorkspace /></div>
         ) : section==='coach' ? (

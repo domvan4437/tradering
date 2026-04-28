@@ -61,7 +61,7 @@ function HomeTab({ setMode }) {
     },
     {
       key: 'Bracket', accent: '#d97706', border: 'rgba(217,119,6,0.25)',
-      bg: 'rgba(217,119,6,0.08)', label: 'March Madness', title: 'Bracket',
+      bg: 'rgba(217,119,6,0.08)', label: 'Bracket', title: 'Bracket',
       desc: 'Single elimination. Win your match, advance. Last trader standing takes all.',
       stats: ['3 tournaments live', '$12,500 in pools'],
       statColors: ['#d97706', 'var(--text-muted)'],
@@ -78,7 +78,7 @@ function HomeTab({ setMode }) {
   return (
     <div>
       {/* Active status strip */}
-      <div style={{ padding: '10px 22px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', display: 'flex', gap: 20, overflowX: 'auto', alignItems: 'center' }}>
+      <div style={{ padding: '10px 22px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 6px var(--green)' }} />
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>LIVE</span>
@@ -96,14 +96,14 @@ function HomeTab({ setMode }) {
       </div>
 
       {/* Mode cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)' }}>
+      <div style={{ display:'flex', flexDirection:'column' }}>
         {MODES.map((m, i) => (
           <div key={m.key}
             onClick={() => setMode(m.key)}
             style={{
-              padding: '28px 22px', borderRight: i < 3 ? '1px solid var(--border)' : 'none',
+              padding: '28px 22px', borderBottom: '1px solid var(--border)',
               cursor: 'pointer', position: 'relative', overflow: 'hidden',
-              minHeight: 240, transition: 'background 0.15s',
+              minHeight: 120, transition: 'background 0.15s',
             }}
             onMouseEnter={e => e.currentTarget.style.background = m.bg}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
