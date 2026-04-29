@@ -96,45 +96,29 @@ function HomeTab({ setMode }) {
       </div>
 
       {/* Mode cards */}
-      <div style={{ display:'flex', flexDirection:'column' }}>
-        {MODES.map((m, i) => (
-          <div key={m.key}
-            onClick={() => setMode(m.key)}
-            style={{
-              padding: '28px 22px', borderBottom: '1px solid var(--border)',
-              cursor: 'pointer', position: 'relative', overflow: 'hidden',
-              minHeight: 120, transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = m.bg}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            {/* top accent line */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg,${m.accent},transparent)` }} />
-            {/* bg orb */}
-            <div style={{ position: 'absolute', bottom: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: m.bg, pointerEvents: 'none' }} />
-
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 900, color: m.accent, marginBottom: 10, lineHeight: 1, letterSpacing: '-1px' }}>{m.label}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 8, letterSpacing: '-0.2px' }}>{m.title}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 20 }}>{m.desc}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 20 }}>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        {MODES.map((m) => (
+          <div key={m.key} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'20px', position:'relative', overflow:'hidden', cursor:'pointer', display:'flex', flexDirection:'column' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor=m.accent}
+            onMouseLeave={e => e.currentTarget.style.borderColor='var(--border)'}>
+            <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:m.accent }} />
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:20, fontWeight:700, color:m.accent, marginBottom:4 }}>{m.label}</div>
+            <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:6 }}>{m.title}</div>
+            <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', lineHeight:1.5, marginBottom:12, flex:1 }}>{m.desc}</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:3, marginBottom:16 }}>
               {m.stats.map((s, j) => (
-                <div key={j} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: m.statColors[j] }}>
-                  {j === 0 ? '● ' : '○ '}{s}
-                </div>
+                <div key={j} style={{ fontFamily:'var(--font-mono)', fontSize:11, color:m.statColors[j] }}>{j===0?'● ':'○ '}{s}</div>
               ))}
             </div>
-            <button style={{
-              width: '100%', padding: '9px', background: m.bg, color: m.accent,
-              border: `1px solid ${m.border}`, borderRadius: 8,
-              fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            }}>Enter →</button>
+            <div style={{ borderTop:'1px solid var(--border)', paddingTop:12, display:'flex', justifyContent:'flex-end' }}>
+              <button onClick={() => setMode(m.key)} style={{ padding:'7px 16px', background:m.bg, color:m.accent, border:'none', borderRadius:8, fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer' }}>Enter →</button>
+            </div>
           </div>
         ))}
       </div>
     </div>
   );
 }
-
 // ── H2H ──────────────────────────────────────────────────────
 
 function H2HTab() {
@@ -492,10 +476,33 @@ function ContestTab() {
 
 // ── MAIN COMPONENT ────────────────────────────────────────────
 
-export default function CompeteTab({ currentUserId }) {
-  const [mode, setMode] = useState('Home');
+export default function CompeteTab({ currentUserId, mode: modeProp, setMode: setModeProp }) {
+  const [localMode, setLocalMode] = useState('Home');
+  const mode_ = modeProp !== undefined ? modeProp : localMode;
+  const setMode = setModeProp || setLocalMode;
+  const mc = MODE_COLORS[mode_] || MODE_COLORS.Home;
 
-  const mc = MODE_COLORS[mode] || MODE_COLORS.Home;
+  if (mode_ !== 'Home') {
+    return (
+      <div style={{ fontFamily:'var(--font)', height:'100%', display:'flex', flexDirection:'column' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0 }}>
+          <button onClick={() => setMode('Home')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4, fontFamily:'var(--font)', fontSize:12, padding:'4px 8px', borderRadius:6 }}
+            onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
+            onMouseLeave={e => e.currentTarget.style.background='none'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Back
+          </button>
+          <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)' }}>{mode_}</span>
+        </div>
+        <div style={{ flex:1, overflowY:'auto' }}>
+          {mode_==='H2H' && <H2HTab />}
+          {mode_==='Group Battle' && <GroupBattleTab />}
+          {mode_==='Bracket' && <BracketTab />}
+          {mode_==='Contest' && <ContestTab />}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: 'var(--font)' }}>
@@ -504,10 +511,10 @@ export default function CompeteTab({ currentUserId }) {
         {TABS.map(t => (
           <button key={t} onClick={() => setMode(t)} style={{
             padding: '12px 20px', fontSize: 13,
-            fontWeight: mode === t ? 700 : 400,
+            fontWeight: mode_ === t ? 700 : 400,
             background: 'none', border: 'none',
-            borderBottom: mode === t ? `2px solid ${mc.accent}` : '2px solid transparent',
-            color: mode === t ? mc.accent : 'var(--text-muted)',
+            borderBottom: mode_ === t ? `2px solid ${mc.accent}` : '2px solid transparent',
+            color: mode_ === t ? mc.accent : 'var(--text-muted)',
             cursor: 'pointer', transition: 'all 0.15s',
             whiteSpace: 'nowrap', fontFamily: 'var(--font)',
           }}>{t}</button>
@@ -515,11 +522,11 @@ export default function CompeteTab({ currentUserId }) {
       </div>
 
       {/* Content */}
-      {mode === 'Home'          && <HomeTab setMode={setMode} />}
-      {mode === 'H2H'           && <H2HTab />}
-      {mode === 'Group Battle'  && <GroupBattleTab />}
-      {mode === 'Bracket'       && <BracketTab />}
-      {mode === 'Contest'       && <ContestTab />}
+      {mode_ === 'Home'          && <HomeTab setMode={setMode} />}
+      {mode_ === 'H2H'           && <H2HTab />}
+      {mode_ === 'Group Battle'  && <GroupBattleTab />}
+      {mode_ === 'Bracket'       && <BracketTab />}
+      {mode_ === 'Contest'       && <ContestTab />}
     </div>
   );
 }
