@@ -26,6 +26,28 @@ const DATA_SOURCES = [
 const ASSET_CLASSES = ['any','commodities','forex','futures','stocks'];
 const TRADER_STYLES = ['','scalper','daytrader','swing','position','macro'];
 
+const SORT_OPTIONS = [
+  { value:'name',      label:'Name'        },
+  { value:'recent',    label:'Last Run'    },
+  { value:'signals',   label:'Conditions'  },
+  { value:'runs',      label:'Most Run'    },
+];
+
+const QUICK_METRICS = [
+  { label:'COT Commercial Percentile', dataSource:'cot',       metric:'COT commercial percentile',     operator:'gt',  valueA:'60', unit:'pct'  },
+  { label:'COT Index Below 20',        dataSource:'cot',       metric:'COT index',                     operator:'lt',  valueA:'20', unit:''     },
+  { label:'COT Index Above 80',        dataSource:'cot',       metric:'COT index',                     operator:'gt',  valueA:'80', unit:''     },
+  { label:'Price Above 50-day MA',     dataSource:'technical', metric:'price vs 50-day MA',             operator:'gt',  valueA:'0',  unit:''     },
+  { label:'Price Above 200-day MA',    dataSource:'technical', metric:'price vs 200-day MA',            operator:'gt',  valueA:'0',  unit:''     },
+  { label:'RSI Oversold (<30)',         dataSource:'technical', metric:'RSI 14',                        operator:'lt',  valueA:'30', unit:''     },
+  { label:'RSI Overbought (>70)',       dataSource:'technical', metric:'RSI 14',                        operator:'gt',  valueA:'70', unit:''     },
+  { label:'Seasonal Positive Month',   dataSource:'seasonal',  metric:'seasonal avg return',            operator:'gt',  valueA:'0',  unit:'%'    },
+  { label:'Price Change > 2% (5d)',    dataSource:'price',     metric:'price change % 5 days',          operator:'gt',  valueA:'2',  unit:'%'    },
+  { label:'Near 52-week Low (<5%)',    dataSource:'price',     metric:'distance from 52w low',          operator:'lt',  valueA:'5',  unit:'%'    },
+  { label:'Volume Spike (1.5×)',       dataSource:'technical', metric:'volume vs 20-day avg',           operator:'gt',  valueA:'1.5',unit:'x'    },
+  { label:'Custom Metric',             dataSource:'custom',    metric:'',                               operator:'gt',  valueA:'',   unit:''     },
+];
+
 const EMPTY_SIGNAL = {
   dataSource: 'price', metric: '', operator: 'gt',
   valueA: '', valueB: '', unit: '', weight: 1,
@@ -35,6 +57,7 @@ const EMPTY_SIGNAL = {
 function SignalRow({ signal, index, onChange, onRemove, onMove }) {
   const s = { ...EMPTY_SIGNAL, ...signal };
   const set = (k, v) => onChange(index, { ...s, [k]: v });
+  const [showQuick, setShowQuick] = useState(false);
 
   const inp = {
     background: 'var(--surface3)',
@@ -68,6 +91,26 @@ function SignalRow({ signal, index, onChange, onRemove, onMove }) {
           padding: '2px 8px', borderRadius: 3,
         }}>Required</span>
       )}
+
+      {/* Quick metrics picker */}
+      <div style={{ marginBottom:8, position:'relative' }}>
+        <button onClick={() => setShowQuick(s => !s)}
+          style={{ background:'none', border:'1px solid var(--border2)', borderRadius:5, color:'var(--text-muted)', padding:'3px 10px', fontSize:10, cursor:'pointer', fontFamily:'var(--font)', letterSpacing:'0.05em' }}>
+          ⚡ Quick fill {showQuick ? '▲' : '▼'}
+        </button>
+        {showQuick && (
+          <div style={{ position:'absolute', top:28, left:0, zIndex:200, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:6, boxShadow:'0 8px 24px rgba(0,0,0,0.2)', display:'grid', gridTemplateColumns:'1fr 1fr', gap:4, width:420 }}>
+            {QUICK_METRICS.map(m => (
+              <button key={m.label} onClick={() => { onChange(index, { ...s, dataSource:m.dataSource, metric:m.metric, operator:m.operator, valueA:m.valueA, unit:m.unit }); setShowQuick(false); }}
+                style={{ padding:'6px 10px', borderRadius:5, border:'none', background:'transparent', cursor:'pointer', textAlign:'left', fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}
+                onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
+                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Row 1: source, metric, operator, values */}
       <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 130px 90px 90px', gap: 8, marginBottom: 10 }}>
@@ -340,7 +383,7 @@ function ScreenerForm({ template, onSave, onCancel }) {
   );
 }
 
-function RunResults({ results, onClose }) {
+function RunResults({ results, onClose, onExport }) {
   const flagged = results.filter(r => r.passed);
   const rest = results.filter(r => !r.passed);
 
@@ -379,7 +422,14 @@ function RunResults({ results, onClose }) {
             of {results.length} scanned
           </span>
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12 }}>← Back</button>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {flagged.length > 0 && (
+            <button onClick={onExport} style={{ background:'none', border:'1px solid var(--border2)', borderRadius:6, color:'var(--text-muted)', padding:'5px 12px', cursor:'pointer', fontFamily:'var(--font)', fontSize:11, fontWeight:600 }}>
+              ↓ Export CSV
+            </button>
+          )}
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12 }}>← Back</button>
+        </div>
       </div>
       {flagged.length === 0 ? (
         <EmptyState icon="◎" title="No assets flagged" subtitle="No assets met your criteria" />
@@ -411,6 +461,8 @@ export default function ScreenerBuilder({ user }) {
   const [communityLoading, setCommunityLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [styleFilter, setStyleFilter] = useState('');
+  const [sortBy, setSortBy] = useState('recent');
+  const [lastRunCache, setLastRunCache] = useState({});
 
   const load = async () => {
     setLoading(true);
@@ -443,6 +495,10 @@ export default function ScreenerBuilder({ user }) {
       setRunResults(data.results);
       setSelected(template);
       setView('run');
+      // Cache last run result
+      const flagged = (data.results||[]).filter(r => r.passed).length;
+      const now = new Date();
+      setLastRunCache(prev => ({ ...prev, [template.id]: { flagged, ago: 'just now', at: now.toISOString() } }));
     } catch (e) { alert(e.message); }
     finally { setRunning(null); }
   };
@@ -477,6 +533,59 @@ export default function ScreenerBuilder({ user }) {
     load();
   };
 
+  const duplicateTemplate = async (t) => {
+    const res = await fetch('/api/screener-templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: t.name + ' (copy)',
+        description: t.description,
+        assetClass: t.assetClass,
+        traderStyle: t.traderStyle,
+        minScore: t.minScore,
+        isPublic: false,
+        signals: t.signals,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) load();
+    else alert(data.error);
+  };
+
+  const pinTemplate = async (t) => {
+    await fetch(`/api/screener-templates/${t.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...t, isPinned: !t.isPinned }),
+    });
+    load();
+  };
+
+  const exportResults = (results, name) => {
+    if (!results?.length) return;
+    const header = 'Symbol,Score,Passed,Price,Failed Required';
+    const rows = results.map(r => [r.symbol, r.score, r.passed, r.price||'', r.failedRequired||false].join(','));
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download = (name||'screener')+'_results.csv'; a.click();
+  };
+
+  const signalComplexity = (count) => {
+    if (count <= 3) return { label:'Simple',   color:'var(--green)',  bg:'rgba(34,197,94,0.1)'  };
+    if (count <= 6) return { label:'Moderate',  color:'#f59e0b',       bg:'rgba(245,158,11,0.1)' };
+    return                 { label:'Complex',   color:'#4f46e5',        bg:'rgba(79,70,229,0.1)'  };
+  };
+
+  const sortedTemplates = [...templates].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    if (sortBy === 'name')    return a.name.localeCompare(b.name);
+    if (sortBy === 'signals') return (b.signals?.length||0) - (a.signals?.length||0);
+    if (sortBy === 'runs')    return (b._count?.runs||0) - (a._count?.runs||0);
+    return new Date(b.updatedAt||0) - new Date(a.updatedAt||0);
+  });
+
   // ── Views ──
 
   if (view === 'build') {
@@ -490,7 +599,7 @@ export default function ScreenerBuilder({ user }) {
   if (view === 'run' && runResults) {
     return (
       <Panel>
-        <RunResults results={runResults} onClose={() => { setView('list'); setRunResults(null); }} />
+        <RunResults results={runResults} onClose={() => { setView('list'); setRunResults(null); }} onExport={() => exportResults(runResults, selected?.name)} />
       </Panel>
     );
   }
@@ -649,62 +758,122 @@ export default function ScreenerBuilder({ user }) {
             <Btn onClick={() => setView('build')}>Build Your First Screener</Btn>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {templates.map(t => (
-              <Panel key={t.id}>
-                <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                      <span style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{t.name}</span>
-                      {t.isPinned && <Badge type="watch">Pinned</Badge>}
-                      {t.isPublic && <Badge type="buy">Public</Badge>}
-                      {t.traderStyle && <Badge type="neutral">{t.traderStyle}</Badge>}
+          <div>
+            {/* Sort bar */}
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14, flexWrap:'wrap' }}>
+              <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em' }}>Sort:</span>
+              {SORT_OPTIONS.map(o => (
+                <button key={o.value} onClick={() => setSortBy(o.value)}
+                  style={{ padding:'4px 12px', borderRadius:20, border:'1px solid '+(sortBy===o.value?'#4f46e5':'var(--border)'), background:sortBy===o.value?'rgba(79,70,229,0.1)':'transparent', color:sortBy===o.value?'#4f46e5':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                  {o.label}
+                </button>
+              ))}
+              <span style={{ marginLeft:'auto', fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{templates.length} screener{templates.length!==1?'s':''}</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {sortedTemplates.map(t => {
+                const cx = signalComplexity(t.signals?.length || 0);
+                const lastRun = lastRunCache[t.id];
+                return (
+                  <Panel key={t.id}>
+                    <div style={{ padding: '16px 20px' }}>
+                      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          {/* Title row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, flexWrap:'wrap' }}>
+                            <span style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{t.name}</span>
+                            {t.isPinned && <Badge type="watch">📌 Pinned</Badge>}
+                            {t.isPublic && <Badge type="buy">Public</Badge>}
+                            {t.traderStyle && <Badge type="neutral">{t.traderStyle}</Badge>}
+                            {/* Complexity badge */}
+                            <span style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, background:cx.bg, color:cx.color, border:'1px solid '+cx.color+'44' }}>
+                              {cx.label} · {t.signals?.length||0} conditions
+                            </span>
+                          </div>
+
+                          {t.description && (
+                            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t.description}</div>
+                          )}
+
+                          {/* Stats row */}
+                          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems:'center' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
+                              Min score: {t.minScore}
+                            </span>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
+                              Run {t._count?.runs || 0}×
+                            </span>
+                            {t.assetClass && t.assetClass !== 'any' && (
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
+                                {t.assetClass}
+                              </span>
+                            )}
+                            {/* Last run result */}
+                            {lastRun && (
+                              <span style={{ fontFamily:'var(--font)', fontSize:11, color: lastRun.flagged>0?'var(--green)':'var(--text-muted)', fontWeight: lastRun.flagged>0?700:400 }}>
+                                Last run: {lastRun.flagged} flagged · {lastRun.ago}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Signal preview chips */}
+                          {t.signals?.length > 0 && (
+                            <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:8 }}>
+                              {t.signals.slice(0,4).map((s,i) => (
+                                <span key={i} style={{ fontFamily:'var(--font-mono)', fontSize:10, background:s.isRequired?'rgba(79,70,229,0.1)':'var(--surface2)', border:'1px solid '+(s.isRequired?'rgba(79,70,229,0.3)':'var(--border)'), color:s.isRequired?'#4f46e5':'var(--text-muted)', padding:'2px 8px', borderRadius:4 }}>
+                                  {s.metric || s.dataSource} {s.operator} {s.valueA}{s.unit?' '+s.unit:''}
+                                </span>
+                              ))}
+                              {t.signals.length > 4 && <span style={{ fontFamily:'var(--font-mono)', fontSize:10, color:'var(--text-muted)', padding:'2px 4px' }}>+{t.signals.length-4} more</span>}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems:'flex-start' }}>
+                          {/* Pin */}
+                          <button onClick={() => pinTemplate(t)} title={t.isPinned?'Unpin':'Pin to top'}
+                            style={{ background:'none', border:'1px solid var(--border2)', borderRadius:6, color:t.isPinned?'#4f46e5':'var(--text-muted)', padding:'7px 10px', cursor:'pointer', fontSize:13 }}
+                            onMouseEnter={e=>e.currentTarget.style.borderColor='#4f46e5'}
+                            onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border2)'}>
+                            📌
+                          </button>
+                          {/* Duplicate */}
+                          <button onClick={() => duplicateTemplate(t)} title="Duplicate"
+                            style={{ background:'none', border:'1px solid var(--border2)', borderRadius:6, color:'var(--text-muted)', padding:'7px 10px', cursor:'pointer', fontSize:11, fontFamily:'var(--font)' }}
+                            onMouseEnter={e=>e.currentTarget.style.borderColor='#4f46e5'}
+                            onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border2)'}>
+                            ⧉
+                          </button>
+                          <Btn ghost onClick={() => { setSelected(t); setView('edit'); }}>Edit</Btn>
+                          <button
+                            onClick={() => runScreener(t)}
+                            disabled={running === t.id}
+                            style={{
+                              background: running === t.id ? 'var(--surface3)' : 'var(--accent)',
+                              color: running === t.id ? 'var(--text-muted)' : '#000',
+                              border: 'none', borderRadius: 6, padding: '9px 18px',
+                              fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+                              cursor: running === t.id ? 'not-allowed' : 'pointer',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            {running === t.id ? 'Running…' : '▶ Run'}
+                          </button>
+                          <button onClick={() => deleteTemplate(t.id)} style={{
+                            background: 'none', border: '1px solid var(--border2)', borderRadius: 6,
+                            color: 'var(--text-muted)', padding: '9px 12px', cursor: 'pointer', fontSize: 13,
+                          }}
+                          onMouseEnter={e=>e.currentTarget.style.color='var(--red)'}
+                          onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>✕</button>
+                        </div>
+                      </div>
                     </div>
-                    {t.description && (
-                      <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t.description}</div>
-                    )}
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-                        {t.signals?.length || 0} conditions
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-                        Min score: {t.minScore}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-                        Run {t._count?.runs || 0}×
-                      </span>
-                      {t.assetClass && t.assetClass !== 'any' && (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-                          {t.assetClass}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, marginLeft: 16, flexShrink: 0 }}>
-                    <Btn ghost onClick={() => { setSelected(t); setView('edit'); }}>Edit</Btn>
-                    <button
-                      onClick={() => runScreener(t)}
-                      disabled={running === t.id}
-                      style={{
-                        background: running === t.id ? 'var(--surface3)' : 'var(--accent)',
-                        color: running === t.id ? 'var(--text-muted)' : '#000',
-                        border: 'none', borderRadius: 6, padding: '9px 18px',
-                        fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
-                        cursor: running === t.id ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.15s',
-                        boxShadow: running === t.id ? 'none' : 'var(--glow-cyan)',
-                      }}
-                    >
-                      {running === t.id ? 'Running…' : 'Run'}
-                    </button>
-                    <button onClick={() => deleteTemplate(t.id)} style={{
-                      background: 'none', border: '1px solid var(--border2)', borderRadius: 6,
-                      color: 'var(--text-muted)', padding: '9px 12px', cursor: 'pointer', fontSize: 13,
-                    }}>✕</button>
-                  </div>
-                </div>
-              </Panel>
-            ))}
+                  </Panel>
+                );
+              })}
+            </div>
           </div>
         )
       )}
