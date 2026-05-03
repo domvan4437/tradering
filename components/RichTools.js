@@ -39,157 +39,419 @@ function Card({ children, style }) { return <div style={{ background:C.surface,b
 
 // ─── Notes / Research Scratchpad ──────────────────────────────────────────────
 export function NotesTab() {
-  const [notes, setNotes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState(null) // null = list view, id = editing
-  const [editContent, setEditContent] = useState('')
-  const [editTitle, setEditTitle] = useState('')
-  const [editTags, setEditTags] = useState('')
-  const [editColor, setEditColor] = useState('none')
-  const [filter, setFilter] = useState('')
-  const [search, setSearch] = useState('')
-  const autoSaveRef = useRef(null)
+  // ── All notes stored in localStorage (keyed by id) ──
+  const NOTES_KEY = 'tr_notes_v2';
 
-  useEffect(() => {
-    fetch('/api/notes').then(r=>r.json()).then(d=>{if(Array.isArray(d))setNotes(d);setLoading(false)})
-  }, [])
-
-  const newNote = async () => {
-    const res = await fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'Untitled Note',content:'',tags:[],color:null})})
-    const note = await res.json()
-    setNotes(n=>[note,...n])
-    openEditor(note)
+  function loadAllNotes() {
+    try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); } catch { return {}; }
+  }
+  function saveAllNotes(data) {
+    try { localStorage.setItem(NOTES_KEY, JSON.stringify(data)); } catch {}
   }
 
-  const openEditor = (note) => {
-    setEditing(note.id)
-    setEditTitle(note.title)
-    setEditContent(note.content||'')
-    setEditTags((note.tags||[]).join(', '))
-    setEditColor(note.color||'none')
+  function makeNote(parentId = null, title = 'Untitled') {
+    return {
+      id: Date.now() + Math.random().toString(36).slice(2),
+      title,
+      content: '',
+      tags: [],
+      color: 'none',
+      isPinned: false,
+      parentId,
+      childIds: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
   }
 
-  const saveNote = useCallback(async (id, title, content, tags, color) => {
-    const tagArr = tags ? tags.split(',').map(t=>t.trim()).filter(Boolean) : []
-    await fetch('/api/notes',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      id, title, content, tags: tagArr, color: color==='none'?null:color
-    })})
-    setNotes(n=>n.map(x=>x.id===id?{...x,title,content,tags:tagArr,color:color==='none'?null:color}:x))
-  }, [])
+  const [allNotes, setAllNotes] = useState({});
+  const [pageStack, setPageStack] = useState([]); // stack of note ids — current page is last
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editTags, setEditTags] = useState('');
+  const [editColor, setEditColor] = useState('none');
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('');
+  const autoSaveRef = useRef(null);
 
-  // Auto-save every 2s while editing
+  // Load on mount
   useEffect(() => {
-    if (!editing) return
-    clearTimeout(autoSaveRef.current)
+    const saved = loadAllNotes();
+    setAllNotes(saved);
+  }, []);
+
+  // Persist on change
+  useEffect(() => {
+    if (Object.keys(allNotes).length > 0) saveAllNotes(allNotes);
+  }, [allNotes]);
+
+  // Auto-save while editing
+  useEffect(() => {
+    if (!editingId) return;
+    clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(() => {
-      saveNote(editing, editTitle, editContent, editTags, editColor)
-    }, 2000)
-    return () => clearTimeout(autoSaveRef.current)
-  }, [editTitle, editContent, editTags, editColor, editing, saveNote])
+      persistEdit(editingId, editTitle, editContent, editTags, editColor);
+    }, 1000);
+    return () => clearTimeout(autoSaveRef.current);
+  }, [editTitle, editContent, editTags, editColor, editingId]);
 
-  const deleteNote = async (id) => {
-    await fetch('/api/notes',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
-    setNotes(n=>n.filter(x=>x.id!==id))
-    if(editing===id) setEditing(null)
+  function persistEdit(id, title, content, tags, color) {
+    const tagArr = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    setAllNotes(prev => ({
+      ...prev,
+      [id]: { ...prev[id], title, content, tags: tagArr, color, updatedAt: new Date().toISOString() }
+    }));
   }
 
-  const togglePin = async (note) => {
-    await fetch('/api/notes',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:note.id,isPinned:!note.isPinned})})
-    setNotes(n=>n.map(x=>x.id===note.id?{...x,isPinned:!x.isPinned}:x))
+  // Current "folder" — root if pageStack empty, else last in stack
+  const currentParentId = pageStack.length > 0 ? pageStack[pageStack.length - 1] : null;
+
+  // Notes at current level
+  const notesAtLevel = Object.values(allNotes).filter(n => n.parentId === currentParentId);
+
+  // All tags at current level
+  const allTags = [...new Set(notesAtLevel.flatMap(n => n.tags || []))];
+
+  const filtered = notesAtLevel.filter(n => {
+    const matchTag = !filter || (n.tags || []).includes(filter);
+    const matchSearch = !search || n.title.toLowerCase().includes(search.toLowerCase()) || (n.content || '').toLowerCase().includes(search.toLowerCase());
+    return matchTag && matchSearch;
+  }).sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
+
+  function newNote() {
+    const note = makeNote(currentParentId, 'Untitled');
+    setAllNotes(prev => {
+      const next = { ...prev, [note.id]: note };
+      // Add to parent's childIds if has parent
+      if (currentParentId && next[currentParentId]) {
+        next[currentParentId] = { ...next[currentParentId], childIds: [...(next[currentParentId].childIds || []), note.id] };
+      }
+      return next;
+    });
+    openEditor(note);
   }
 
-  const allTags = [...new Set(notes.flatMap(n=>n.tags||[]))]
-  const filtered = notes.filter(n=>{
-    const matchTag = !filter || (n.tags||[]).includes(filter)
-    const matchSearch = !search || n.title.toLowerCase().includes(search.toLowerCase()) || (n.content||'').toLowerCase().includes(search.toLowerCase())
-    return matchTag && matchSearch
-  })
+  function openEditor(note) {
+    setEditingId(note.id);
+    setEditTitle(note.title);
+    setEditContent(note.content || '');
+    setEditTags((note.tags || []).join(', '));
+    setEditColor(note.color || 'none');
+  }
 
-  if (editing) {
-    const wordCount = editContent.trim().split(/\s+/).filter(Boolean).length
+  function closeEditor() {
+    if (editingId) persistEdit(editingId, editTitle, editContent, editTags, editColor);
+    setEditingId(null);
+  }
+
+  function openPage(noteId) {
+    closeEditor();
+    setPageStack(prev => [...prev, noteId]);
+    setSearch('');
+    setFilter('');
+  }
+
+  function goBack() {
+    closeEditor();
+    setPageStack(prev => prev.slice(0, -1));
+    setSearch('');
+    setFilter('');
+  }
+
+  function goToStackIndex(idx) {
+    closeEditor();
+    setPageStack(prev => prev.slice(0, idx + 1));
+    setSearch('');
+    setFilter('');
+  }
+
+  function goRoot() {
+    closeEditor();
+    setPageStack([]);
+    setSearch('');
+    setFilter('');
+  }
+
+  function deleteNote(id) {
+    // Recursively delete note and all descendants
+    function collectIds(noteId) {
+      const note = allNotes[noteId];
+      if (!note) return [noteId];
+      return [noteId, ...(note.childIds || []).flatMap(collectIds)];
+    }
+    const toDelete = new Set(collectIds(id));
+    setAllNotes(prev => {
+      const next = { ...prev };
+      toDelete.forEach(d => delete next[d]);
+      // Remove from parent's childIds
+      if (prev[id]?.parentId && next[prev[id].parentId]) {
+        next[prev[id].parentId] = {
+          ...next[prev[id].parentId],
+          childIds: (next[prev[id].parentId].childIds || []).filter(c => c !== id)
+        };
+      }
+      return next;
+    });
+    if (editingId === id) setEditingId(null);
+  }
+
+  function togglePin(note) {
+    setAllNotes(prev => ({ ...prev, [note.id]: { ...prev[note.id], isPinned: !note.isPinned } }));
+  }
+
+  function addSubpage() {
+    if (!editingId) return;
+    persistEdit(editingId, editTitle, editContent, editTags, editColor);
+    const sub = makeNote(editingId, 'Untitled Subpage');
+    setAllNotes(prev => ({
+      ...prev,
+      [sub.id]: sub,
+      [editingId]: { ...prev[editingId], childIds: [...(prev[editingId]?.childIds || []), sub.id] }
+    }));
+    openPage(editingId);
+    setTimeout(() => openEditor(sub), 50);
+  }
+
+  // Breadcrumb trail
+  const breadcrumbs = pageStack.map(id => allNotes[id]?.title || 'Untitled');
+
+  // Count subpages for a note
+  function subpageCount(id) {
+    return (allNotes[id]?.childIds || []).filter(c => !!allNotes[c]).length;
+  }
+
+  const currentPageNote = currentParentId ? allNotes[currentParentId] : null;
+  const wordCount = editContent.trim().split(/\s+/).filter(Boolean).length;
+
+  // ── Editor view ──
+  if (editingId && allNotes[editingId]) {
+    const note = allNotes[editingId];
+    const subpages = (note.childIds || []).map(id => allNotes[id]).filter(Boolean);
     return (
-      <div style={{ display:'flex',flexDirection:'column',height:'calc(100vh - 200px)' }}>
-        {/* Editor toolbar */}
-        <div style={{ display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${C.border}`,marginBottom:16,flexWrap:'wrap' }}>
-          <button onClick={()=>{saveNote(editing,editTitle,editContent,editTags,editColor);setEditing(null)}} style={{ background:'transparent',border:`1px solid ${C.border2}`,color:C.muted,padding:'5px 12px',fontSize:10,cursor:'pointer',fontFamily:C.font,letterSpacing:2 }}>← NOTES</button>
-          <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} style={{ flex:1,background:'transparent',border:'none',fontSize:18,color:C.text,outline:'none',fontFamily:C.font,minWidth:100 }} placeholder="Note title..." />
-          <span style={{ fontSize:10,color:C.dim }}>{wordCount} words · auto-saving</span>
-          <div style={{ display:'flex',gap:4 }}>
-            {NOTE_COLORS.map((col,i)=>(
-              <button key={col} onClick={()=>setEditColor(col)} title={NOTE_COLOR_LABELS[i]} style={{ width:16,height:16,background:col==='none'?C.border2:col,border:`2px solid ${editColor===col?C.gold:'transparent'}`,cursor:'pointer',borderRadius:2 }} />
+      <div style={{ display:'flex', flexDirection:'column', minHeight:'calc(100vh - 180px)', fontFamily:'var(--font)' }}>
+        {/* Toolbar */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 0', borderBottom:'1px solid var(--border)', marginBottom:16, flexWrap:'wrap' }}>
+          {/* Breadcrumb */}
+          <div style={{ display:'flex', alignItems:'center', gap:4, flex:1, flexWrap:'wrap', minWidth:0 }}>
+            <button onClick={goRoot} style={{ background:'none', border:'none', color:'var(--text-muted)', fontSize:12, cursor:'pointer', fontFamily:'var(--font)', padding:'2px 4px' }}>📒 Notes</button>
+            {pageStack.map((id, i) => (
+              <div key={id} style={{display:"contents"}}>
+                <span style={{ color:'var(--text-muted)', fontSize:12 }}>/</span>
+                <button onClick={() => goToStackIndex(i)} style={{ background:'none', border:'none', color: i === pageStack.length-1 ? 'var(--text)' : 'var(--text-muted)', fontSize:12, cursor:'pointer', fontFamily:'var(--font)', padding:'2px 4px', fontWeight: i === pageStack.length-1 ? 600 : 400 }}>
+                  {allNotes[id]?.title || 'Untitled'}
+                </button>
+              </div>
+            ))}
+            {pageStack.length === 0 && (
+              <>
+                <span style={{ color:'var(--text-muted)', fontSize:12 }}>/</span>
+                <span style={{ fontSize:12, color:'var(--text)', fontWeight:600 }}>{editTitle || 'Untitled'}</span>
+              </>
+            )}
+          </div>
+          <span style={{ fontSize:10, color:'var(--text-muted)' }}>{wordCount} words · auto-saving</span>
+          {/* Color picker */}
+          <div style={{ display:'flex', gap:3 }}>
+            {['none','#1a1a2e','#0d2137','#1a2a0d','#2a1a0d','#1a0d2a'].map(col => (
+              <button key={col} onClick={() => setEditColor(col)} style={{ width:14, height:14, borderRadius:3, background: col==='none' ? 'var(--border)' : col, border: editColor===col ? '2px solid var(--accent)' : '2px solid transparent', cursor:'pointer' }} />
             ))}
           </div>
-          <button onClick={()=>deleteNote(editing)} style={{ background:'transparent',border:`1px solid ${C.redBorder}`,color:C.red,padding:'5px 10px',fontSize:10,cursor:'pointer',fontFamily:C.font }}>DELETE</button>
+          <button onClick={() => { closeEditor(); }} style={{ background:'none', border:'1px solid var(--border)', color:'var(--text-muted)', padding:'4px 10px', fontSize:11, cursor:'pointer', fontFamily:'var(--font)', borderRadius:6 }}>← Back</button>
+          <button onClick={() => { if(window.confirm('Delete this page and all its subpages? This cannot be undone.')) { deleteNote(editingId); closeEditor(); } }} style={{ background:'none', border:'1px solid var(--red)', color:'var(--red)', padding:'4px 10px', fontSize:11, cursor:'pointer', fontFamily:'var(--font)', borderRadius:6 }}>Delete</button>
         </div>
-        <div style={{ marginBottom:12,display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
-          <Label style={{ margin:0 }}>TAGS:</Label>
-          <input value={editTags} onChange={e=>setEditTags(e.target.value)} placeholder="comma, separated, tags" style={{ background:'transparent',border:`1px solid ${C.border2}`,padding:'5px 10px',fontSize:12,color:C.text,outline:'none',fontFamily:C.font,flex:1,minWidth:160 }} />
+
+        {/* Title */}
+        <input value={editTitle} onChange={e => setEditTitle(e.target.value)}
+          style={{ background:'transparent', border:'none', fontSize:28, fontWeight:700, color:'var(--text)', outline:'none', fontFamily:'var(--font)', marginBottom:8, width:'100%' }}
+          placeholder="Untitled" />
+
+        {/* Tags */}
+        <input value={editTags} onChange={e => setEditTags(e.target.value)}
+          placeholder="Add tags: comma, separated"
+          style={{ background:'transparent', border:'none', borderBottom:'1px solid var(--border)', fontSize:12, color:'var(--text-muted)', outline:'none', fontFamily:'var(--font)', marginBottom:16, padding:'4px 0', width:'100%' }} />
+
+        {/* Content */}
+        <textarea value={editContent} onChange={e => setEditContent(e.target.value)}
+          placeholder={"Write your notes here...\n\nTip: Use the '+ Add Subpage' button below to create nested pages inside this note."}
+          style={{ flex:1, background: editColor !== 'none' ? editColor : 'transparent', border:'none', fontSize:14, color:'var(--text)', outline:'none', fontFamily:'var(--font)', resize:'none', lineHeight:1.8, minHeight:300, width:'100%', padding: editColor !== 'none' ? '16px' : '0', borderRadius: editColor !== 'none' ? 8 : 0 }} />
+
+        {/* Subpages section */}
+        <div style={{ marginTop:24, borderTop:'1px solid var(--border)', paddingTop:16 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+              Subpages {subpages.length > 0 && <span style={{ color:'var(--accent)' }}>({subpages.length})</span>}
+            </div>
+            <button onClick={addSubpage}
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor='#4f46e5'; e.currentTarget.style.color='#4f46e5'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.color='var(--text-muted)'; }}>
+              + Add Subpage
+            </button>
+          </div>
+          {subpages.length === 0 ? (
+            <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', padding:'12px 0', fontStyle:'italic' }}>
+              No subpages yet. Click "+ Add Subpage" to create a nested page inside this note.
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              {subpages.map(sub => (
+                <div key={sub.id}
+                  onClick={() => { persistEdit(editingId, editTitle, editContent, editTags, editColor); openPage(editingId); setTimeout(() => openEditor(sub), 30); }}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', cursor:'pointer', transition:'all 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor='#4f46e5'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor='var(--border)'}>
+                  <span style={{ fontSize:15 }}>📄</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{sub.title || 'Untitled'}</div>
+                    <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)', marginTop:1 }}>
+                      {subpageCount(sub.id) > 0 ? subpageCount(sub.id)+' subpage'+(subpageCount(sub.id)!==1?'s':'') + ' · ' : ''}
+                      {new Date(sub.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' style={{ color:'var(--text-muted)', flexShrink:0 }}><polyline points='9 18 15 12 9 6'/></svg>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        <textarea
-          value={editContent}
-          onChange={e=>setEditContent(e.target.value)}
-          placeholder={'Start writing your notes, research, or analysis...\n\nTips:\n- Use this for commodity research, webinar notes, book highlights\n- Add tags to organize by topic or instrument\n- Auto-saves every 2 seconds'}
-          style={{ flex:1,background:editColor!=='none'?editColor:C.bg,border:`1px solid ${C.border2}`,padding:'20px',fontSize:14,color:C.text,outline:'none',fontFamily:C.font,resize:'none',lineHeight:1.8 }}
-        />
       </div>
-    )
+    );
   }
 
+  // ── List / folder view ──
   return (
-    <div>
-      <div style={{ display:'flex',alignItems:'baseline',gap:16,marginBottom:20,flexWrap:'wrap' }}>
-        <h2 style={{ fontSize:28,fontWeight:400,margin:0 }}>Research <span style={{ color:C.gold }}>Scratchpad</span></h2>
-        <button onClick={newNote} style={{ marginLeft:'auto',background:C.gold,color:C.surface,border:'none',padding:'7px 18px',fontSize:10,letterSpacing:2,cursor:'pointer',fontFamily:C.font }}>+ NEW NOTE</button>
+    <div style={{ fontFamily:'var(--font)' }}>
+      {/* Header + breadcrumb */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, flexWrap:'wrap' }}>
+        <div style={{ flex:1 }}>
+          {/* Breadcrumb */}
+          <div style={{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap', marginBottom:4 }}>
+            <button onClick={goRoot} style={{ background:'none', border:'none', color: pageStack.length===0 ? 'var(--text)' : 'var(--text-muted)', fontSize:13, fontWeight: pageStack.length===0 ? 700 : 400, cursor:'pointer', fontFamily:'var(--font)', padding:0 }}>📒 Notes</button>
+            {pageStack.map((id, i) => (
+              <div key={id} style={{display:"contents"}}>
+                <span style={{ color:'var(--text-muted)', fontSize:13 }}>/</span>
+                <button onClick={() => goToStackIndex(i)} style={{ background:'none', border:'none', color: i===pageStack.length-1 ? 'var(--text)' : 'var(--text-muted)', fontSize:13, fontWeight: i===pageStack.length-1 ? 700 : 400, cursor:'pointer', fontFamily:'var(--font)', padding:0 }}>
+                  {allNotes[id]?.title || 'Untitled'}
+                </button>
+              </div>
+            ))}
+          </div>
+          {currentPageNote && (
+            <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>
+              {notesAtLevel.length} page{notesAtLevel.length!==1?'s':''} inside this note
+            </div>
+          )}
+        </div>
+        {pageStack.length > 0 && (
+          <button onClick={goBack} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>← Back</button>
+        )}
+        <button onClick={newNote}
+          style={{ padding:'7px 16px', borderRadius:8, border:'none', backgroundColor:'#4f46e5', color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          + New {pageStack.length > 0 ? 'Subpage' : 'Page'}
+        </button>
       </div>
 
-      <div style={{ display:'flex',gap:10,marginBottom:16,flexWrap:'wrap' }}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search notes..." style={{ flex:1,minWidth:160,background:'transparent',border:`1px solid ${C.border2}`,padding:'8px 12px',fontSize:13,color:C.text,outline:'none',fontFamily:C.font }} />
-        {allTags.length>0 && (
-          <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
-            <button onClick={()=>setFilter('')} style={{ background:!filter?C.gold:'transparent',color:!filter?'#0a0a0a':C.muted,border:`1px solid ${!filter?C.gold:C.border2}`,padding:'5px 12px',fontSize:10,cursor:'pointer',fontFamily:C.font }}>ALL</button>
-            {allTags.map(t=><button key={t} onClick={()=>setFilter(t===filter?'':t)} style={{ background:filter===t?C.gold:'transparent',color:filter===t?'#0a0a0a':C.muted,border:`1px solid ${filter===t?C.gold:C.border2}`,padding:'5px 12px',fontSize:10,cursor:'pointer',fontFamily:C.font }}>{t}</button>)}
+      {/* Current page content preview if inside a page */}
+      {currentPageNote && currentPageNote.content && (
+        <div onClick={() => openEditor(currentPageNote)}
+          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'12px 16px', marginBottom:16, cursor:'pointer' }}
+          onMouseEnter={e => e.currentTarget.style.borderColor='#4f46e5'}
+          onMouseLeave={e => e.currentTarget.style.borderColor='var(--border)'}>
+          <div style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>📝 Page Content</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', lineHeight:1.6, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{currentPageNote.content}</div>
+        </div>
+      )}
+
+      {/* Search + filter */}
+      <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search pages..."
+          style={{ flex:1, minWidth:160, background:'var(--surface2)', border:'1px solid var(--border)', padding:'8px 12px', borderRadius:8, fontSize:13, color:'var(--text)', outline:'none', fontFamily:'var(--font)' }} />
+        {allTags.length > 0 && (
+          <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+            <button onClick={() => setFilter('')} style={{ padding:'5px 12px', borderRadius:20, border:'1px solid '+(filter===''?'#4f46e5':'var(--border)'), background: filter===''?'#4f46e5':'transparent', color: filter===''?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, cursor:'pointer' }}>All</button>
+            {allTags.map(t => (
+              <button key={t} onClick={() => setFilter(t===filter?'':t)} style={{ padding:'5px 12px', borderRadius:20, border:'1px solid '+(filter===t?'#4f46e5':'var(--border)'), background: filter===t?'#4f46e5':'transparent', color: filter===t?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, cursor:'pointer' }}>{t}</button>
+            ))}
           </div>
         )}
       </div>
 
-      {loading && <p style={{ color:C.muted,fontSize:13 }}>Loading notes...</p>}
-
-      {!loading && filtered.length===0 && (
-        <Card>
-          <p style={{ color:C.muted,fontSize:13,margin:'0 0 12px',textAlign:'center' }}>No notes yet. Great uses for the scratchpad:</p>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:8 }}>
-            {['Commodity research and analysis','Webinar and course notes','Trading rules and reminders','Market observations','Book highlights','Pre-trade thesis drafts'].map(u=>(
-              <div key={u} style={{ background:C.bg,border:`1px solid ${C.border}`,padding:'10px 12px',fontSize:12,color:C.muted }}>{u}</div>
-            ))}
+      {/* Empty state */}
+      {filtered.length === 0 && (
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'40px 20px', textAlign:'center' }}>
+          <div style={{ fontSize:36, marginBottom:12 }}>📒</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:600, color:'var(--text)', marginBottom:6 }}>
+            {pageStack.length > 0 ? 'No subpages yet' : 'No notes yet'}
           </div>
-        </Card>
+          <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>
+            {pageStack.length > 0 ? 'Add subpages to organize content inside this page.' : 'Create your first note to get started.'}
+          </div>
+          <button onClick={newNote} style={{ padding:'8px 20px', borderRadius:8, border:'none', backgroundColor:'#4f46e5', color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            + New {pageStack.length > 0 ? 'Subpage' : 'Page'}
+          </button>
+        </div>
       )}
 
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:10 }}>
-        {filtered.map(note=>(
-          <div key={note.id} onClick={()=>openEditor(note)} style={{ background:note.color||C.surface,border:`1px solid ${note.isPinned?C.gold:C.border2}`,padding:'16px 18px',cursor:'pointer',minHeight:120,display:'flex',flexDirection:'column',gap:8,position:'relative' }}>
-            {note.isPinned && <span style={{ position:'absolute',top:8,right:8,fontSize:12,color:C.gold }}>📌</span>}
-            <p style={{ fontSize:14,color:C.text,margin:0,paddingRight:20,fontWeight:400 }}>{note.title}</p>
-            <p style={{ fontSize:12,color:C.muted,margin:0,flex:1,lineHeight:1.6,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical' }}>
-              {note.content || <span style={{ color:C.dim,fontStyle:'italic' }}>Empty note</span>}
-            </p>
-            {note.tags?.length>0 && (
-              <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
-                {note.tags.map(t=><span key={t} style={{ fontSize:9,color:C.muted,border:`1px solid ${C.border}`,padding:'1px 6px',letterSpacing:1 }}>{t}</span>)}
+      {/* Pages grid */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:10 }}>
+        {filtered.map(note => {
+          const subs = subpageCount(note.id);
+          return (
+            <div key={note.id}
+              style={{ background: note.color && note.color !== 'none' ? note.color : 'var(--surface)', border:'1px solid '+(note.isPinned?'#4f46e5':'var(--border)'), borderRadius:12, padding:'16px 18px', cursor:'pointer', minHeight:120, display:'flex', flexDirection:'column', gap:8, position:'relative', transition:'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor='#4f46e5'; e.currentTarget.style.transform='translateY(-1px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor=note.isPinned?'#4f46e5':'var(--border)'; e.currentTarget.style.transform='none'; }}>
+              {/* Pin badge */}
+              {note.isPinned && <span style={{ position:'absolute', top:10, right:10, fontSize:12 }}>📌</span>}
+              {/* Open page on click */}
+              <div onClick={() => openEditor(note)} style={{ flex:1 }}>
+                <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)', marginBottom:6, paddingRight:20 }}>{note.title || 'Untitled'}</div>
+                <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', lineHeight:1.6, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>
+                  {note.content || <span style={{ fontStyle:'italic' }}>Empty page</span>}
+                </div>
               </div>
-            )}
-            <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-              <span style={{ fontSize:10,color:C.dim }}>{new Date(note.updatedAt).toLocaleDateString()}</span>
-              <div style={{ display:'flex',gap:6 }}>
-                <button onClick={e=>{e.stopPropagation();togglePin(note)}} style={{ background:'none',border:'none',color:note.isPinned?C.gold:C.muted,cursor:'pointer',fontSize:12,padding:0 }}>📌</button>
-                <button onClick={e=>{e.stopPropagation();deleteNote(note.id)}} style={{ background:'none',border:'none',color:C.muted,cursor:'pointer',fontSize:13,padding:0 }}>×</button>
+              {/* Subpages indicator */}
+              {subs > 0 && (
+                <div onClick={() => openPage(note.id)}
+                  style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 8px', borderRadius:6, background:'rgba(79,70,229,0.1)', border:'1px solid rgba(79,70,229,0.2)', cursor:'pointer', width:'fit-content' }}>
+                  <span style={{ fontSize:10 }}>📄</span>
+                  <span style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'#4f46e5' }}>{subs} subpage{subs!==1?'s':''}</span>
+                </div>
+              )}
+              {/* Tags */}
+              {note.tags?.length > 0 && (
+                <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                  {note.tags.map(t => <span key={t} style={{ fontFamily:'var(--font)', fontSize:9, color:'var(--text-muted)', border:'1px solid var(--border)', padding:'1px 6px', borderRadius:4 }}>{t}</span>)}
+                </div>
+              )}
+              {/* Footer */}
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <span style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{new Date(note.updatedAt).toLocaleDateString()}</span>
+                <div style={{ display:'flex', gap:4 }}>
+                  <button onClick={e => { e.stopPropagation(); openPage(note.id); }}
+                    title="Open subpages"
+                    style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:13, padding:'2px 4px', borderRadius:4 }}
+                    onMouseEnter={e => e.currentTarget.style.color='#4f46e5'}
+                    onMouseLeave={e => e.currentTarget.style.color='var(--text-muted)'}>⤵</button>
+                  <button onClick={e => { e.stopPropagation(); togglePin(note); }}
+                    style={{ background:'none', border:'none', color: note.isPinned?'#4f46e5':'var(--text-muted)', cursor:'pointer', fontSize:12, padding:'2px 4px' }}>📌</button>
+                  <button onClick={e => { e.stopPropagation(); if(window.confirm('Delete "' + (note.title||'Untitled') + '" and all its subpages? This cannot be undone.')) deleteNote(note.id); }}
+                    style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, padding:'2px 4px' }}
+                    onMouseEnter={e => e.currentTarget.style.color='var(--red)'}
+                    onMouseLeave={e => e.currentTarget.style.color='var(--text-muted)'}>×</button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
-  )
+  );
 }
 
 // ─── Weekly Review Tab ────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@ import GlobalLeaderboard from './GlobalLeaderboard'
 // ── TradeRing DS import
 import { LiveDot } from './DS';
 import { useTheme } from './ThemeProvider'
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import MarketsSection from './MarketsSection'
@@ -23,7 +23,6 @@ import { ForexOverviewTab, ForexCOTTab, ForexKeyLevelsTab } from './ForexSection
 import AICoachTab from './AICoachTab'
 import { JournalLanding } from './JournalLanding'
 import JournalReviewTab from './JournalReviewTab'
-import JournalTradeLogTab from './JournalTradeLogTab'
 import { ToolsLanding2 } from './ToolsLanding2'
 import { AccountLanding } from './AccountLanding'
 import COTAlertsTab from './COTAlertsTab'
@@ -1259,282 +1258,31 @@ function COTIndexTab() {
 }
 
 function TradeCalcTab() {
-  const CONTRACT_SIZES = [
-    { name:'Gold (GC)',        size:'100',    unit:'oz',    exchange:'COMEX', tick:'$0.10 = $10'      },
-    { name:'Silver (SI)',      size:'5000',   unit:'oz',    exchange:'COMEX', tick:'$0.005 = $25'     },
-    { name:'Crude Oil (CL)',   size:'1000',   unit:'bbl',   exchange:'NYMEX', tick:'$0.01 = $10'      },
-    { name:'Natural Gas (NG)', size:'10000',  unit:'MMBtu', exchange:'NYMEX', tick:'$0.001 = $10'     },
-    { name:'Corn (ZC)',        size:'5000',   unit:'bu',    exchange:'CBOT',  tick:'$0.0025 = $12.50' },
-    { name:'Wheat (ZW)',       size:'5000',   unit:'bu',    exchange:'CBOT',  tick:'$0.0025 = $12.50' },
-    { name:'Soybeans (ZS)',    size:'5000',   unit:'bu',    exchange:'CBOT',  tick:'$0.0025 = $12.50' },
-    { name:'Coffee (KC)',      size:'37500',  unit:'lbs',   exchange:'ICE',   tick:'$0.0005 = $18.75' },
-    { name:'Sugar (SB)',       size:'112000', unit:'lbs',   exchange:'ICE',   tick:'$0.0001 = $11.20' },
-    { name:'Cotton (CT)',      size:'50000',  unit:'lbs',   exchange:'ICE',   tick:'$0.0001 = $5'     },
-    { name:'Live Cattle (LE)', size:'40000',  unit:'lbs',   exchange:'CME',   tick:'$0.00025 = $10'   },
-    { name:'E-mini S&P (ES)',  size:'50',     unit:'pts',   exchange:'CME',   tick:'0.25 = $12.50'    },
-    { name:'E-mini NQ (NQ)',   size:'20',     unit:'pts',   exchange:'CME',   tick:'0.25 = $5'        },
-    { name:'Euro FX (6E)',     size:'125000', unit:'EUR',   exchange:'CME',   tick:'$0.00005 = $6.25' },
-  ];
-
-  const [form, setForm] = useState({ account:'50000', risk:'1', entry:'', stop:'', contractSize:'100', direction:'BUY', symbol:'' });
-  const [savedCalcs, setSavedCalcs] = useState(() => { try { return JSON.parse(localStorage.getItem('tr_saved_calcs')||'[]'); } catch { return []; } });
-  const [showSaved, setShowSaved] = useState(false);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const calc = useMemo(() => {
-    const account = parseFloat(form.account);
-    const riskPct = parseFloat(form.risk);
-    const entry   = parseFloat(form.entry);
-    const stop    = parseFloat(form.stop);
-    const csize   = parseFloat(form.contractSize);
-    if (!account || !riskPct || !entry || !stop || !csize || entry === stop) return null;
-    const isBuy           = form.direction === 'BUY';
-    const riskPerTrade    = account * (riskPct / 100);
-    const stopDistance    = Math.abs(entry - stop);
-    const riskPerContract = stopDistance * csize;
-    if (riskPerContract === 0) return null;
-    const contracts       = Math.floor(riskPerTrade / riskPerContract);
-    const actualRisk      = contracts * riskPerContract;
-    const actualRiskPct   = (actualRisk / account) * 100;
-    const p1              = contracts * stopDistance * csize;
-    const t = (mult) => isBuy ? entry + stopDistance * mult : entry - stopDistance * mult;
-    const breakeven       = isBuy ? entry + (riskPerContract / csize) : entry - (riskPerContract / csize);
-    return {
-      contracts, actualRiskPct: actualRiskPct.toFixed(2),
-      riskPerTrade: riskPerTrade.toFixed(2), actualRisk: actualRisk.toFixed(2),
-      riskPerContract: riskPerContract.toFixed(2), stopDistance: stopDistance.toFixed(4),
-      t1: t(1).toFixed(2), t2: t(2).toFixed(2), t3: t(3).toFixed(2), t5: t(5).toFixed(2),
-      p1: p1.toFixed(2), p2: (p1*2).toFixed(2), p3: (p1*3).toFixed(2), p5: (p1*5).toFixed(2),
-      breakeven: breakeven.toFixed(4),
-      streak5: (actualRisk * 5).toFixed(2), streak10: (actualRisk * 10).toFixed(2),
-      accountAfter2R: (account + p1*2).toFixed(0), accountAfter3R: (account + p1*3).toFixed(0),
-    };
-  }, [form]);
-
-  const isBuy = form.direction === 'BUY';
-
-  const saveCalc = () => {
-    if (!calc) return;
-    const entry = {
-      id: Date.now(), label: form.symbol || (form.entry + ' / ' + form.stop),
-      direction: form.direction, contracts: calc.contracts,
-      risk: calc.actualRisk, entry: form.entry, stop: form.stop,
-      t2: calc.t2, t3: calc.t3, date: new Date().toLocaleDateString(),
-    };
-    const updated = [entry, ...savedCalcs].slice(0, 20);
-    setSavedCalcs(updated);
-    try { localStorage.setItem('tr_saved_calcs', JSON.stringify(updated)); } catch {}
-  };
-
-  const deleteSaved = (id) => {
-    const updated = savedCalcs.filter(sc => sc.id !== id);
-    setSavedCalcs(updated);
-    try { localStorage.setItem('tr_saved_calcs', JSON.stringify(updated)); } catch {}
-  };
-
-  const inp = { width:'100%', background:'var(--surface2)', border:'1px solid var(--border)', padding:'9px 12px', fontSize:14, color:'var(--text)', outline:'none', fontFamily:'var(--font)', boxSizing:'border-box', borderRadius:8 };
-  const riskLevel = parseFloat(form.risk);
-  const riskColor = riskLevel <= 1 ? 'var(--green)' : riskLevel <= 2 ? '#f59e0b' : 'var(--red)';
-  const riskLabel = riskLevel <= 1 ? 'Conservative' : riskLevel <= 2 ? 'Moderate' : riskLevel <= 3 ? 'Aggressive' : 'Danger Zone';
-
+  const [form, setForm] = useState({ account:'50000',risk:'1',entry:'',stop:'',contractSize:'100',direction:'BUY' })
+  const [result, setResult] = useState(null)
+  const set = (k,v) => { setForm(f=>({...f,[k]:v}));setResult(null) }
+  const calc = async () => { const res=await fetch('/api/risksize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountSize:parseFloat(form.account),riskPercent:parseFloat(form.risk),entryPrice:parseFloat(form.entry),stopPrice:parseFloat(form.stop),contractSize:parseFloat(form.contractSize)})}); setResult(await res.json()) }
+  const inp = { width:'100%',background:'transparent',border:`1px solid ${C.border2}`,padding:'10px 12px',fontSize:14,color:C.text,outline:'none',fontFamily:C.font,boxSizing:'border-box' }
   return (
-    <div style={{ fontFamily:'var(--font)' }}>
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:10 }}>
-        <div>
-          <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--accent)', marginBottom:6 }}>Tools</div>
-          <h2 style={{ fontSize:24, fontWeight:700, color:'var(--text)', margin:'0 0 4px' }}>Trade Calculator</h2>
-          <p style={{ fontSize:12, color:'var(--text-muted)', margin:0 }}>Position sizing · R-multiple targets · Risk management</p>
-        </div>
-        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <button onClick={() => setShowSaved(s => !s)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background: showSaved?'#4f46e5':'var(--surface2)', color: showSaved?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-            Saved {savedCalcs.length > 0 && '(' + savedCalcs.length + ')'}
-          </button>
-          {calc && <button onClick={saveCalc} style={{ padding:'7px 14px', borderRadius:8, border:'none', background:'#4f46e5', color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer' }}>+ Save</button>}
-        </div>
+    <div>
+      <h2 style={{ fontSize:28,fontWeight:400,marginBottom:8,display:"flex",alignItems:"center",gap:8 }}>Trade <span style={{ color:C.gold }}>Calculator</span><InfoTooltip text="Position sizing calculator that determines how many contracts to trade based on your account size, risk percentage, entry price, and stop loss. Uses the R-multiple framework where 1R = your risk per trade." /></h2>
+      <p style={{ color:C.muted,fontSize:13,marginBottom:24 }}>Position sizing, risk, 2R/3R targets</p>
+      <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:16,marginBottom:20 }}>
+        <div><Label>DIRECTION</Label><div style={{ display:'flex',gap:2 }}>{['BUY','SELL'].map(d=><button key={d} onClick={()=>set('direction',d)} style={{ flex:1,background:form.direction===d?(d==='BUY'?C.green:C.red):C.border2,color:form.direction===d?'#0a0a0a':C.muted,border:'none',padding:10,fontSize:11,letterSpacing:2,cursor:'pointer',fontFamily:C.font }}>{d}</button>)}</div></div>
+        <div><Label>ACCOUNT SIZE ($)</Label><input value={form.account} onChange={e=>set('account',e.target.value)} style={inp} /></div>
+        <div><Label>RISK PER TRADE (%)</Label><input value={form.risk} onChange={e=>set('risk',e.target.value)} style={inp} /></div>
+        <div><Label>ENTRY PRICE</Label><input value={form.entry} onChange={e=>set('entry',e.target.value)} placeholder="e.g. 2350.00" style={inp} /></div>
+        <div><Label>STOP LOSS</Label><input value={form.stop} onChange={e=>set('stop',e.target.value)} placeholder="e.g. 2300.00" style={inp} /></div>
+        <div><Label>CONTRACT SIZE</Label><input value={form.contractSize} onChange={e=>set('contractSize',e.target.value)} placeholder="e.g. 100" style={inp} /></div>
       </div>
-
-      {showSaved && (
-        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 18px', marginBottom:16 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:10 }}>Saved Calculations</div>
-          {savedCalcs.length === 0 ? (
-            <div style={{ fontSize:12, color:'var(--text-muted)', textAlign:'center', padding:'16px 0' }}>No saved calculations yet.</div>
-          ) : (
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {savedCalcs.map(sc => (
-                <div key={sc.id} style={{ display:'grid', gridTemplateColumns:'1fr 60px 80px 80px 80px 32px', gap:10, padding:'8px 12px', background:'var(--surface2)', borderRadius:8, alignItems:'center' }}>
-                  <div><div style={{ fontSize:12, fontWeight:600, color:'var(--text)' }}>{sc.label}</div><div style={{ fontSize:10, color:'var(--text-muted)' }}>{sc.date}</div></div>
-                  <div style={{ fontSize:11, color: sc.direction==='BUY'?'var(--green)':'var(--red)', fontWeight:700 }}>{sc.direction}</div>
-                  <div style={{ fontSize:12, fontFamily:'var(--font-mono)', color:'#4f46e5', fontWeight:700 }}>{sc.contracts} cts</div>
-                  <div style={{ fontSize:12, fontFamily:'var(--font-mono)', color:'var(--red)' }}>{'- $' + sc.risk}</div>
-                  <div style={{ fontSize:11, color:'var(--text-muted)' }}>2R: {sc.t2}</div>
-                  <button onClick={() => deleteSaved(sc.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:16 }} onMouseEnter={e=>e.currentTarget.style.color='var(--red)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>x</button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, alignItems:'start' }}>
-        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 22px' }}>
-          <div style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:16 }}>Inputs</div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
-            <div>
-              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:5 }}>Symbol (optional)</div>
-              <input value={form.symbol} onChange={e=>set('symbol',e.target.value)} placeholder="e.g. Gold, ES, CL" style={inp} />
-            </div>
-            <div>
-              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:5 }}>Direction</div>
-              <div style={{ display:'flex', gap:6 }}>
-                {['BUY','SELL'].map(d=>(
-                  <button key={d} onClick={()=>set('direction',d)} style={{ flex:1, padding:'9px', borderRadius:8, border:'none', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer', background: form.direction===d?(d==='BUY'?'var(--green)':'var(--red)'):'var(--surface2)', color: form.direction===d?'#fff':'var(--text-muted)' }}>{d}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
-            <div>
-              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:5 }}>Account Size ($)</div>
-              <div style={{ position:'relative' }}>
-                <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:13, color:'var(--text-muted)' }}>$</span>
-                <input value={form.account} onChange={e=>set('account',e.target.value)} type="number" style={{ ...inp, paddingLeft:22 }} onFocus={e=>e.target.style.borderColor='#4f46e5'} onBlur={e=>e.target.style.borderColor='var(--border)'} />
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:5 }}>Risk Per Trade</div>
-              <div style={{ position:'relative' }}>
-                <input value={form.risk} onChange={e=>set('risk',e.target.value)} type="number" step="0.1" style={{ ...inp, paddingRight:28 }} onFocus={e=>e.target.style.borderColor='#4f46e5'} onBlur={e=>e.target.style.borderColor='var(--border)'} />
-                <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:13, color:'var(--text-muted)' }}>%</span>
-              </div>
-              {form.risk && <div style={{ fontSize:10, fontWeight:600, color:riskColor, marginTop:3 }}>{riskLabel}</div>}
-            </div>
-          </div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
-            <div>
-              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:5 }}>Entry Price</div>
-              <input value={form.entry} onChange={e=>set('entry',e.target.value)} placeholder="2350.00" type="number" style={inp} onFocus={e=>e.target.style.borderColor='#4f46e5'} onBlur={e=>e.target.style.borderColor='var(--border)'} />
-            </div>
-            <div>
-              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:5 }}>Stop Loss</div>
-              <input value={form.stop} onChange={e=>set('stop',e.target.value)} placeholder="2300.00" type="number" style={inp} onFocus={e=>e.target.style.borderColor='#4f46e5'} onBlur={e=>e.target.style.borderColor='var(--border)'} />
-            </div>
-          </div>
-
-          <div style={{ marginBottom:14 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:5 }}>Contract Size</div>
-            <input value={form.contractSize} onChange={e=>set('contractSize',e.target.value)} type="number" style={inp} onFocus={e=>e.target.style.borderColor='#4f46e5'} onBlur={e=>e.target.style.borderColor='var(--border)'} />
-          </div>
-
-          <div>
-            <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Quick Select Contract</div>
-            <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-              {CONTRACT_SIZES.slice(0,10).map(c=>(
-                <button key={c.name} onClick={()=>set('contractSize',c.size)} style={{ padding:'4px 9px', borderRadius:20, border:'1px solid '+(form.contractSize===c.size?'#4f46e5':'var(--border)'), background: form.contractSize===c.size?'rgba(79,70,229,0.12)':'transparent', color: form.contractSize===c.size?'#4f46e5':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                  {c.name.split(' ')[0]}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {!calc ? (
-            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'48px 24px', textAlign:'center' }}>
-              <div style={{ fontSize:32, marginBottom:12 }}>🧮</div>
-              <div style={{ fontSize:15, fontWeight:600, color:'var(--text)', marginBottom:6 }}>Enter entry and stop to calculate</div>
-              <div style={{ fontSize:12, color:'var(--text-muted)' }}>Results update live as you type</div>
-            </div>
-          ) : (
-            <>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                {[
-                  { label:'Contracts',      value: calc.contracts,            color:'#4f46e5',           sub: calc.contracts===0?'Too small':'Max position size', big:true },
-                  { label:'Max Risk $',     value: '$' + calc.riskPerTrade,   color:'var(--text)',        sub: form.risk + '% of account' },
-                  { label:'Actual Risk $',  value: '$' + calc.actualRisk,     color:'var(--red)',         sub: calc.actualRiskPct + '% of account' },
-                  { label:'Risk/Contract',  value: '$' + calc.riskPerContract,color:'var(--text-muted)',  sub: 'Stop dist x contract size' },
-                ].map(s=>(
-                  <div key={s.label} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>{s.label}</div>
-                    <div style={{ fontFamily:'var(--font-mono)', fontSize:s.big?26:20, fontWeight:800, color:s.color, lineHeight:1 }}>{s.value}</div>
-                    <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:5 }}>{s.sub}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>R-Multiple Targets</div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
-                  {[
-                    { r:'1R', price:calc.t1, profit:calc.p1 },
-                    { r:'2R', price:calc.t2, profit:calc.p2 },
-                    { r:'3R', price:calc.t3, profit:calc.p3 },
-                    { r:'5R', price:calc.t5, profit:calc.p5 },
-                  ].map(t=>(
-                    <div key={t.r} style={{ background:'var(--surface2)', borderRadius:10, padding:'10px', border:'1px solid var(--border)', textAlign:'center' }}>
-                      <div style={{ fontSize:10, fontWeight:700, color: isBuy?'var(--green)':'var(--red)', marginBottom:5 }}>{t.r}</div>
-                      <div style={{ fontFamily:'var(--font-mono)', fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:3 }}>{t.price}</div>
-                      <div style={{ fontFamily:'var(--font-mono)', fontSize:11, color: isBuy?'var(--green)':'var(--red)', fontWeight:700 }}>{'+ $' + t.profit}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Risk Insights</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                  {[
-                    { label:'Break-even price',        value: calc.breakeven,                              color:'var(--text)'   },
-                    { label:'5 consecutive losses',    value: '- $' + calc.streak5,                       color:'var(--red)'    },
-                    { label:'10 consecutive losses',   value: '- $' + calc.streak10,                      color:'var(--red)'    },
-                    { label:'Account after 2R win',    value: '$' + parseInt(calc.accountAfter2R).toLocaleString(), color:'var(--green)'  },
-                    { label:'Account after 3R win',    value: '$' + parseInt(calc.accountAfter3R).toLocaleString(), color:'var(--green)'  },
-                  ].map(row=>(
-                    <div key={row.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 10px', background:'var(--surface2)', borderRadius:8 }}>
-                      <span style={{ fontSize:12, color:'var(--text-muted)' }}>{row.label}</span>
-                      <span style={{ fontFamily:'var(--font-mono)', fontSize:12, fontWeight:700, color:row.color }}>{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {calc.contracts === 0 && (
-                <div style={{ padding:'12px 16px', background:'rgba(255,50,80,0.08)', border:'1px solid rgba(255,50,80,0.25)', borderRadius:10 }}>
-                  <div style={{ fontSize:13, color:'var(--red)', fontWeight:600, marginBottom:3 }}>Position size is 0 contracts</div>
-                  <div style={{ fontSize:12, color:'var(--text-muted)' }}>Risk amount is less than 1 contract cost. Increase account size, raise risk %, or widen stop.</div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      <div style={{ marginTop:20 }}>
-        <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:10 }}>Contract Size Reference</div>
-        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 90px 80px 80px 130px', padding:'8px 16px', background:'var(--surface2)', borderBottom:'1px solid var(--border)' }}>
-            {['Contract','Size','Unit','Exchange','Tick Value'].map(h=>(
-              <div key={h} style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{h}</div>
-            ))}
-          </div>
-          {CONTRACT_SIZES.map((c,i)=>(
-            <div key={c.name} onClick={()=>set('contractSize',c.size)}
-              style={{ display:'grid', gridTemplateColumns:'1fr 90px 80px 80px 130px', padding:'9px 16px', borderBottom: i<CONTRACT_SIZES.length-1?'1px solid var(--border)':'none', cursor:'pointer', transition:'background 0.1s', borderLeft: form.contractSize===c.size?'3px solid #4f46e5':'3px solid transparent' }}
-              onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
-              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-              <div style={{ fontSize:13, color: form.contractSize===c.size?'#4f46e5':'var(--text)', fontWeight: form.contractSize===c.size?600:400 }}>{c.name}</div>
-              <div style={{ fontFamily:'var(--font-mono)', fontSize:12, color:'var(--text)' }}>{parseInt(c.size).toLocaleString()}</div>
-              <div style={{ fontSize:12, color:'var(--text-muted)' }}>{c.unit}</div>
-              <div style={{ fontSize:12, color:'var(--text-muted)' }}>{c.exchange}</div>
-              <div style={{ fontSize:11, color:'var(--text-muted)' }}>{c.tick}</div>
-            </div>
-          ))}
-        </div>
+      <button onClick={calc} disabled={!form.entry||!form.stop} style={{ background:form.entry&&form.stop?C.gold:'#222',color:form.entry&&form.stop?'#0a0a0a':C.dim,border:'none',padding:'13px 38px',fontSize:11,letterSpacing:3,textTransform:'uppercase',cursor:form.entry&&form.stop?'pointer':'not-allowed',fontFamily:C.font,marginBottom:24 }}>CALCULATE</button>
+      {result&&<div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:32 }}>{[['CONTRACTS',result.contracts,C.gold],['RISK ($)',`$${result.riskPerTrade}`,C.text],['ACTUAL RISK',`$${result.actualRisk}`,C.red],['2R TARGET',result.target2R,form.direction==='BUY'?C.green:C.red],['3R TARGET',result.target3R,form.direction==='BUY'?C.green:C.red]].map(([l,v,c])=><Card key={l}><Label>{l}</Label><p style={{ fontSize:22,color:c,margin:0,fontWeight:300 }}>{v}</p></Card>)}</div>}
+      <Label>COMMON CONTRACT SIZES</Label>
+      <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:5 }}>
+        {[['Gold (GC)','100 oz'],['Silver (SI)','5,000 oz'],['Crude Oil (CL)','1,000 bbl'],['Natural Gas (NG)','10,000 MMBtu'],['Corn (ZC)','5,000 bu'],['Wheat (ZW)','5,000 bu'],['Soybeans (ZS)','5,000 bu'],['Coffee (KC)','37,500 lbs']].map(([n,s])=><div key={n} style={{ display:'flex',justifyContent:'space-between',padding:'8px 12px',background:C.surface,border:`1px solid ${C.border}` }}><span style={{ fontSize:11,color:C.muted }}>{n}</span><span style={{ fontSize:11,color:C.text }}>{s}</span></div>)}
       </div>
     </div>
-  );
+  )
 }
 
 function JournalTab() {
@@ -2542,4 +2290,772 @@ function ReferenceTab() {
       )}
     </div>
   )
+}
+'use client';
+import { useState, useRef, useEffect } from 'react';
+
+const PURPLE = '#4f46e5';
+const STORAGE_KEY = 'tr_ai_chats';
+
+const QUICK_ACTIONS = [
+  { id:'analysis', label:'Personalized Analysis', icon:'📊', prompt:'Generate my personalized trading performance analysis based on all my data.' },
+  { id:'briefing', label:'Market Briefing', icon:'🌐', prompt:'Give me a concise market briefing covering the major markets, key levels to watch, and any high-impact events coming up.' },
+  { id:'cot', label:'COT Interpreter', icon:'📈', prompt:'Explain how to read the Commitment of Traders report and what current positioning data typically signals for traders. Give me a practical breakdown.' },
+  { id:'strategy', label:'Strategy Builder', icon:'🏗️', prompt:'Help me build a personalized strategy framework. Ask me questions about my style, timeframe, preferred markets, and risk tolerance, then build me a structured plan with entry criteria, exit rules, and position sizing guidelines.' },
+  { id:'review', label:'Trade Review', icon:'🔍', prompt:'I want you to review a specific trade I made. I will describe the setup, entry, exit, and my reasoning. Give me detailed feedback on what I did well and what I should have done differently.' },
+  { id:'risk', label:'Risk Calculator', icon:'⚖️', prompt:'Help me calculate proper position sizing for a trade. Ask me my account size, risk percentage per trade, entry price, and stop loss level, then give me the exact position size, max dollar risk, and evaluate whether the risk/reward makes sense.' },
+];
+
+function loadChats() {
+  try { const d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : []; } catch { return []; }
+}
+function saveChats(chats) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); } catch {}
+}
+function newChat() {
+  return { id: Date.now(), title: 'New Chat', createdAt: new Date().toISOString(), messages: [{ id:1, role:'assistant', content:'Hi! I am TradeRing AI. Ask me anything, or use a quick action above to get started.', time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }] };
+}
+
+function Msg({ m }) {
+  const u = m.role === 'user';
+  return (
+    <div style={{ display:'flex', gap:10, flexDirection:u?'row-reverse':'row', alignItems:'flex-start', marginBottom:16 }}>
+      <div style={{ width:30, height:30, borderRadius:'50%', backgroundColor:u?PURPLE:'#e0e7ff', border:u?'none':'1px solid #c7d2fe', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:11, fontWeight:700, color:u?'#fff':PURPLE }}>{u?'D':'AI'}</div>
+      <div style={{ maxWidth:'78%' }}>
+        <div style={{ backgroundColor:u?PURPLE:'var(--surface2)', color:u?'#fff':'var(--text)', padding:'11px 15px', borderRadius:u?'16px 4px 16px 16px':'4px 16px 16px 16px', fontFamily:'var(--font)', fontSize:13, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{m.content}</div>
+        <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)', marginTop:3, textAlign:u?'right':'left' }}>{m.time}</div>
+      </div>
+    </div>
+  );
+}
+
+function Dots() {
+  return (
+    <div style={{ display:'flex', gap:10, alignItems:'flex-start', marginBottom:16 }}>
+      <div style={{ width:30, height:30, borderRadius:'50%', backgroundColor:'#e0e7ff', border:'1px solid #c7d2fe', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:11, fontWeight:700, color:PURPLE }}>AI</div>
+      <div style={{ backgroundColor:'var(--surface2)', padding:'13px 16px', borderRadius:'4px 16px 16px 16px', display:'flex', gap:5 }}>
+        {[0,1,2].map(i => <div key={i} style={{ width:7, height:7, borderRadius:'50%', background:'var(--text-muted)', animation:'bounce 1.2s ease-in-out '+(i*0.2)+'s infinite' }} />)}
+      </div>
+    </div>
+  );
+}
+
+export default function AICoachTab() {
+  const ts = () => new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const [chats, setChats] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
+  const [txt, setTxt] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [act, setAct] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const endRef = useRef(null);
+  const taRef = useRef(null);
+
+  // Load chats from localStorage on mount
+  useEffect(() => {
+    const saved = loadChats();
+    if (saved.length > 0) {
+      setChats(saved);
+      setActiveChatId(saved[0].id);
+    } else {
+      const first = newChat();
+      setChats([first]);
+      setActiveChatId(first.id);
+    }
+  }, []);
+
+  // Save chats whenever they change
+  useEffect(() => {
+    if (chats.length > 0) saveChats(chats);
+  }, [chats]);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [chats, busy, activeChatId]);
+
+  const activeChat = chats.find(c => c.id === activeChatId);
+  const msgs = activeChat?.messages || [];
+
+  const updateChat = (id, updater) => {
+    setChats(prev => prev.map(c => c.id === id ? updater(c) : c));
+  };
+
+  const send = async (content) => {
+    if (!content.trim() || busy || !activeChatId) return;
+    const userMsg = { id:Date.now(), role:'user', content, time:ts() };
+    const currentMsgs = [...msgs, userMsg];
+    // Auto-title from first user message
+    const isFirstUserMsg = msgs.filter(m => m.role==='user').length === 0;
+    updateChat(activeChatId, c => ({
+      ...c,
+      title: isFirstUserMsg ? content.slice(0,40)+(content.length>40?'...':'') : c.title,
+      messages: currentMsgs,
+    }));
+    setTxt('');
+    setBusy(true);
+    try {
+      const r = await fetch('/api/ai-coach', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ messages:currentMsgs.map(m=>({role:m.role,content:m.content})), mode:'chat' }) });
+      const d = await r.json();
+      const aiMsg = { id:Date.now()+1, role:'assistant', content:d.analysis||d.response||d.error||'Something went wrong.', time:ts() };
+      updateChat(activeChatId, c => ({ ...c, messages: [...c.messages, aiMsg] }));
+    } catch {
+      const errMsg = { id:Date.now()+1, role:'assistant', content:'Connection error. Please try again.', time:ts() };
+      updateChat(activeChatId, c => ({ ...c, messages: [...c.messages, errMsg] }));
+    }
+    setBusy(false);
+  };
+
+  const createNewChat = () => {
+    const c = newChat();
+    setChats(prev => [c, ...prev]);
+    setActiveChatId(c.id);
+    setAct(null);
+    setTxt('');
+  };
+
+  const deleteChat = (id) => {
+    const remaining = chats.filter(c => c.id !== id);
+    if (remaining.length === 0) {
+      const fresh = newChat();
+      setChats([fresh]);
+      setActiveChatId(fresh.id);
+    } else {
+      setChats(remaining);
+      if (activeChatId === id) setActiveChatId(remaining[0].id);
+    }
+  };
+
+  const formatDate = (iso) => {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 3600) return Math.floor(diff/60)+'m ago';
+    if (diff < 86400) return Math.floor(diff/3600)+'h ago';
+    if (diff < 604800) return Math.floor(diff/86400)+'d ago';
+    return d.toLocaleDateString([], {month:'short', day:'numeric'});
+  };
+
+  return (
+    <div style={{ display:'flex', height:'calc(100vh - 140px)', overflow:'hidden', fontFamily:'var(--font)' }}>
+      <style>{`@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}`}</style>
+
+      {/* Sidebar */}
+      {sidebarOpen && (
+        <div style={{ width:240, borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', background:'var(--surface)', flexShrink:0, overflow:'hidden' }}>
+          <div style={{ padding:'12px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+            <button onClick={createNewChat} style={{ width:'100%', padding:'8px', borderRadius:8, backgroundColor:PURPLE, color:'#fff', border:'none', fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='2.5'><line x1='12' y1='5' x2='12' y2='19'/><line x1='5' y1='12' x2='19' y2='12'/></svg>
+              New Chat
+            </button>
+          </div>
+          <div style={{ flex:1, overflowY:'auto', padding:'8px 6px' }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-muted)', padding:'4px 8px 8px' }}>Recent</div>
+            {chats.map(chat => (
+              <div key={chat.id}
+                onClick={() => setActiveChatId(chat.id)}
+                style={{ padding:'9px 10px', borderRadius:8, cursor:'pointer', marginBottom:2, backgroundColor: activeChatId===chat.id?'#eef2ff':'transparent', border: activeChatId===chat.id?'1px solid #c7d2fe':'1px solid transparent', position:'relative' }}
+                onMouseEnter={e => { if(activeChatId!==chat.id) e.currentTarget.style.backgroundColor='var(--surface2)'; e.currentTarget.querySelector('.del-btn').style.opacity='1'; }}
+                onMouseLeave={e => { if(activeChatId!==chat.id) e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.querySelector('.del-btn').style.opacity='0'; }}
+              >
+                {editingId === chat.id ? (
+                  <input autoFocus value={editTitle} onChange={e=>setEditTitle(e.target.value)} onBlur={() => { updateChat(chat.id, c=>({...c,title:editTitle||c.title})); setEditingId(null); }} onKeyDown={e=>e.key==='Enter'&&(updateChat(chat.id,c=>({...c,title:editTitle||c.title})),setEditingId(null))} style={{ width:'100%', border:'1px solid '+PURPLE, borderRadius:4, padding:'2px 4px', fontFamily:'var(--font)', fontSize:12, outline:'none', background:'var(--bg)' }} />
+                ) : (
+                  <div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight: activeChatId===chat.id?600:400, color: activeChatId===chat.id?PURPLE:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', paddingRight:20 }} onDoubleClick={() => { setEditingId(chat.id); setEditTitle(chat.title); }}>{chat.title}</div>
+                )}
+                <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)', marginTop:2 }}>{formatDate(chat.createdAt)}</div>
+                <button className='del-btn' onClick={e => { e.stopPropagation(); deleteChat(chat.id); }} style={{ position:'absolute', top:8, right:6, background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', opacity:0, fontSize:14, lineHeight:1, padding:'0 2px' }}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Main chat area */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
+
+        {/* Header */}
+        <div style={{ padding:'12px 20px', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0, display:'flex', alignItems:'center', gap:10 }}>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex', padding:'4px', borderRadius:6 }}>
+            <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg>
+          </button>
+          <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:PURPLE, flex:1 }}>TradeRing AI</span>
+          <button onClick={createNewChat} style={{ padding:'5px 12px', borderRadius:20, border:'1px solid '+PURPLE, backgroundColor:'transparent', color:PURPLE, fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer' }}>+ New Chat</button>
+        </div>
+
+        {/* Quick actions */}
+        <div style={{ padding:'8px 20px', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0 }}>
+          <div style={{ display:'flex', gap:6, overflowX:'auto' }}>
+            {QUICK_ACTIONS.map(a => (
+              <button key={a.id} onClick={() => { setAct(a.id); send(a.prompt); }} disabled={busy}
+                style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:20, border:'1px solid '+(act===a.id?PURPLE:'var(--border)'), backgroundColor:act===a.id?'#eef2ff':'var(--surface2)', color:act===a.id?PURPLE:'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:busy?'default':'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
+                <span>{a.icon}</span><span>{a.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div style={{ flex:1, overflowY:'auto', overflowX:'hidden', padding:'20px', minHeight:0 }}>
+          {msgs.map(m => <Msg key={m.id} m={m} />)}
+          {busy && <Dots />}
+          <div ref={endRef} />
+        </div>
+
+        {/* Input */}
+        <div style={{ padding:'12px 20px', background:'var(--surface)', flexShrink:0 }}>
+          <div style={{ display:'flex', gap:8, alignItems:'flex-end', border:'2px solid '+PURPLE, borderRadius:14, padding:'10px 10px 10px 16px', background:'var(--bg)' }}>
+            <textarea
+              ref={taRef}
+              value={txt}
+              onChange={e => setTxt(e.target.value)}
+              onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send(txt);} }}
+              placeholder='Ask anything...'
+              rows={2}
+              disabled={busy}
+              style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', resize:'none', lineHeight:1.6 }}
+            />
+            <button onClick={() => send(txt)} style={{ width:36, height:36, borderRadius:9, backgroundColor:'#4f46e5', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='2.5'><line x1='22' y1='2' x2='11' y2='13'/><polygon points='22 2 15 22 11 13 2 9 22 2'/></svg>
+            </button>
+          </div>
+          <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)', marginTop:5, textAlign:'center' }}>Enter to send · Shift+Enter for new line</div>
+        </div>
+      </div>
+    </div>
+  );
+}'use client';
+import { useState, useEffect, useRef } from 'react';
+
+const PURPLE = '#4f46e5';
+const TIMEFRAMES = ['Daily','Weekly','Monthly','Quarterly','Annual'];
+const STORAGE_KEY = 'tr_reviews';
+
+// Block types for Notion-style editor
+const BLOCK_TYPES = [
+  { type:'text',     label:'Text',          icon:'T' },
+  { type:'heading',  label:'Heading',       icon:'H' },
+  { type:'bullet',   label:'Bullet List',   icon:'•' },
+  { type:'rating',   label:'Rating (1-10)', icon:'★' },
+  { type:'trade',    label:'Trade Tag',     icon:'📈' },
+  { type:'divider',  label:'Divider',       icon:'—' },
+  { type:'checklist',label:'Checklist',     icon:'✓' },
+];
+
+function getPeriodKey(tf) {
+  const now = new Date();
+  if (tf==='Daily') return now.toISOString().slice(0,10);
+  if (tf==='Weekly') {
+    const d = now.getDay(), diff = now.getDate()-d+(d===0?-6:1);
+    return new Date(now.setDate(diff)).toISOString().slice(0,10);
+  }
+  if (tf==='Monthly') return now.toISOString().slice(0,7);
+  if (tf==='Quarterly') return now.getFullYear()+'-Q'+(Math.floor(now.getMonth()/3)+1);
+  return now.getFullYear().toString();
+}
+
+function getPeriodLabel(tf, key) {
+  if (tf==='Daily') return new Date(key).toLocaleDateString([],{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  if (tf==='Weekly') return 'Week of '+new Date(key).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+  if (tf==='Monthly') { const [y,m]=key.split('-'); return new Date(y,m-1).toLocaleDateString([],{month:'long',year:'numeric'}); }
+  if (tf==='Quarterly') return key.replace('-',' ');
+  return key;
+}
+
+function loadReviews() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); } catch { return {}; }
+}
+function saveReviews(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function Block({ block, onChange, onDelete, onAdd }) {
+  const [hov, setHov] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  const baseInput = { width:'100%', border:'none', outline:'none', background:'transparent', fontFamily:'var(--font)', color:'var(--text)', resize:'none', padding:0, lineHeight:1.7 };
+
+  return (
+    <div
+      onMouseEnter={()=>setHov(true)}
+      onMouseLeave={()=>{setHov(false);setShowMenu(false);}}
+      style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'2px 0', position:'relative', group:true }}
+    >
+      {/* Block controls */}
+      <div style={{ display:'flex', gap:2, opacity:hov?1:0, transition:'opacity 0.1s', flexShrink:0, paddingTop:3 }}>
+        <button onClick={()=>setShowMenu(!showMenu)} style={{ width:20, height:20, borderRadius:4, border:'none', background:'var(--surface2)', cursor:'pointer', fontSize:11, color:'var(--text-muted)', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+        <button onClick={()=>onDelete(block.id)} style={{ width:20, height:20, borderRadius:4, border:'none', background:'var(--surface2)', cursor:'pointer', fontSize:11, color:'var(--text-muted)', display:'flex', alignItems:'center', justifyContent:'center' }}>⋮⋮</button>
+      </div>
+      {showMenu && (
+        <div style={{ position:'absolute', left:48, top:0, zIndex:100, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:6, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', display:'grid', gridTemplateColumns:'1fr 1fr', gap:4, width:220 }}
+          onMouseLeave={()=>setShowMenu(false)}>
+          {BLOCK_TYPES.map(bt => (
+            <button key={bt.type} onClick={()=>{onAdd(block.id,bt.type);setShowMenu(false);}} style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 10px', borderRadius:6, border:'none', background:'transparent', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', textAlign:'left' }}
+              onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <span style={{ width:16, textAlign:'center', fontSize:11, fontWeight:700, color:PURPLE }}>{bt.icon}</span>{bt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Block content */}
+      <div style={{ flex:1, minWidth:0 }}>
+        {block.type==='heading' && (
+          <textarea value={block.content} onChange={e=>onChange(block.id,'content',e.target.value)} placeholder='Heading...' rows={1}
+            style={{...baseInput, fontSize:20, fontWeight:700, color:'var(--text)'}} />
+        )}
+        {block.type==='text' && (
+          <textarea value={block.content} onChange={e=>onChange(block.id,'content',e.target.value)} placeholder='Write something...' rows={2}
+            style={{...baseInput, fontSize:14}} />
+        )}
+        {block.type==='bullet' && (
+          <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+            <span style={{ color:'var(--text-muted)', marginTop:3, flexShrink:0 }}>•</span>
+            <textarea value={block.content} onChange={e=>onChange(block.id,'content',e.target.value)} placeholder='List item...' rows={1}
+              style={{...baseInput, fontSize:14}} />
+          </div>
+        )}
+        {block.type==='checklist' && (
+          <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+            <input type='checkbox' checked={block.checked||false} onChange={e=>onChange(block.id,'checked',e.target.checked)} style={{ marginTop:4, accentColor:PURPLE, flexShrink:0 }} />
+            <textarea value={block.content} onChange={e=>onChange(block.id,'content',e.target.value)} placeholder='Task...' rows={1}
+              style={{...baseInput, fontSize:14, textDecoration:block.checked?'line-through':'none', color:block.checked?'var(--text-muted)':'var(--text)'}} />
+          </div>
+        )}
+        {block.type==='rating' && (
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <textarea value={block.label||''} onChange={e=>onChange(block.id,'label',e.target.value)} placeholder='What are you rating? (e.g. Discipline, Execution...)' rows={1}
+              style={{...baseInput, fontSize:13, flex:1}} />
+            <div style={{ display:'flex', gap:3, flexShrink:0 }}>
+              {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                <button key={n} onClick={()=>onChange(block.id,'value',n)}
+                  style={{ width:24, height:24, borderRadius:6, border:'1px solid var(--border)', background:(block.value||0)>=n?PURPLE:'var(--surface2)', color:(block.value||0)>=n?'#fff':'var(--text-muted)', fontFamily:'var(--font-mono)', fontSize:10, fontWeight:700, cursor:'pointer' }}>{n}</button>
+              ))}
+            </div>
+            {block.value && <span style={{ fontFamily:'var(--font-mono)', fontSize:14, fontWeight:800, color:block.value>=7?'var(--green)':block.value>=4?'#d97706':'var(--red)' }}>{block.value}/10</span>}
+          </div>
+        )}
+        {block.type==='trade' && (
+          <div style={{ background:'var(--surface2)', borderRadius:10, padding:'12px 14px', border:'1px solid var(--border)' }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:700, color:PURPLE, marginBottom:8, textTransform:'uppercase', letterSpacing:'0.08em' }}>Trade Tag</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:8 }}>
+              {['asset','direction','result'].map(field => (
+                <div key={field}>
+                  <div style={{ fontFamily:'var(--font)', fontSize:9, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:3 }}>{field}</div>
+                  <input value={block[field]||''} onChange={e=>onChange(block.id,field,e.target.value)} placeholder={field==='direction'?'Long/Short':field==='result'?'+2.4%':'GC=F'} style={{ width:'100%', padding:'5px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none', boxSizing:'border-box' }} />
+                </div>
+              ))}
+            </div>
+            <textarea value={block.notes||''} onChange={e=>onChange(block.id,'notes',e.target.value)} placeholder='Trade notes...' rows={2}
+              style={{ width:'100%', padding:'6px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none', resize:'none', boxSizing:'border-box' }} />
+          </div>
+        )}
+        {block.type==='divider' && (
+          <hr style={{ border:'none', borderTop:'1px solid var(--border)', margin:'8px 0' }} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function ReviewTab() {
+  const [tf, setTf] = useState('Daily');
+  const [allReviews, setAllReviews] = useState({});
+  const [viewKey, setViewKey] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    const saved = loadReviews();
+    setAllReviews(saved);
+    setViewKey(getPeriodKey(tf));
+  }, []);
+
+  useEffect(() => {
+    setViewKey(getPeriodKey(tf));
+  }, [tf]);
+
+  useEffect(() => {
+    if (Object.keys(allReviews).length > 0) saveReviews(allReviews);
+  }, [allReviews]);
+
+  const getReview = (key) => {
+    return allReviews[tf+'_'+key] || { blocks: [{ id:1, type:'heading', content:'' }] };
+  };
+
+  const updateReview = (key, blocks) => {
+    setAllReviews(p => ({ ...p, [tf+'_'+key]: { blocks, updatedAt: new Date().toISOString() } }));
+  };
+
+  const currentReview = getReview(viewKey);
+  const blocks = currentReview.blocks || [];
+
+  const updateBlock = (id, field, val) => {
+    const updated = blocks.map(b => b.id===id ? {...b,[field]:val} : b);
+    updateReview(viewKey, updated);
+  };
+
+  const deleteBlock = (id) => {
+    if (blocks.length <= 1) return;
+    updateReview(viewKey, blocks.filter(b => b.id!==id));
+  };
+
+  const addBlockAfter = (afterId, type) => {
+    const idx = blocks.findIndex(b => b.id===afterId);
+    const nb = { id:Date.now(), type, content:'' };
+    const updated = [...blocks.slice(0,idx+1), nb, ...blocks.slice(idx+1)];
+    updateReview(viewKey, updated);
+  };
+
+  const addBlock = (type='text') => {
+    updateReview(viewKey, [...blocks, { id:Date.now(), type, content:'' }]);
+  };
+
+  // Get history keys for this timeframe
+  const historyKeys = Object.keys(allReviews)
+    .filter(k => k.startsWith(tf+'_'))
+    .map(k => k.replace(tf+'_',''))
+    .sort((a,b) => b.localeCompare(a));
+
+  return (
+    <div style={{ display:'flex', height:'calc(100vh - 140px)', overflow:'hidden', fontFamily:'var(--font)' }}>
+
+      {/* Left: history sidebar */}
+      {showHistory && (
+        <div style={{ width:220, borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', background:'var(--surface)', flexShrink:0 }}>
+          <div style={{ padding:'12px', borderBottom:'1px solid var(--border)', fontFamily:'var(--font)', fontSize:12, fontWeight:700, color:'var(--text)' }}>Past Reviews</div>
+          <div style={{ flex:1, overflowY:'auto', padding:'8px 6px' }}>
+            {historyKeys.length===0
+              ? <div style={{ padding:'12px', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>No past reviews yet.</div>
+              : historyKeys.map(key => (
+                <div key={key} onClick={()=>setViewKey(key)}
+                  style={{ padding:'8px 10px', borderRadius:8, cursor:'pointer', marginBottom:2, backgroundColor:viewKey===key?'#eef2ff':'transparent', border:viewKey===key?'1px solid #c7d2fe':'1px solid transparent' }}
+                  onMouseEnter={e=>{if(viewKey!==key)e.currentTarget.style.background='var(--surface2)';}}
+                  onMouseLeave={e=>{if(viewKey!==key)e.currentTarget.style.background='transparent';}}>
+                  <div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:viewKey===key?600:400, color:viewKey===key?PURPLE:'var(--text)' }}>{getPeriodLabel(tf,key)}</div>
+                  {allReviews[tf+'_'+key]?.updatedAt && <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>Last edited {new Date(allReviews[tf+'_'+key].updatedAt).toLocaleDateString()}</div>}
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
+      {/* Main editor */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
+
+        {/* Toolbar */}
+        <div style={{ padding:'10px 24px', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+          <button onClick={()=>setShowHistory(!showHistory)} style={{ padding:'5px 10px', borderRadius:6, border:'1px solid var(--border)', background:showHistory?'var(--accent-bg)':'var(--surface2)', color:showHistory?PURPLE:'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+            <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><polyline points='1 4 1 10 7 10'/><path d='M3.51 15a9 9 0 1 0 .49-4.95'/></svg> History
+          </button>
+          <div style={{ display:'flex', gap:4 }}>
+            {TIMEFRAMES.map(t => (
+              <button key={t} onClick={()=>{setTf(t);setViewKey(getPeriodKey(t));}} style={{ padding:'5px 12px', borderRadius:20, border:'1px solid '+(tf===t?PURPLE:'var(--border)'), background:tf===t?PURPLE:'transparent', color:tf===t?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:tf===t?700:400, cursor:'pointer' }}>{t}</button>
+            ))}
+          </div>
+          <div style={{ marginLeft:'auto', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{getPeriodLabel(tf, viewKey||getPeriodKey(tf))}</div>
+          {viewKey !== getPeriodKey(tf) && (
+            <button onClick={()=>setViewKey(getPeriodKey(tf))} style={{ padding:'5px 10px', borderRadius:6, border:'1px solid '+PURPLE, background:'transparent', color:PURPLE, fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer' }}>Back to Current</button>
+          )}
+        </div>
+
+        {/* Blocks */}
+        <div style={{ flex:1, overflowY:'auto', padding:'32px 48px', minHeight:0 }}>
+          <div style={{ maxWidth:720, margin:'0 auto' }}>
+            {blocks.map(block => (
+              <Block key={block.id} block={block} onChange={updateBlock} onDelete={deleteBlock} onAdd={addBlockAfter} />
+            ))}
+            {/* Add block buttons */}
+            <div style={{ marginTop:16, display:'flex', gap:6, flexWrap:'wrap' }}>
+              {BLOCK_TYPES.filter(bt=>bt.type!=='divider').map(bt=>(
+                <button key={bt.type} onClick={()=>addBlock(bt.type)} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, cursor:'pointer' }}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor=PURPLE;e.currentTarget.style.color=PURPLE;}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.color='var(--text-muted)';}}>
+                  <span style={{ fontWeight:700 }}>{bt.icon}</span> {bt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}'use client';
+import { useState, useEffect } from 'react';
+
+const PURPLE = '#4f46e5';
+const STORAGE_KEY = 'tr_tradelog';
+
+const DEFAULT_FIELDS = ['Asset','Direction','Entry','Exit','Size','P&L','Date','Setup','Notes'];
+
+function loadLog() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); } catch { return {}; }
+}
+function saveLog(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function getPnlColor(val) {
+  if (!val) return 'var(--text-muted)';
+  const n = parseFloat(val.replace(/[^0-9.-]/g,''));
+  if (isNaN(n)) return 'var(--text-muted)';
+  return n > 0 ? 'var(--green)' : n < 0 ? 'var(--red)' : 'var(--text-muted)';
+}
+
+function getPnlNum(val) {
+  if (!val) return null;
+  const n = parseFloat(val.replace(/[^0-9.-]/g,''));
+  return isNaN(n) ? null : n;
+}
+
+// ── Calendar View ─────────────────────────────────────────────
+function CalendarView({ trades }) {
+  const [month, setMonth] = useState(new Date());
+
+  const y = month.getFullYear(), m = month.getMonth();
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const today = new Date();
+
+  // Group trades by date
+  const byDate = {};
+  trades.forEach(t => {
+    const d = t.fields['Date'] || t.fields['date'] || t.createdAt?.slice(0,10);
+    if (!d) return;
+    const key = d.slice(0,10);
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push(t);
+  });
+
+  const getDayData = (day) => {
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dayTrades = byDate[key] || [];
+    if (!dayTrades.length) return { trades:[], pnl:null, color:'transparent' };
+    const pnls = dayTrades.map(t => getPnlNum(t.fields['P&L']||t.fields['pnl']||t.fields['PnL']||'')).filter(n=>n!==null);
+    const total = pnls.length ? pnls.reduce((a,b)=>a+b,0) : null;
+    const color = total===null?'#e0e7ff':total>0?'#bbf7d0':total<0?'#fecaca':'#e0e7ff';
+    return { trades:dayTrades, pnl:total, color };
+  };
+
+  const prevMonth = () => setMonth(new Date(y, m-1, 1));
+  const nextMonth = () => setMonth(new Date(y, m+1, 1));
+
+  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  return (
+    <div style={{ fontFamily:'var(--font)' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
+        <button onClick={prevMonth} style={{ width:28, height:28, borderRadius:6, border:'1px solid var(--border)', background:'var(--surface2)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><polyline points='15 18 9 12 15 6'/></svg>
+        </button>
+        <span style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:700, color:'var(--text)', flex:1, textAlign:'center' }}>{MONTHS[m]} {y}</span>
+        <button onClick={nextMonth} style={{ width:28, height:28, borderRadius:6, border:'1px solid var(--border)', background:'var(--surface2)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><polyline points='9 18 15 12 9 6'/></svg>
+        </button>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, marginBottom:4 }}>
+        {DAYS.map(d => <div key={d} style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textAlign:'center', padding:'4px 0' }}>{d}</div>)}
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
+        {Array(firstDay===0?6:firstDay-1).fill(null).map((_,i) => <div key={'e'+i} />)}
+        {Array(daysInMonth).fill(null).map((_,i) => {
+          const day = i+1;
+          const data = getDayData(day);
+          const isToday = today.getFullYear()===y && today.getMonth()===m && today.getDate()===day;
+          return (
+            <div key={day} style={{ aspectRatio:'1', borderRadius:8, background:data.color, border:isToday?'2px solid '+PURPLE:'1px solid var(--border)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'2px', cursor:data.trades.length?'pointer':'default', position:'relative' }}>
+              <div style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:isToday?700:400, color:isToday?PURPLE:'var(--text)' }}>{day}</div>
+              {data.trades.length > 0 && <div style={{ fontFamily:'var(--font-mono)', fontSize:9, fontWeight:700, color:data.pnl===null?'var(--text-muted)':data.pnl>0?'#16a34a':data.pnl<0?'#dc2626':'var(--text-muted)' }}>{data.trades.length}T</div>}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display:'flex', gap:10, marginTop:12, justifyContent:'center' }}>
+        {[['Profitable','#bbf7d0'],['Loss','#fecaca'],['Break-even','#e0e7ff'],['No trades','transparent']].map(([label,color])=>(
+          <div key={label} style={{ display:'flex', alignItems:'center', gap:4 }}>
+            <div style={{ width:10, height:10, borderRadius:3, background:color, border:'1px solid var(--border)' }} />
+            <span style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Add Trade Modal ───────────────────────────────────────────
+function AddTradeModal({ fields, onSave, onClose }) {
+  const [values, setValues] = useState({});
+  const set = (k,v) => setValues(p=>({...p,[k]:v}));
+  const inputStyle = { width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', boxSizing:'border-box' };
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:480, maxWidth:'92vw', maxHeight:'85vh', overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+        <div style={{ fontFamily:'var(--font)', fontSize:16, fontWeight:700, color:'var(--text)', marginBottom:20 }}>Log a Trade</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:20 }}>
+          {fields.map(f => (
+            <div key={f}>
+              <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', display:'block', marginBottom:5 }}>{f}</label>
+              {f==='Notes'||f==='Setup'
+                ? <textarea value={values[f]||''} onChange={e=>set(f,e.target.value)} rows={3} style={{...inputStyle,resize:'none',gridColumn:'1/-1'}} />
+                : <input value={values[f]||''} onChange={e=>set(f,e.target.value)} placeholder={f==='Direction'?'Long / Short':f==='Date'?new Date().toISOString().slice(0,10):''} style={inputStyle} />
+              }
+            </div>
+          ))}
+        </div>
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onClose} style={{ flex:1, padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancel</button>
+          <button onClick={()=>{onSave({id:Date.now(),fields:values,createdAt:new Date().toISOString()});onClose();}} style={{ flex:2, padding:'10px', borderRadius:10, border:'none', backgroundColor:PURPLE, color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>Save Trade</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Field Manager ─────────────────────────────────────────────
+function FieldManager({ fields, onUpdate, onClose }) {
+  const [localFields, setLocalFields] = useState([...fields]);
+  const [newField, setNewField] = useState('');
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:380, maxWidth:'92vw', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+        <div style={{ fontFamily:'var(--font)', fontSize:16, fontWeight:700, color:'var(--text)', marginBottom:6 }}>Customize Fields</div>
+        <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Add, remove, or reorder your trade log columns.</div>
+        <div style={{ marginBottom:16 }}>
+          {localFields.map((f,i) => (
+            <div key={f} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, background:'var(--surface2)', marginBottom:4 }}>
+              <span style={{ fontFamily:'var(--font)', fontSize:13, flex:1, color:'var(--text)' }}>{f}</span>
+              <button onClick={()=>setLocalFields(p=>p.filter(x=>x!==f))} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--red)', fontSize:16, lineHeight:1 }}>×</button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display:'flex', gap:8, marginBottom:20 }}>
+          <input value={newField} onChange={e=>setNewField(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&newField.trim()){setLocalFields(p=>[...p,newField.trim()]);setNewField('');}}} placeholder='Add custom field...' style={{ flex:1, padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none' }} />
+          <button onClick={()=>{if(newField.trim()){setLocalFields(p=>[...p,newField.trim()]);setNewField('');}}} style={{ padding:'8px 14px', borderRadius:8, border:'none', backgroundColor:PURPLE, color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer' }}>Add</button>
+        </div>
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onClose} style={{ flex:1, padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancel</button>
+          <button onClick={()=>{onUpdate(localFields);onClose();}} style={{ flex:2, padding:'10px', borderRadius:10, border:'none', backgroundColor:PURPLE, color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>Save Fields</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main TradeLog ─────────────────────────────────────────────
+export default function TradeLogTab() {
+  const [view, setView] = useState('list');
+  const [trades, setTrades] = useState([]);
+  const [fields, setFields] = useState(DEFAULT_FIELDS);
+  const [showAdd, setShowAdd] = useState(false);
+  const [showFields, setShowFields] = useState(false);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const saved = loadLog();
+    if (saved.trades) setTrades(saved.trades);
+    if (saved.fields) setFields(saved.fields);
+  }, []);
+
+  useEffect(() => {
+    saveLog({ trades, fields });
+  }, [trades, fields]);
+
+  const addTrade = (trade) => setTrades(p => [trade, ...p]);
+  const deleteTrade = (id) => setTrades(p => p.filter(t => t.id!==id));
+
+  const filtered = trades.filter(t => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return Object.values(t.fields).some(v => v&&v.toString().toLowerCase().includes(s));
+  });
+
+  // Stats
+  const pnls = trades.map(t=>getPnlNum(t.fields['P&L']||t.fields['pnl']||'')).filter(n=>n!==null);
+  const totalPnl = pnls.reduce((a,b)=>a+b,0);
+  const winCount = pnls.filter(n=>n>0).length;
+  const winRate = pnls.length ? Math.round((winCount/pnls.length)*100) : null;
+
+  return (
+    <div style={{ fontFamily:'var(--font)', padding:'20px 24px' }}>
+      {showAdd && <AddTradeModal fields={fields} onSave={addTrade} onClose={()=>setShowAdd(false)} />}
+      {showFields && <FieldManager fields={fields} onUpdate={setFields} onClose={()=>setShowFields(false)} />}
+
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, flexWrap:'wrap' }}>
+        <div style={{ flex:1 }}>
+          <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)' }}>Trade Log</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{trades.length} trades logged</div>
+        </div>
+        <button onClick={()=>setShowFields(true)} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>⚙ Fields</button>
+        <button onClick={()=>setShowAdd(true)} style={{ padding:'7px 16px', borderRadius:8, border:'none', backgroundColor:PURPLE, color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer' }}>+ Log Trade</button>
+      </div>
+
+      {/* Stats row */}
+      {trades.length > 0 && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:16 }}>
+          {[
+            { label:'Total Trades', value:trades.length, color:'var(--text)' },
+            { label:'Win Rate', value:winRate!==null?winRate+'%':'—', color:'var(--green)' },
+            { label:'Total P&L', value:pnls.length?(totalPnl>=0?'+':'')+totalPnl.toFixed(2):'—', color:totalPnl>=0?'var(--green)':'var(--red)' },
+            { label:'Avg P&L', value:pnls.length?(totalPnl/pnls.length>=0?'+':'')+( totalPnl/pnls.length).toFixed(2):'—', color:(totalPnl/pnls.length)>=0?'var(--green)':'var(--red)' },
+          ].map(s=>(
+            <div key={s.label} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'12px 14px', textAlign:'center' }}>
+              <div style={{ fontFamily:'var(--font-mono)', fontSize:18, fontWeight:800, color:s.color }}>{s.value}</div>
+              <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* View toggle + search */}
+      <div style={{ display:'flex', gap:8, marginBottom:14, alignItems:'center' }}>
+        <div style={{ display:'flex', gap:4 }}>
+          {['list','calendar'].map(v=>(
+            <button key={v} onClick={()=>setView(v)} style={{ padding:'5px 14px', borderRadius:20, border:'1px solid '+(view===v?PURPLE:'var(--border)'), backgroundColor:view===v?PURPLE:'transparent', color:view===v?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>{v==='list'?'📋 List':'📅 Calendar'}</button>
+          ))}
+        </div>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder='Search trades...' style={{ flex:1, padding:'7px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none' }} />
+      </div>
+
+      {/* List view */}
+      {view==='list' && (
+        <div>
+          {filtered.length===0 ? (
+            <div style={{ textAlign:'center', padding:'60px 20px' }}>
+              <div style={{ fontSize:36, marginBottom:12 }}>📋</div>
+              <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:600, color:'var(--text)', marginBottom:6 }}>{trades.length===0?'No trades logged yet':'No trades match your search'}</div>
+              {trades.length===0 && <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Click Log Trade to add your first trade.</div>}
+            </div>
+          ) : (
+            <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
+              {/* Table header */}
+              <div style={{ display:'grid', gridTemplateColumns:fields.map(()=>'1fr').join(' ')+' 40px', padding:'10px 16px', background:'var(--surface2)', borderBottom:'1px solid var(--border)' }}>
+                {fields.map(f=>(
+                  <div key={f} style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{f}</div>
+                ))}
+                <div />
+              </div>
+              {/* Rows */}
+              {filtered.map((t,i)=>(
+                <div key={t.id} style={{ display:'grid', gridTemplateColumns:fields.map(()=>'1fr').join(' ')+' 40px', padding:'11px 16px', borderBottom:i<filtered.length-1?'1px solid var(--border)':'none', transition:'background 0.1s' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  {fields.map(f=>(
+                    <div key={f} style={{ fontFamily: f==='P&L'||f==='pnl'?'var(--font-mono)':'var(--font)', fontSize:12, color:f==='P&L'||f==='pnl'?getPnlColor(t.fields[f]||''):f==='Direction'?(t.fields[f]||'').toLowerCase()==='long'?'var(--green)':(t.fields[f]||'').toLowerCase()==='short'?'var(--red)':'var(--text)':'var(--text)', fontWeight:f==='P&L'||f==='pnl'?700:400, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {t.fields[f]||'—'}
+                    </div>
+                  ))}
+                  <button onClick={()=>deleteTrade(t.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Calendar view */}
+      {view==='calendar' && <CalendarView trades={trades} />}
+    </div>
+  );
 }

@@ -1,19 +1,17 @@
 "use client";
 import React from "react";
-
 const CARDS = [
   { key:"Notes", label:"NOTES", title:"Notes", desc:"Quick notes tied to markets, dates, and trade ideas. Your scratchpad for observations.", color:"var(--accent)", bg:"var(--accent-bg)", border:"var(--accent-border)" },
-  { key:"Weekly Review", label:"WEEKLY REVIEW", title:"Weekly Review", desc:"Structured weekly performance review. Look back at what worked and what to improve.", color:"#10b981", bg:"rgba(16,185,129,0.08)", border:"rgba(16,185,129,0.25)" },
-  { key:"AI Coach", label:"AI COACH", title:"AI Coach", desc:"Your personal trading coach. Analyzes your notes and reviews to give personalized feedback.", color:"#7c3aed", bg:"rgba(124,58,237,0.08)", border:"rgba(124,58,237,0.25)" },
+  { key:"Review", label:"REVIEW", title:"Journal Review", desc:"Daily, weekly, monthly, quarterly, and annual reviews. Fully customizable blocks to match your trading style.", color:"#10b981", bg:"rgba(16,185,129,0.08)", border:"rgba(16,185,129,0.25)" },
+  { key:"Trade Log", label:"TRADE LOG", title:"Trade Log", desc:"Log every trade with full stats — win rate, P&L, profit factor. List view and calendar heatmap.", color:"#4f46e5", bg:"rgba(79,70,229,0.08)", border:"rgba(79,70,229,0.25)" },
 ];
-
 export function JournalLanding({ onSelect }) {
   return (
     <div style={{ fontFamily:"var(--font)" }}>
       <div style={{ padding:"28px 28px 22px", borderBottom:"1px solid var(--border)" }}>
         <div style={{ fontSize:10, fontWeight:600, letterSpacing:"0.2em", textTransform:"uppercase", color:"var(--accent)", marginBottom:10 }}>Journal</div>
         <div style={{ fontSize:26, fontWeight:700, color:"var(--text)", letterSpacing:"-0.6px", marginBottom:8 }}>Your trading record.</div>
-        <div style={{ fontSize:14, color:"var(--text-muted)", maxWidth:520, lineHeight:1.6 }}>Log your thinking, review your performance, and let AI Coach identify what your numbers mean.</div>
+        <div style={{ fontSize:14, color:"var(--text-muted)", maxWidth:520, lineHeight:1.6 }}>Log your trades, review your performance, and track your growth over time.</div>
       </div>
       <div style={{ padding:"20px 24px", display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14 }}>
         {CARDS.map(card => (
