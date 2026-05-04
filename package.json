@@ -14,6 +14,7 @@
     "bcryptjs": "^2.4.3",
     "next": "14.2.3",
     "next-auth": "^4.24.7",
+    "plaid": "^42.2.0",
     "react": "^18",
     "react-dom": "^18",
     "stripe": "^15.12.0"

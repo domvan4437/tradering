@@ -39,6 +39,7 @@ import CommunityLayout from './CommunityLayout'
 import CompeteLayout from './CompeteLayout'
 import CreatorStudioTab from './CreatorStudioTab'
 import BrokerTab from './BrokerTab'
+import SettingsTab from './SettingsTab'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
 import CreatorDashboard from './CreatorDashboard'
 import { StocksOverviewTab, StocksSectorsTab, StocksEarningsTab, StocksKeyLevelsTab } from './StocksSection'
@@ -682,9 +683,10 @@ export default function App() {
         ) : section==='account' ? (
           <div style={{padding:'20px 24px'}}>
             {!tab && <AccountLanding onSelect={t=>setTab(t)} />}
+            {tab==='Broker'     && <BrokerTab />}
             {tab==='My Profile' && <ProfileTab user={userInfo} session={session} />}
-            {tab==='Broker'                 && <BrokerTab />}
-            {tab==='Settings'               && <ThemeSettings />}
+            
+            {tab==='Settings'               && <SettingsTab user={userInfo} />}
           </div>
         ) : (
           <>
@@ -715,7 +717,7 @@ export default function App() {
             {tab==='Community'      && <CommunityTab />}
             {tab==='Settings'       && <ThemeSettings />}
             {tab==='Creator Studio'  && <CreatorDashboard currentUserId={session?.user?.id} />}
-            {tab==='Broker'           && <BrokerIntegrationTab />}
+            
             {tab==='Broker' && <BrokerTab />}
             {tab==='My Profile'       && <ProfileTab user={userInfo} session={session} />}
             {tab==='Personal Calendar' && <PersonalCalendarTab />}

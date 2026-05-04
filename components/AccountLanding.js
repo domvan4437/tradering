@@ -1,12 +1,10 @@
 "use client";
 import React from "react";
-
 const CARDS = [
-  { key:"Broker",     title:"Broker",     desc:"Connect your brokerage accounts to sync trades, verify your track record, and unlock Creator verification.", color:"var(--green)",  bg:"var(--green-bg)",           border:"var(--green-border)" },
-  { key:"My Profile", title:"My Profile", desc:"Set your visibility, build your public trading profile, and start your path to Creator verification.",      color:"var(--accent)", bg:"var(--accent-bg)",          border:"var(--accent-border)" },
-  { key:"Settings",   title:"Settings",   desc:"Theme, notifications, display preferences, and account management all in one place.",                       color:"#6b7280",       bg:"rgba(107,114,128,0.08)",    border:"rgba(107,114,128,0.2)" },
+  { key:"Broker",     title:"Broker",     desc:"Connect your brokerage accounts to sync trades, verify your track record, and unlock Creator verification.", color:"var(--green)",  bg:"var(--green-bg)",        border:"var(--green-border)"         },
+  { key:"My Profile", title:"My Profile", desc:"Set your visibility, build your public trading profile, and start your path to Creator verification.",      color:"var(--accent)", bg:"var(--accent-bg)",       border:"var(--accent-border)"        },
+  { key:"Settings",   title:"Settings",   desc:"Theme, notifications, display preferences, and account management all in one place.",                       color:"#6b7280",       bg:"rgba(107,114,128,0.08)", border:"rgba(107,114,128,0.2)"       },
 ];
-
 export function AccountLanding({ onSelect }) {
   return (
     <div style={{ fontFamily:"var(--font)" }}>
