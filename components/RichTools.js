@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from './ThemeProvider'
+import ImportTab from './ImportTab'
 
 const C = {
   bg: 'var(--bg)',
@@ -66,6 +67,7 @@ export function NotesTab() {
 
   const [allNotes, setAllNotes] = useState({});
   const [pageStack, setPageStack] = useState([]); // stack of note ids — current page is last
+  const [showImport, setShowImport] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
@@ -326,6 +328,20 @@ export function NotesTab() {
   // ── List / folder view ──
   return (
     <div style={{ fontFamily:'var(--font)' }}>
+      {showImport && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', zIndex:1000, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'40px 16px', overflowY:'auto' }}>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, width:'100%', maxWidth:900, position:'relative' }}>
+            <button onClick={() => setShowImport(false)}
+              style={{ position:'absolute', top:16, right:16, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer', padding:'5px 12px', zIndex:1 }}>
+              ✕ Close
+            </button>
+            <div style={{ padding:24 }}>
+              <ImportTab />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header + breadcrumb */}
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, flexWrap:'wrap' }}>
         <div style={{ flex:1 }}>
@@ -350,6 +366,10 @@ export function NotesTab() {
         {pageStack.length > 0 && (
           <button onClick={goBack} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>← Back</button>
         )}
+        <button onClick={() => setShowImport(true)}
+          style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          📥 Import
+        </button>
         <button onClick={newNote}
           style={{ padding:'7px 16px', borderRadius:8, border:'none', backgroundColor:'#4f46e5', color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
           + New {pageStack.length > 0 ? 'Subpage' : 'Page'}

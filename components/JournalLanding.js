@@ -13,7 +13,7 @@ export function JournalLanding({ onSelect }) {
         <div style={{ fontSize:26, fontWeight:700, color:"var(--text)", letterSpacing:"-0.6px", marginBottom:8 }}>Your trading record.</div>
         <div style={{ fontSize:14, color:"var(--text-muted)", maxWidth:520, lineHeight:1.6 }}>Log your trades, review your performance, and track your growth over time.</div>
       </div>
-      <div style={{ padding:"20px 24px", display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14 }}>
+      <div style={{ padding:"20px 24px", display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14 }}>
         {CARDS.map(card => (
           <div key={card.key} onClick={() => onSelect(card.key)}
             style={{ border:"1px solid var(--border)", borderRadius:14, overflow:"hidden", cursor:"pointer", transition:"all 0.18s" }}

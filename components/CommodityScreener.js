@@ -40,6 +40,7 @@ import CompeteLayout from './CompeteLayout'
 import CreatorStudioTab from './CreatorStudioTab'
 import BrokerTab from './BrokerTab'
 import SettingsTab from './SettingsTab'
+import ImportTab from './ImportTab'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
 import CreatorDashboard from './CreatorDashboard'
 import { StocksOverviewTab, StocksSectorsTab, StocksEarningsTab, StocksKeyLevelsTab } from './StocksSection'
@@ -679,6 +680,7 @@ export default function App() {
             {tab==='Strategy Backtest'       && <StrategyBacktestTab />}
             {tab==='COT Alerts'              && <COTAlertsTab />}
             {tab==='Screener'               && <ScreenerBuilder user={userInfo} />}
+            {tab==='Import'                 && <ImportTab />}
           </div>
         ) : section==='account' ? (
           <div style={{padding:'20px 24px'}}>

@@ -12,6 +12,8 @@
   "dependencies": {
     "@prisma/client": "^5.14.0",
     "bcryptjs": "^2.4.3",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.12.0",
     "next": "14.2.3",
     "next-auth": "^4.24.7",
     "plaid": "^42.2.0",

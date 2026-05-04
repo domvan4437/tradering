@@ -7,6 +7,7 @@ const TOOLS = [
   { key:"Strategy Backtest",  title:"Strategy Backtest",  desc:"Custom entry/exit conditions run against years of real price data.",               color:"#d97706",       bg:"rgba(217,119,6,0.08)",  border:"rgba(217,119,6,0.25)" },
   { key:"COT Alerts",         title:"COT Alerts",         desc:"Get notified when COT positioning reaches your defined thresholds.",               color:"#dc2626",       bg:"rgba(220,38,38,0.06)",  border:"rgba(220,38,38,0.2)" },
   { key:"Screener",           title:"Custom Screener",    desc:"Build screeners filtering every asset by COT, seasonal, price and more.",          color:"#7c3aed",       bg:"rgba(124,58,237,0.08)", border:"rgba(124,58,237,0.25)" },
+  { key:"Import",             title:"Import Data",         desc:"Import notes from Notion, Obsidian, Evernote, Bear, OneNote and 10+ platforms.",  color:"#4f46e5",       bg:"rgba(79,70,229,0.08)",  border:"rgba(79,70,229,0.25)" },
 ];
 
 export function ToolsLanding2({ onSelect }) {
