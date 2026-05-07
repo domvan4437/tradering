@@ -186,7 +186,8 @@ export default function ProfileTab({ user, session }) {
                 <button onClick={copyLink} style={{ padding:'2px 10px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:linkCopied?'var(--green)':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                   {linkCopied?'✓ Copied':'Copy Link'}
                 </button>
-                <a href={profileUrl} target="_blank" rel="noreferrer" style={{ fontFamily:'var(--font)', fontSize:11, color:PURPLE, textDecoration:'none', fontWeight:600 }}>View →</a>
+                <button onClick={()=>{ if(typeof window!=='undefined'&&window.__goToProfile&&profile.profileSlug) window.__goToProfile(profile.profileSlug); }}
+                style={{ fontFamily:'var(--font)', fontSize:11, color:'#fff', fontWeight:700, background:PURPLE, padding:'4px 12px', borderRadius:6, border:'none', cursor:'pointer' }}>View My Profile →</button>
               </>
             )}
           </div>

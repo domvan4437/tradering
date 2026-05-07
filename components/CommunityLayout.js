@@ -1,4 +1,9 @@
-'use client';
+'use client'
+function goToProfile(slug) {
+  if (typeof window !== 'undefined' && window.__goToProfile) {
+    window.__goToProfile(slug);
+  }
+};
 import { useState } from 'react';
 import FeedTab from './FeedTab';
 import GroupsTab from './GroupsTab';

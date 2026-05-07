@@ -39,7 +39,10 @@ import CommunityLayout from './CommunityLayout'
 import CompeteLayout from './CompeteLayout'
 import CreatorStudioTab from './CreatorStudioTab'
 import BrokerTab from './BrokerTab'
+import PublicProfileView from './PublicProfileView'
 import SettingsTab from './SettingsTab'
+import FloatingAICoach from './FloatingAICoach'
+import CompetitionBanner from './CompetitionBanner'
 import ImportTab from './ImportTab'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
 import CreatorDashboard from './CreatorDashboard'
@@ -77,23 +80,14 @@ const STAGES = [
 
 const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil','Natural Gas','Gasoline','Heating Oil','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Lean Hogs','Rice','Oats','Lumber']
 const SECTION_TABS = {
-  home:        ['Dashboard'],
-  markets:     ['Commodities','Futures','Forex','Stocks','Crypto','Charts'],
   community:   ['Feed','Groups'],
   compete:     ['Compete','Leaderboard'],
+  markets:     ['Commodities','Futures','Forex','Stocks','Crypto','News'],
+  charts:      ['Workspace'],
   creator:     ['Creator Studio'],
-  news:        ['All Markets','Forex','Commodities','Futures','Stocks','Crypto'],
-  coach:       ['AI Coach'],
+  tools2:      ['Journal','Trade Calc','Trade Plan Builder','Strategy Backtest','COT Alerts','Screener','Import'],
   journal:     ['Notes','Review','Trade Log'],
-  tools2:      ['Trade Calc','Trade Plan Builder','Strategy Backtest','COT Alerts','Screener'],
   account:     ['Broker','My Profile','Settings'],
-
-  // Sub-sections rendered inside markets tab
-  commodities: ['Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist','Backtesting'],
-  forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
-  stocks:      ['Overview','Sectors','Earnings','Key Levels'],
-  crypto:      ['Overview','Watchlist','News'],
-  futures:     ['Overview','Financial COT','Yield Curve','Key Levels'],
 }
 const TABS = SECTION_TABS.commodities
 const C = {
@@ -447,7 +441,8 @@ export default function App() {
   const [upgradeFeature, setUpgradeFeature] = useState(null)
   const handleUpgrade = (feature) => { setUpgradeFeature(feature||null); setShowUpgrade(true) }
   const { theme, toggle } = useTheme()
-  const [section, setSection] = useState('home')
+  const [section, setSection] = useState('community')
+  const [viewingProfile, setViewingProfile] = useState(null) // slug of profile being viewed
 
   useEffect(() => {
     if (session) fetch('/api/user').then(r=>r.json()).then(d=>{ if (!d.error) setUserInfo(d) })
@@ -467,7 +462,10 @@ export default function App() {
     
   },[])
 
-  const navItems = [['Home','home'],['Markets','markets'],['Charts','charts'],['News','news'],['Community','community'],['Compete','compete'],['Creator','creator'],['AI Coach','coach'],['Journal','journal'],['Tools','tools2'],['Account','account']]
+  const goToProfile = (slug) => { setViewingProfile(slug); }
+  // Expose globally so child components can navigate to profiles
+  if (typeof window !== 'undefined') window.__goToProfile = goToProfile;
+  const navItems = [['Community','community'],['Compete','compete'],['Markets','markets'],['Charts','charts'],['Creator','creator'],['Tools','tools2'],['Account','account']]
 
   return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontFamily:'var(--font)', fontSize:13 }}>
@@ -628,6 +626,7 @@ export default function App() {
 
         
       </div>
+      <CompetitionBanner onNavigate={(sec) => { setSection(sec); setTab(''); }} />
       <TickerStrip />
 
 
@@ -642,19 +641,12 @@ export default function App() {
       )}
 
       {/* Main content — full width, no max-width cap on outer, padding on inner */}
-      <div style={{ padding:'20px 24px' }} onClick={()=>setShowAccount(false)}>
-        {section==='home' ? (
-          <HomePage />
-        ) : section==='news' ? (
-          <NewsTab initialTab={tab || 'All Markets'} />
-        ) : section==='markets' ? (
-          <MarketsLayout
-            tab={tab}
-            setTab={setTab}
-            plan={plan}
-            onUpgrade={()=>handleUpgrade()}
-            currentUserId={session?.user?.id}
-          />
+      <div style={{ padding:'20px 24px', paddingTop:120 }} onClick={()=>setShowAccount(false)}>
+        {section==='markets' ? (
+          <div>
+            {tab==='News' && <div style={{padding:'20px 24px'}}><NewsTab /></div>}
+            {tab!=='News' && <MarketsLayout tab={tab} setTab={setTab} plan={plan} onUpgrade={()=>handleUpgrade()} currentUserId={session?.user?.id} />}
+          </div>
         ) : section==='community' ? (
           <CommunityLayout tab={tab} setTab={setTab} currentUserId={session?.user?.id} />
         ) : section==='compete' ? (
@@ -663,8 +655,6 @@ export default function App() {
           <div style={{padding:'20px 24px'}}><CreatorStudioTab /></div>
         ) : section==='charts' ? (
           <div style={{padding:'20px 24px'}}><ChartWorkspace /></div>
-        ) : section==='coach' ? (
-          <div style={{padding:'20px 24px'}}><AICoachTab /></div>
         ) : section==='journal' ? (
           <div style={{padding:'20px 24px'}}>
             {!tab && <JournalLanding onSelect={t=>setTab(t)} />}
@@ -675,6 +665,10 @@ export default function App() {
         ) : section==='tools2' ? (
           <div style={{padding:'20px 24px'}}>
             {!tab && <ToolsLanding2 onSelect={t=>setTab(t)} />}
+            {tab==='Journal'    && <div style={{padding:'20px 24px'}}><JournalLanding onSelect={t=>setTab(t)} /></div>}
+            {tab==='Notes'      && <div style={{padding:'20px 24px'}}><NotesTab /></div>}
+            {tab==='Review'     && <div style={{padding:'20px 24px'}}><JournalReviewTab /></div>}
+            {tab==='Trade Log'  && <div style={{padding:'20px 24px'}}><JournalTradeLogTab /></div>}
             {tab==='Trade Calc' && <TradeCalcTab />}
             {tab==='Trade Plan Builder'      && <TradePlanTab />}
             {tab==='Strategy Backtest'       && <StrategyBacktestTab />}
@@ -684,7 +678,7 @@ export default function App() {
           </div>
         ) : section==='account' ? (
           <div style={{padding:'20px 24px'}}>
-            {!tab && <AccountLanding onSelect={t=>setTab(t)} />}
+            {!tab && <AccountLanding onSelect={t=>setTab(t)} onViewProfile={()=>{ const slug = userInfo?.profileSlug || userInfo?.id; if(slug) setViewingProfile(slug); }} />}
             {tab==='Broker'     && <BrokerTab />}
             {tab==='My Profile' && <ProfileTab user={userInfo} session={session} />}
             
@@ -736,6 +730,22 @@ export default function App() {
           </>
         )}
       </div>
+      {/* Profile overlay - shows when viewing a trader's profile */}
+      {viewingProfile && (
+        <div style={{ position:'fixed', inset:0, background:'var(--bg)', zIndex:400, overflowY:'auto' }}>
+          <div style={{ maxWidth:900, margin:'0 auto', padding:'60px 24px 40px' }}>
+            {/* Back button */}
+            <button onClick={()=>setViewingProfile(null)}
+              style={{ display:'flex', alignItems:'center', gap:8, background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:14, fontWeight:600, marginBottom:20, padding:0 }}
+              onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
+              onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
+              {'← Back'}
+            </button>
+            <PublicProfileView slug={viewingProfile} />
+          </div>
+        </div>
+      )}
+      <FloatingAICoach />
       {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} currentPlan={plan} feature={upgradeFeature} />}
     </div>
   )

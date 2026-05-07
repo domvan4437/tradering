@@ -5,10 +5,16 @@ const CARDS = [
   { key:"My Profile", title:"My Profile", desc:"Set your visibility, build your public trading profile, and start your path to Creator verification.",      color:"var(--accent)", bg:"var(--accent-bg)",       border:"var(--accent-border)"        },
   { key:"Settings",   title:"Settings",   desc:"Theme, notifications, display preferences, and account management all in one place.",                       color:"#6b7280",       bg:"rgba(107,114,128,0.08)", border:"rgba(107,114,128,0.2)"       },
 ];
-export function AccountLanding({ onSelect }) {
+export function AccountLanding({ onSelect, onViewProfile }) {
   return (
     <div style={{ fontFamily:"var(--font)" }}>
       <div style={{ padding:"28px 28px 22px", borderBottom:"1px solid var(--border)" }}>
+        {onViewProfile && (
+          <button onClick={onViewProfile}
+            style={{ marginBottom:16, padding:'10px 20px', borderRadius:10, border:'none', background:'#4f46e5', color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
+            {'👤 View My Public Profile →'}
+          </button>
+        )}
         <div style={{ fontSize:10, fontWeight:600, letterSpacing:"0.2em", textTransform:"uppercase", color:"var(--accent)", marginBottom:10 }}>Account</div>
         <div style={{ fontSize:26, fontWeight:700, color:"var(--text)", letterSpacing:"-0.6px", marginBottom:8 }}>Your account hub.</div>
         <div style={{ fontSize:14, color:"var(--text-muted)", maxWidth:520, lineHeight:1.6 }}>Connect your brokers, build your public profile, and manage your settings.</div>

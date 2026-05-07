@@ -23,6 +23,34 @@ function newChat() {
   return { id: Date.now(), title: 'New Chat', createdAt: new Date().toISOString(), messages: [{ id:1, role:'assistant', content:'Hi! I am TradeRing AI. Ask me anything, or use a quick action above to get started.', time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }] };
 }
 
+function RateLimitMsg({ m }) {
+  const PURPLE = '#4f46e5';
+  return (
+    <div style={{ margin:'12px 0', padding:'16px 18px', background:'rgba(79,70,229,0.08)', border:'1px solid rgba(79,70,229,0.25)', borderRadius:12 }}>
+      <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:PURPLE, marginBottom:6 }}>
+        ⚡ Daily AI limit reached
+      </div>
+      <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', lineHeight:1.6, marginBottom:12 }}>
+        {m.plan === 'free'
+          ? `You've used all ${m.limit} free messages today. Upgrade to Pro for 100 messages/day, or Trader for unlimited access.`
+          : `You've used all ${m.limit} messages today. Your limit resets at midnight.`}
+      </div>
+      {m.upgradeRequired && (
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={() => window.location.href = '/api/stripe/checkout?plan=pro'}
+            style={{ padding:'8px 18px', borderRadius:8, border:'none', backgroundColor:PURPLE, color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            Upgrade to Pro — $29/mo
+          </button>
+          <button onClick={() => window.location.href = '/api/stripe/checkout?plan=trader'}
+            style={{ padding:'8px 18px', borderRadius:8, border:'1px solid '+PURPLE, background:'transparent', color:PURPLE, fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            Trader — $79/mo
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Msg({ m }) {
   const u = m.role === 'user';
   return (
@@ -103,7 +131,13 @@ export default function AICoachTab() {
     try {
       const r = await fetch('/api/ai-coach', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ messages:currentMsgs.map(m=>({role:m.role,content:m.content})), mode:'chat' }) });
       const d = await r.json();
-      const aiMsg = { id:Date.now()+1, role:'assistant', content:d.analysis||d.response||d.error||'Something went wrong.', time:ts() };
+      if (r.status === 429) {
+        const limitMsg = { id:Date.now()+1, role:'assistant', isRateLimit:true, plan:d.plan, upgradeRequired:d.upgradeRequired, used:d.used, limit:d.limit, content:d.message||'Daily limit reached.', time:ts() };
+        updateChat(activeChatId, c => ({ ...c, messages: [...c.messages, limitMsg] }));
+      } else {
+        const aiMsg = { id:Date.now()+1, role:'assistant', content:d.analysis||d.response||d.error||'Something went wrong.', time:ts() };
+        updateChat(activeChatId, c => ({ ...c, messages: [...c.messages, aiMsg] }));
+      }
       updateChat(activeChatId, c => ({ ...c, messages: [...c.messages, aiMsg] }));
     } catch {
       const errMsg = { id:Date.now()+1, role:'assistant', content:'Connection error. Please try again.', time:ts() };

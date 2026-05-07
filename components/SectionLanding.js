@@ -272,6 +272,21 @@ export function MarketsLanding({ onSelect }) {
       ],
     },
     {
+      title: 'News & Calendar',
+      tab: 'News',
+      accent: '#dc2626',
+      tags: ['Economic Calendar', 'Market Events', 'All Assets'],
+      description: 'Real-time market news, economic calendar events, and breaking developments across all asset classes.',
+      pills: ['Forex Factory', 'Earnings', 'Fed Events'],
+      pillColors: ['#dc2626', '#d97706', '#6366f1'],
+      prices: [
+        { name: 'NFP',      pct: null, up: true,  label: 'Fri' },
+        { name: 'CPI',      pct: null, up: false, label: 'Wed' },
+        { name: 'Fed',      pct: null, up: true,  label: 'Tue' },
+        { name: 'GDP',      pct: null, up: true,  label: 'Thu' },
+      ],
+    },
+    {
       title: 'Crypto',
       tab: 'Crypto',
       accent: '#f59e0b',
@@ -360,7 +375,7 @@ export function MarketsLanding({ onSelect }) {
                       {card.prices.map(p => (
                         <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>{p.name}</span>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color: p.up ? 'var(--green)' : 'var(--red)' }}>{p.up ? '+' : ''}{p.pct.toFixed(2)}%</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color: p.pct !== null ? (p.up ? 'var(--green)' : 'var(--red)') : 'var(--text-muted)' }}>{p.pct !== null && p.pct !== undefined ? (p.up ? '+' : '') + p.pct.toFixed(2) + '%' : (p.label || '—')}</span>
                         </div>
                       ))}
                     </div>

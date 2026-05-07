@@ -1,12 +1,84 @@
 import { getSession } from '../../../lib/auth'
 import { prisma } from '../../../lib/prisma'
 
+// ── Rate limits by plan ───────────────────────────────────────
+const LIMITS = {
+  free:   10,   // 10 messages per day
+  pro:    100,  // 100 messages per day
+  trader: null, // unlimited
+};
+
+async function checkRateLimit(userId, plan) {
+  const limit = LIMITS[plan] ?? LIMITS.free;
+  if (limit === null) return { allowed: true, used: 0, limit: null };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Count AI calls today using customFields JSON column
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { customFields: true },
+  });
+
+  const fields = (user?.customFields || {});
+  const todayKey = today.toISOString().slice(0, 10);
+  const aiUsage = fields.aiUsage || {};
+
+  // Reset if it's a new day
+  const used = aiUsage.date === todayKey ? (aiUsage.count || 0) : 0;
+
+  if (used >= limit) {
+    return { allowed: false, used, limit };
+  }
+
+  // Increment counter
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      customFields: {
+        ...fields,
+        aiUsage: { date: todayKey, count: used + 1 },
+      },
+    },
+  });
+
+  return { allowed: true, used: used + 1, limit };
+}
+
 export async function POST(request) {
   const session = await getSession()
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return Response.json({ error: 'No API key' }, { status: 500 })
+
+  // ── Rate limiting ─────────────────────────────────────────
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { plan: true },
+    });
+
+    const plan = user?.plan || 'free';
+    const { allowed, used, limit } = await checkRateLimit(session.user.id, plan);
+
+    if (!allowed) {
+      return Response.json({
+        error: 'rate_limit',
+        message: plan === 'free'
+          ? `You've used all ${limit} free AI messages for today. Upgrade to Pro for 100 messages/day, or Trader for unlimited.`
+          : `You've reached your daily limit of ${limit} AI messages. Resets at midnight.`,
+        used,
+        limit,
+        plan,
+        upgradeRequired: plan === 'free',
+      }, { status: 429 });
+    }
+  } catch(e) {
+    // If rate limit check fails, allow the request (don't block users due to our DB errors)
+    console.error('Rate limit check failed:', e.message);
+  }
 
   const body = await request.json()
   const { messages: chatHistory, mode } = body
@@ -51,7 +123,6 @@ export async function POST(request) {
       shortRecord: `${wins.filter(s => s.direction === 'SHORT').length}W/${withOutcome.filter(s => s.direction === 'SHORT' && s.outcome === 'LOSS').length}L`,
     }
   } catch(e) {
-    // Continue without DB data if unavailable
     userData = { note: 'Trading data unavailable — providing general coaching.' }
   }
 
@@ -75,12 +146,10 @@ COACHING GUIDELINES:
 - Keep responses focused and actionable. Use formatting (bold, bullet points) to make responses scannable.
 - If asked about specific current market prices or live data, note that you don't have real-time data but can analyze based on what they share.`
 
-  // Build messages array — filter out system messages, keep user/assistant only
   const apiMessages = (chatHistory || [])
     .filter(m => m.role === 'user' || m.role === 'assistant')
     .map(m => ({ role: m.role, content: m.content }))
 
-  // Ensure we have at least one user message
   if (!apiMessages.length || apiMessages[apiMessages.length - 1].role !== 'user') {
     return Response.json({ error: 'No user message found' }, { status: 400 })
   }

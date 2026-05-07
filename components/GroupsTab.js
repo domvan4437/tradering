@@ -1,25 +1,29 @@
-'use client';
+'use client'
 import { useState, useRef, useEffect } from 'react';
 
 // ── Persistence helpers ───────────────────────────────────────
 function saveGroups(groups) {
+  if (typeof window === 'undefined') return;
   try { localStorage.setItem('tr_groups', JSON.stringify(groups)); } catch(e) {}
 }
 function loadGroups() {
+  if (typeof window === 'undefined') return [];
   try { const d = localStorage.getItem('tr_groups'); return d ? JSON.parse(d) : []; } catch(e) { return []; }
 }
 function saveChatKey(groupId) { return 'tr_chat_' + groupId; }
 function saveChat(groupId, messages) {
+  if (typeof window === 'undefined') return;
   try { localStorage.setItem(saveChatKey(groupId), JSON.stringify(messages)); } catch(e) {}
 }
 function loadChat(groupId) {
+  if (typeof window === 'undefined') return [];
   try { const d = localStorage.getItem(saveChatKey(groupId)); return d ? JSON.parse(d) : []; } catch(e) { return []; }
 }
 
 // ── Avatar ────────────────────────────────────────────────────
 function Av({ letter, grad, size=36, online }) {
   return (
-    <div style={{ position:'relative', flexShrink:0 }}>
+    <div suppressHydrationWarning style={{ position:'relative', flexShrink:0 }}>
       <div style={{ width:size, height:size, borderRadius:'50%', background:grad, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:size*0.34, fontWeight:800, color:'#fff' }}>{letter}</div>
       {online !== undefined && <div style={{ position:'absolute', bottom:1, right:1, width:8, height:8, borderRadius:'50%', background: online?'var(--green)':'var(--surface3)', border:'2px solid var(--surface)' }} />}
     </div>
@@ -489,7 +493,14 @@ function CreateGroupModal({ onClose, onCreate }) {
 
 // ── Main GroupsTab ────────────────────────────────────────────
 export default function GroupsTab({ currentUserId }) {
-  const [groups, setGroups] = useState(() => loadGroups());
+  const [groups, setGroups] = useState([]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setGroups(loadGroups());
+  }, []);
+
   const [filter, setFilter] = useState('all');
   const [openGroup, setOpenGroup] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -528,7 +539,7 @@ export default function GroupsTab({ currentUserId }) {
       <div style={{ flex:1, overflowY:'auto', paddingBottom:8 }}>
         {groups.length === 0 ? (
           <div style={{ padding:'40px 16px', textAlign:'center' }}>
-            <div style={{ fontSize:32, marginBottom:10 }}>👥</div>
+            <div style={{ fontSize:32, marginBottom:10 }} suppressHydrationWarning>👥</div>
             <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)', marginBottom:6 }}>No groups yet</div>
             <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', lineHeight:1.6 }}>Create your first group to get started.</div>
           </div>

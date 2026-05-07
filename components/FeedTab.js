@@ -1,4 +1,10 @@
-'use client';
+'use client'
+// Navigate to a user profile inside the app
+function goToProfile(slug) {
+  if (typeof window !== 'undefined' && window.__goToProfile) {
+    window.__goToProfile(slug);
+  }
+};
 import { useState, useRef } from 'react';
 
 // ── Constants ─────────────────────────────────────────────────
@@ -57,7 +63,9 @@ function Post({ post, onLike, onRepost, onDelete }) {
     <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', gap:12, transition:'background 0.1s' }}
       onMouseEnter={e => e.currentTarget.style.background='var(--accent-bg)'}
       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-      <Avatar letter={post.avatar} grad={post.grad} size={42} />
+      <div onClick={()=>{ if(typeof window!=='undefined'&&window.__goToProfile) window.__goToProfile(post.slug||post.user); }} style={{ cursor:'pointer' }}>
+  <Avatar letter={post.avatar} grad={post.grad} size={42} />
+</div>
       <div style={{ flex:1, minWidth:0 }}>
         {post.repostedBy && (
           <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:6, display:'flex', alignItems:'center', gap:5 }}>
@@ -66,7 +74,7 @@ function Post({ post, onLike, onRepost, onDelete }) {
           </div>
         )}
         <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom:4, flexWrap:'wrap' }}>
-          <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)' }}>{post.user}</span>
+          <span onClick={()=>{ if(typeof window!=='undefined'&&window.__goToProfile) window.__goToProfile(post.slug||post.user); }} style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)', cursor:'pointer' }} onMouseEnter={e=>e.currentTarget.style.color='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text)'}>{post.user}</span>
           {post.verified && <span style={{ color:'var(--accent)', fontSize:12, fontWeight:700 }}>✓</span>}
           <span style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>{post.handle}</span>
           <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginLeft:'auto' }}>{post.time}</span>

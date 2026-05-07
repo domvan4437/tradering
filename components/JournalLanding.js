@@ -4,6 +4,7 @@ const CARDS = [
   { key:"Notes", label:"NOTES", title:"Notes", desc:"Quick notes tied to markets, dates, and trade ideas. Your scratchpad for observations.", color:"var(--accent)", bg:"var(--accent-bg)", border:"var(--accent-border)" },
   { key:"Review", label:"REVIEW", title:"Journal Review", desc:"Daily, weekly, monthly, quarterly, and annual reviews. Fully customizable blocks to match your trading style.", color:"#10b981", bg:"rgba(16,185,129,0.08)", border:"rgba(16,185,129,0.25)" },
   { key:"Trade Log", label:"TRADE LOG", title:"Trade Log", desc:"Log every trade with full stats — win rate, P&L, profit factor. List view and calendar heatmap.", color:"#4f46e5", bg:"rgba(79,70,229,0.08)", border:"rgba(79,70,229,0.25)" },
+  { key:"Import", title:"Import Data", desc:"Bring in notes from Notion, Obsidian, Evernote, Bear, OneNote and 10+ platforms in seconds.", color:"#7c3aed", bg:"rgba(124,58,237,0.08)", border:"rgba(124,58,237,0.25)" },
 ];
 export function JournalLanding({ onSelect }) {
   return (
