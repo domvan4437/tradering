@@ -1,12 +1,15 @@
 import { getSession } from '../../../../lib/auth'
 import { prisma } from '../../../../lib/prisma'
 
-export async function GET() {
+export async function GET(request) {
   const session = await getSession()
+  const { searchParams } = new URL(request.url)
+  const search = searchParams.get('search') || ''
+  const limit = parseInt(searchParams.get('limit') || '20')
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const users = await prisma.user.findMany({
-    where: { isPublic: true },
+    where: { isPublic: true, ...(search ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { displayName: { contains: search, mode: 'insensitive' } }, { username: { contains: search, mode: 'insensitive' } }] } : {}) },
     select: {
       id: true, name: true, username: true, plan: true,
       screenings: { select: { outcome: true, passed: true, createdAt: true } },

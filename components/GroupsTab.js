@@ -492,7 +492,7 @@ function CreateGroupModal({ onClose, onCreate }) {
 }
 
 // ── Main GroupsTab ────────────────────────────────────────────
-export default function GroupsTab({ currentUserId }) {
+export default function GroupsTab({ currentUserId, searchQuery = '' }) {
   const [groups, setGroups] = useState([]);
   const [mounted, setMounted] = useState(false);
 
