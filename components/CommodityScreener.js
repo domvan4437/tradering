@@ -353,21 +353,21 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
     futures:     ['Overview','Financial COT','Yield Curve','Key Levels'],
     charts:      ['Workspace'],
   };
-
   const subTabs = SUB_TABS[section] || [];
-
   if (showLanding) {
-    const mkt = (tab || '').toLowerCase();
-    if (['commodities','futures','forex','stocks','crypto'].includes(mkt)) {
-      return <MarketOverview market={mkt} />;
-    }
-    return <MarketsLanding onSelect={(t) => setTab(t)} />;
+    return <MarketOverview onSelect={(key) => { const t = key.charAt(0).toUpperCase() + key.slice(1); setTab(t); setSubTab(key === 'commodities' ? 'Screener' : 'Overview'); }} />;
   }
 
   // Show market overview when no subTab selected
   if (!subTab && section !== 'charts') {
-    return <MarketOverview market={section} />;
+    return <MarketOverview onSelect={(key) => { const t = key.charAt(0).toUpperCase() + key.slice(1); setTab(t); setSubTab(key === 'commodities' ? 'Screener' : 'Overview'); }} />;
   }
+
+
+
+
+
+
 
   return (
     <div>
