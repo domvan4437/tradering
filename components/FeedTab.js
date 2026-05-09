@@ -1,10 +1,11 @@
 'use client'
 // Navigate to a user profile inside the app
 function goToProfile(slug) {
-  if (typeof window !== 'undefined' && window.__goToProfile) {
-    window.__goToProfile(slug);
-  }
-};
+  if (typeof window !== 'undefined' && window.__goToProfile) window.__goToProfile(slug);
+}
+function openDM(user) {
+  if (typeof window !== 'undefined' && window.__openDM) window.__openDM(user);
+}
 import { useState, useRef, useEffect } from 'react';
 
 // ── Constants ─────────────────────────────────────────────────
@@ -54,10 +55,18 @@ function Post({ post, onLike, onRepost, onDelete }) {
   const [showMenu, setShowMenu] = useState(false);
   const isOwn = post.user === 'you';
   const fmt = (n) => n >= 1000 ? (n/1000).toFixed(1)+'K' : n;
+  const [localComments, setLocalComments] = useState(post.comments_data || []);
+  const saveComments = (newComments) => {
+    const all = loadPosts();
+    const idx = all.findIndex(p => p.id === post.id);
+    if (idx !== -1) { all[idx].comments_data = newComments; localStorage.setItem('tr_feed_posts', JSON.stringify(all)); }
+  };
 
   const addComment = () => {
     if(!comment.trim()) return;
-    setComments(p => [...p, { id:Date.now(), text:comment }]);
+    const newC = [...localComments, { id:Date.now(), text:comment, user:'you', time:'now' }];
+    setLocalComments(newC);
+    saveComments(newC);
     setComment('');
   };
 
@@ -113,6 +122,12 @@ function Post({ post, onLike, onRepost, onDelete }) {
               </div>
             )}
           </div>
+        {(post.assetTag || (post.postType && post.postType !== 'General')) && (
+          <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
+            {post.assetTag ? <span style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20, background:'var(--accent-bg)', color:'var(--accent)', border:'1px solid var(--accent)' }}>{post.assetTag}</span> : null}
+            {post.postType && post.postType !== 'General' ? <span style={{ fontFamily:'var(--font)', fontSize:11, padding:'2px 8px', borderRadius:20, background:'var(--surface2)', color:'var(--text-muted)', border:'1px solid var(--border)' }}>{post.postType}</span> : null}
+          </div>
+        )}
         </div>
 
         <div style={{ fontFamily:'var(--font)', fontSize:14, color:'var(--text)', lineHeight:1.65, marginBottom:10 }}>
@@ -211,7 +226,7 @@ function Post({ post, onLike, onRepost, onDelete }) {
         {showComments && (
           <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)' }}>
             {comments.length === 0 && <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:8 }}>No comments yet.</div>}
-            {comments.map(c => (
+            {localComments.map(c => (
               <div key={c.id} style={{ display:'flex', gap:8, marginBottom:8 }}>
                 <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:9, fontWeight:800, color:'#fff', flexShrink:0 }}>D</div>
                 <div style={{ flex:1, background:'var(--surface2)', borderRadius:10, padding:'6px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text)' }}>{c.text}</div>
@@ -240,6 +255,7 @@ export default function FeedTab() {
   const fileInputRef              = useRef(null);
   const [pendingFile, setPendingFile] = useState(null); // { url, type, name, size }
   const [postType, setPostType] = useState('General');
+  const [assetTag, setAssetTag] = useState('');
 
   const POST_TYPES = ['General', 'Idea', 'Screener', 'Strategy', 'COT Signal'];
   const TAB_FILTER = {
@@ -287,6 +303,7 @@ export default function FeedTab() {
       body: postText,
       tags: [],
       postType,
+      assetTag: assetTag.trim(),
       tradeTag: null,
       attachmentUrl: pendingFile?.url || null,
       attachmentType: pendingFile?.type || null,
@@ -295,7 +312,7 @@ export default function FeedTab() {
       likes:0, comments:0, reposts:0, views:0, liked:false, reposted:false,
     };
     setPosts(p => [newPost, ...p]);
-    setPostText(''); setPendingFile(null); setPostType('General');
+    setPostText(''); setPendingFile(null); setPostType('General'); setAssetTag('');
   };
 
   const charsLeft = 280 - postText.length;
@@ -346,6 +363,20 @@ export default function FeedTab() {
                     transition:'all 0.15s',
                   }}>{t}</button>
                 ))}
+              </div>
+              {/* Asset tag */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', flexShrink:0 }}>Asset:</span>
+                <input
+                  value={assetTag}
+                  onChange={e => setAssetTag(e.target.value.toUpperCase().slice(0,10))}
+                  placeholder="e.g. GOLD, EURUSD, BTC"
+                  list="asset-list"
+                  style={{ flex:1, padding:'4px 10px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font-mono)', fontSize:12, color:'var(--text)', outline:'none' }}
+                />
+                <datalist id="asset-list">
+                  {['GOLD','SILVER','CRUDE OIL','NAT GAS','CORN','WHEAT','SOYBEANS','COFFEE','COTTON','SUGAR','EUR/USD','GBP/USD','USD/JPY','AUD/USD','BTC','ETH','SPX','NQ','ES'].map(a => <option key={a} value={a} />)}
+                </datalist>
               </div>
 
               {/* Pending attachment preview */}

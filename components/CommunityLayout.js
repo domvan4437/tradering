@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import FeedTab from './FeedTab';
 import GroupsTab from './GroupsTab';
+import DMTab from './DMTab';
 
 const PURPLE = '#4f46e5';
 
@@ -140,22 +141,24 @@ export default function CommunityLayout({ currentUserId }) {
         {/* Sticky header */}
         <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--border)', flexShrink:0, background:'var(--bg)' }}>
           <div style={{ display:'flex', gap:6, marginBottom:10 }}>
-            {['discover','mine'].map(mode => (
+            {[['discover','Groups'],['mine','My Groups'],['dms','Messages']].map(([mode,label]) => (
               <button key={mode} onClick={() => setGroupMode(mode)} style={{
-                flex:1, padding:'8px', borderRadius:10,
+                flex:1, padding:'7px 4px', borderRadius:10,
                 border: groupMode===mode ? 'none' : '1px solid var(--border)',
                 background: groupMode===mode ? PURPLE : 'transparent',
                 color: groupMode===mode ? '#fff' : 'var(--text-muted)',
-                fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer',
-                transition:'all 0.15s',
-              }}>{mode === 'discover' ? 'Discover' : 'My Groups'}</button>
+                fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer',
+                transition:'all 0.15s', whiteSpace:'nowrap',
+              }}>{label}</button>
             ))}
           </div>
-          <GroupSearch onSearch={setGroupSearch} />
+          {groupMode !== 'dms' && <GroupSearch onSearch={setGroupSearch} />}
         </div>
         {/* Scrollable groups list — isolated */}
         <div style={{ flex:1, minHeight:0, overflowY:'scroll', overflowX:'hidden' }}>
-          <GroupsTab currentUserId={currentUserId} searchQuery={groupSearch} mode={groupMode} />
+          {groupMode === 'dms'
+            ? <DMTab />
+            : <GroupsTab currentUserId={currentUserId} searchQuery={groupSearch} mode={groupMode} />}
         </div>
       </div>
 
