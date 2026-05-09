@@ -641,7 +641,7 @@ export default function App() {
       )}
 
       {/* Main content — full width, no max-width cap on outer, padding on inner */}
-      <div style={{ padding:'20px 24px', paddingTop:120 }} onClick={()=>setShowAccount(false)}>
+      <div style={{ padding: section==='community' ? '0' : '20px 24px', paddingTop: section==='community' ? 0 : 120, overflow: section==='community' ? 'hidden' : 'visible' }} onClick={()=>setShowAccount(false)}>
         {section==='markets' ? (
           <div>
             {tab==='News' && <div style={{padding:'20px 24px'}}><NewsTab /></div>}

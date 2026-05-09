@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 // ── Persistence helpers ───────────────────────────────────────
 function saveGroups(groups) {
@@ -7,8 +7,8 @@ function saveGroups(groups) {
   try { localStorage.setItem('tr_groups', JSON.stringify(groups)); } catch(e) {}
 }
 function loadGroups() {
-  if (typeof window === 'undefined') return [];
-  try { const d = localStorage.getItem('tr_groups'); return d ? JSON.parse(d) : []; } catch(e) { return []; }
+  if (typeof window === "undefined") return [];
+  try { const d = localStorage.getItem('tr_groups'); if (!d) return []; return JSON.parse(d).map(g => ({ visibility:'open', country:'', desc:'', profileImg:null, ...g })); } catch(e) { return []; }
 }
 function saveChatKey(groupId) { return 'tr_chat_' + groupId; }
 function saveChat(groupId, messages) {
@@ -177,7 +177,142 @@ function ChatMessage({ m, onJoinCall }) {
 }
 
 // ── Group Room ────────────────────────────────────────────────
-function GroupRoom({ group, onBack }) {
+
+function GroupSettings({ group, onUpdate }) {
+  const [name, setName] = React.useState(group.name || '');
+  const [desc, setDesc] = React.useState(group.desc || '');
+  const [country, setCountry] = React.useState(group.country || '');
+  const [visibility, setVisibility] = React.useState(group.visibility || 'open');
+  const [price, setPrice] = React.useState(group.price || '');
+  const [profileImg, setProfileImg] = React.useState(group.profileImg || null);
+  const [grad, setGrad] = React.useState(group.grad || 'linear-gradient(135deg,#4f46e5,#7c3aed)');
+  const [saved, setSaved] = React.useState(false);
+  const imgRef = React.useRef(null);
+
+  const GRADS = [
+    'linear-gradient(135deg,#4f46e5,#7c3aed)',
+    'linear-gradient(135deg,#0891b2,#0e7490)',
+    'linear-gradient(135deg,#16a34a,#15803d)',
+    'linear-gradient(135deg,#d97706,#b45309)',
+    'linear-gradient(135deg,#dc2626,#b91c1c)',
+  ];
+
+  const VIS = [
+    { key:'open',   label:'Open',        icon:'🌐', desc:'Anyone can join instantly' },
+    { key:'invite', label:'Invite Only',  icon:'✉️',  desc:'Members must be approved by the founder' },
+    { key:'closed', label:'Closed',       icon:'🔒', desc:'Hidden from discovery, invite link only' },
+  ];
+
+  const handleImg = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setProfileImg(ev.target.result);
+    reader.readAsDataURL(f);
+  };
+
+  const save = () => {
+    onUpdate({ name, desc, country, visibility, price: parseFloat(price) || 0, profileImg, grad });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const inp = {
+    width: '100%', padding: '10px 14px', borderRadius: 10,
+    border: '1px solid var(--border)', background: 'var(--surface2)',
+    fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text)',
+    outline: 'none', boxSizing: 'border-box',
+  };
+
+  const COUNTRIES = [
+    'Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Azerbaijan',
+    'Bahrain','Bangladesh','Belarus','Belgium','Bolivia','Brazil','Bulgaria','Cambodia',
+    'Canada','Chile','China','Colombia','Croatia','Czech Republic','Denmark','Ecuador',
+    'Egypt','Estonia','Finland','France','Germany','Ghana','Greece','Hungary','India',
+    'Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kazakhstan',
+    'Kenya','Kuwait','Latvia','Lebanon','Lithuania','Malaysia','Mexico','Morocco',
+    'Netherlands','New Zealand','Nigeria','Norway','Pakistan','Peru','Philippines',
+    'Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Serbia','Singapore',
+    'South Africa','South Korea','Spain','Sweden','Switzerland','Taiwan','Thailand',
+    'Turkey','UAE','Ukraine','United Kingdom','United States','Uruguay','Venezuela','Vietnam',
+  ];
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', padding:'16px' }}>
+      <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)', marginBottom:16 }}>Group Settings</div>
+
+      {/* Photo */}
+      <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18, padding:'14px', borderRadius:12, background:'var(--surface2)', border:'1px solid var(--border)' }}>
+        <div onClick={() => imgRef.current && imgRef.current.click()} style={{ width:56, height:56, borderRadius:12, background:grad, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', border:'2px solid var(--border)', flexShrink:0 }}>
+          {profileImg
+            ? <img src={profileImg} alt="group" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            : <span style={{ fontFamily:'var(--font-mono)', fontSize:20, fontWeight:800, color:'#fff' }}>{name ? name[0].toUpperCase() : '?'}</span>}
+        </div>
+        <input ref={imgRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleImg} />
+        <div>
+          <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)', marginBottom:6 }}>Group Photo</div>
+          <div style={{ display:'flex', gap:6, marginBottom:6 }}>
+            {GRADS.map(g => (
+              <div key={g} onClick={() => { setGrad(g); setProfileImg(null); }}
+                style={{ width:20, height:20, borderRadius:5, background:g, cursor:'pointer', border: grad===g && !profileImg ? '2px solid var(--text)' : '2px solid transparent' }} />
+            ))}
+          </div>
+          <button onClick={() => imgRef.current && imgRef.current.click()} style={{ padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, cursor:'pointer' }}>Upload image</button>
+        </div>
+      </div>
+
+      {/* Name */}
+      <div style={{ marginBottom:14 }}>
+        <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Group Name</label>
+        <input value={name} onChange={e => setName(e.target.value)} style={inp} />
+      </div>
+
+      {/* Bio */}
+      <div style={{ marginBottom:14 }}>
+        <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Bio / Description</label>
+        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Tell people what your group is about..." rows={3} style={{ ...inp, resize:'none' }} />
+      </div>
+
+      {/* Visibility */}
+      <div style={{ marginBottom:14 }}>
+        <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Visibility</label>
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {VIS.map(v => (
+            <div key={v.key} onClick={() => setVisibility(v.key)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:10, border:'1px solid ' + (visibility===v.key ? 'var(--accent)' : 'var(--border)'), background: visibility===v.key ? 'var(--accent-bg)' : 'var(--surface2)', cursor:'pointer', transition:'all 0.15s' }}>
+              <span style={{ fontSize:15 }}>{v.icon}</span>
+              <div style={{ flex:1 }}>
+                <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: visibility===v.key ? 'var(--accent)' : 'var(--text)' }}>{v.label}</div>
+                <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{v.desc}</div>
+              </div>
+              <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid ' + (visibility===v.key ? 'var(--accent)' : 'var(--border)'), background: visibility===v.key ? 'var(--accent)' : 'transparent', flexShrink:0 }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Country */}
+      <div style={{ marginBottom:14 }}>
+        <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Country</label>
+        <select value={country} onChange={e => setCountry(e.target.value)} style={{ ...inp, cursor:'pointer' }}>
+          <option value="">Select a country...</option>
+          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      {/* Price */}
+      <div style={{ marginBottom:20 }}>
+        <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Monthly Price ($)</label>
+        <input value={price} onChange={e => setPrice(e.target.value)} type="number" min="0" placeholder="0 for free" style={inp} />
+      </div>
+
+      <button onClick={save} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+        {saved ? '✓ Saved' : 'Save Changes'}
+      </button>
+    </div>
+  );
+}
+
+function GroupRoom({ group, onBack, onUpdateGroup }) {
   const [roomTab, setRoomTab] = useState('chat');
   const [msg, setMsg] = useState('');
   const [messages, setMessages] = useState(() => loadChat(group.id));
@@ -319,12 +454,12 @@ function GroupRoom({ group, onBack }) {
   })() : null;
 
   const endCall = () => { setActiveCall(false); setCallType(null); setCallTarget(null); };
-
-  const MEMBERS = [
-    { name: group.creator || 'Creator', role:'Creator', grad:'linear-gradient(135deg,#16a34a,#15803d)', online:true },
+  const MEMBERS = group.creator === 'you' ? [
+    { name:'you', role:'Founder', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)', online:true },
+  ] : [
+    { name: group.creator || 'Creator', role:'Founder', grad:'linear-gradient(135deg,#16a34a,#15803d)', online:true },
     { name:'you', role:'Member', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)', online:true },
   ];
-
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', fontFamily:'var(--font)' }}>
       {CallConfirmModal}
@@ -339,7 +474,7 @@ function GroupRoom({ group, onBack }) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           Back
         </button>
-        <div style={{ width:28, height:28, borderRadius:7, background:group.grad, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:11, fontWeight:800, color:'#fff' }}>{group.name[0]}</div>
+        <div style={{ width:28, height:28, borderRadius:7, background:group.grad, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:11, fontWeight:800, color:'#fff', overflow:'hidden', flexShrink:0 }}>{group.profileImg ? <img src={group.profileImg} alt={group.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : group.name[0]}</div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{group.name}</div>
           <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{group.type==='club' ? group.members+'/'+group.max+' members' : (group.members||1)+' members'}</div>
@@ -357,7 +492,7 @@ function GroupRoom({ group, onBack }) {
 
       {/* Sub-tabs */}
       <div style={{ display:'flex', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0 }}>
-        {['chat','members'].map(t => (
+        {['chat','members','settings'].map(t => (
           <button key={t} onClick={() => setRoomTab(t)} style={{ padding:'8px 16px', background:'none', border:'none', borderBottom: roomTab===t?'2px solid var(--accent)':'2px solid transparent', color: roomTab===t?'var(--accent)':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight: roomTab===t?700:400, cursor:'pointer', textTransform:'capitalize' }}>{t}</button>
         ))}
       </div>
@@ -385,6 +520,17 @@ function GroupRoom({ group, onBack }) {
       )}
 
       {/* Members */}
+
+      {/* Settings */}
+      {roomTab==='settings' && (
+        <GroupSettings group={group} onUpdate={(updated) => {
+          const fullUpdate = { ...group, ...updated };
+          const all = loadGroups();
+          const idx = all.findIndex(g => g.id === group.id);
+          if (idx !== -1) { all[idx] = fullUpdate; saveGroups(all); }
+          if (onUpdateGroup) onUpdateGroup(fullUpdate);
+        }} />
+      )}
       {roomTab==='members' && (
         <div style={{ flex:1, overflowY:'auto', padding:'14px' }}>
           <div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:700, color:'var(--text)', marginBottom:10 }}>Members · {MEMBERS.length}</div>
@@ -396,12 +542,24 @@ function GroupRoom({ group, onBack }) {
                 <div style={{ fontFamily:'var(--font)', fontSize:10, color: m.online?'var(--green)':'var(--text-muted)' }}>{m.role} · {m.online?'Online':'Offline'}</div>
               </div>
               {m.name !== 'you' && (
-                <div style={{ display:'flex', gap:6 }}>
-                  <button onClick={() => startCall('voice', m.name)} title="Voice call" style={{ width:28, height:28, borderRadius:6, background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--accent)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 9.91 19.79 19.79 0 0 1 1.19 1.28 2 2 0 0 1 3.18 0h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 14.92z"/></svg>
+                <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                  {group.creator === 'you' && (
+                    <select value={m.role} onChange={e => {
+                      const newRole = e.target.value;
+                      const all = loadGroups();
+                      const idx = all.findIndex(g => g.id === group.id);
+                      if (idx !== -1) { if (!all[idx].memberRoles) all[idx].memberRoles = {}; all[idx].memberRoles[m.name] = newRole; saveGroups(all); }
+                      if (onUpdateGroup) onUpdateGroup({ ...group, memberRoles: { ...(group.memberRoles||{}), [m.name]: newRole } });
+                    }} style={{ padding:'3px 7px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:10, cursor:'pointer' }}>
+                      <option value='Member'>Member</option>
+                      <option value='Co-Leader'>Co-Leader</option>
+                    </select>
+                  )}
+                  <button onClick={() => startCall('voice', m.name)} title='Voice call' style={{ width:28, height:28, borderRadius:6, background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--accent)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><path d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.26 9.91 19.79 19.79 0 0 1 1.19 1.28 2 2 0 0 1 3.18 0h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 14.92z'/></svg>
                   </button>
-                  <button onClick={() => startCall('video', m.name)} title="Video call" style={{ width:28, height:28, borderRadius:6, background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--accent)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  <button onClick={() => startCall('video', m.name)} title='Video call' style={{ width:28, height:28, borderRadius:6, background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--accent)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><polygon points='23 7 16 12 23 17 23 7'/><rect x='1' y='5' width='15' height='14' rx='2'/></svg>
                   </button>
                 </div>
               )}
@@ -414,77 +572,129 @@ function GroupRoom({ group, onBack }) {
 }
 
 // ── Group Row ─────────────────────────────────────────────────
-function GroupRow({ g, onSelect }) {
-  const [hov, setHov] = useState(false);
+// ── Create Group Modal ────────────────────────────────────────
+
+function InfoDot({ tip }) {
+  const [show, setShow] = React.useState(false);
   return (
-    <div onClick={() => onSelect(g)}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', cursor:'pointer', borderRadius:8, margin:'2px 6px', background: hov?'var(--surface2)':'transparent' }}>
-      <div style={{ width:38, height:38, borderRadius:10, background:g.grad, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:14, fontWeight:800, color:'#fff', flexShrink:0 }}>{g.name[0]}</div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{g.name}</div>
-        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          <span style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{g.type==='club'?g.members+'/'+g.max+' members':(g.members||1)+' members'}</span>
-          {g.price>0 && <span style={{ fontFamily:'var(--font-mono)', fontSize:9, fontWeight:700, color:'var(--accent)' }}>${g.price}/mo</span>}
-        </div>
-      </div>
-    </div>
+    <span
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+      onClick={e => { e.stopPropagation(); setShow(s => !s); }}
+      style={{ position:'relative', display:'inline-flex', alignItems:'center', flexShrink:0 }}
+    >
+      <span style={{ width:14, height:14, borderRadius:'50%', background:'var(--surface3)', border:'1px solid var(--border2, var(--border))', color:'var(--text-muted)', fontSize:9, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', userSelect:'none' }}>i</span>
+      {show && (
+        <span style={{ position:'absolute', bottom:'calc(100% + 6px)', left:'50%', transform:'translateX(-50%)', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 12px', fontSize:12, color:'var(--text)', lineHeight:1.6, width:220, zIndex:999, boxShadow:'0 8px 24px rgba(0,0,0,0.2)', pointerEvents:'none', fontWeight:400, textAlign:'left' }}>
+          {tip}
+        </span>
+      )}
+    </span>
   );
 }
 
-// ── Create Group Modal ────────────────────────────────────────
 function CreateGroupModal({ onClose, onCreate }) {
-  const [name, setName] = useState('');
-  const [type, setType] = useState('club');
-  const [price, setPrice] = useState('');
-  const [desc, setDesc] = useState('');
+  const [name, setName] = React.useState('');
+  const [type, setType] = React.useState('club');
+  const [price, setPrice] = React.useState('');
+  const [desc, setDesc] = React.useState('');
+  const [country, setCountry] = React.useState('');
+  const [visibility, setVisibility] = React.useState('open');
+  const [profileImg, setProfileImg] = React.useState(null);
+  const imgRef = React.useRef(null);
   const GRADS = ['linear-gradient(135deg,#4f46e5,#7c3aed)','linear-gradient(135deg,#0891b2,#0e7490)','linear-gradient(135deg,#16a34a,#15803d)','linear-gradient(135deg,#d97706,#b45309)','linear-gradient(135deg,#dc2626,#b91c1c)'];
-  const [grad, setGrad] = useState(GRADS[0]);
-
+  const [grad, setGrad] = React.useState(GRADS[0]);
+  const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Azerbaijan','Bahrain','Bangladesh','Belarus','Belgium','Bolivia','Brazil','Bulgaria','Cambodia','Canada','Chile','China','Colombia','Croatia','Czech Republic','Denmark','Ecuador','Egypt','Estonia','Finland','France','Germany','Ghana','Greece','Hungary','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Latvia','Lebanon','Lithuania','Malaysia','Mexico','Morocco','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Serbia','Singapore','South Africa','South Korea','Spain','Sweden','Switzerland','Taiwan','Thailand','Turkey','UAE','Ukraine','United Kingdom','United States','Uruguay','Venezuela','Vietnam'];
+  const VIS = [
+    { key:'open',   label:'Open',        icon:'🌐', desc:'Anyone can join instantly' },
+    { key:'invite', label:'Invite Only',  icon:'✉️',  desc:'Members must be approved by the founder' },
+    { key:'closed', label:'Closed',       icon:'🔒', desc:'Hidden from discovery, invite link only' },
+  ];
+  const handleImg = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setProfileImg(ev.target.result);
+    reader.readAsDataURL(f);
+  };
   const submit = () => {
-    if(!name.trim()) return;
-    onCreate({ id:Date.now(), name, type, price:parseFloat(price)||0, desc, grad, members:1, max:50, joined:true, creator:'you' });
+    if (!name.trim()) return;
+    onCreate({ id:Date.now(), name, type, price:parseFloat(price)||0, desc, grad, country, visibility, profileImg, members:1, max:50, joined:true, creator:'you' });
     onClose();
   };
-
-  const inputStyle = { width:'100%', padding:'10px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', boxSizing:'border-box' };
-
+  const inp = { width:'100%', padding:'10px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', boxSizing:'border-box' };
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:420, maxWidth:'90vw', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:460, maxWidth:'95vw', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.3)' }}>
         <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:20 }}>Create a Group</div>
+        {/* Photo */}
+        <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20 }}>
+          <div onClick={() => imgRef.current && imgRef.current.click()} style={{ width:64, height:64, borderRadius:14, background:grad, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', border:'2px solid var(--border)', flexShrink:0, position:'relative' }}>
+            {profileImg ? <img src={profileImg} alt="group" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <span style={{ fontFamily:'var(--font-mono)', fontSize:22, fontWeight:800, color:'#fff' }}>{name ? name[0].toUpperCase() : '?'}</span>}
+          </div>
+          <input ref={imgRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleImg} />
+          <div>
+            <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)', marginBottom:4 }}>Group Photo</div>
+            <div style={{ display:'flex', gap:6, marginBottom:6 }}>
+              {GRADS.map(g => <div key={g} onClick={() => { setGrad(g); setProfileImg(null); }} style={{ width:22, height:22, borderRadius:6, background:g, cursor:'pointer', border: grad===g&&!profileImg?'2px solid var(--text)':'2px solid transparent' }} />)}
+            </div>
+            <button onClick={() => imgRef.current && imgRef.current.click()} style={{ padding:'3px 10px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, cursor:'pointer' }}>Upload image</button>
+          </div>
+        </div>
+        {/* Name */}
         <div style={{ marginBottom:14 }}>
           <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Group Name</label>
-          <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. COT Swing Traders" style={inputStyle} />
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. COT Swing Traders" style={inp} />
         </div>
+        {/* Type */}
         <div style={{ marginBottom:14 }}>
           <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Type</label>
           <div style={{ display:'flex', gap:8 }}>
-            {['club','channel'].map(t => (
-              <button key={t} onClick={() => setType(t)} style={{ flex:1, padding:'9px', borderRadius:8, border:`1px solid ${type===t?'var(--accent)':'var(--border)'}`, background: type===t?'var(--accent-bg)':'var(--surface2)', color: type===t?'var(--accent)':'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-                {t==='club'?'👥 Club (max 50)':'📢 Channel'}
+            {[{key:'club',label:'Club',tip:'A curated group of up to 50 members. Your inner circle — real relationships, more conversation. The people you build with daily.'},{key:'channel',label:'Channel',tip:'An open community with unlimited members. Built for broad reach — share ideas, host discussions, and grow your audience at scale.'}].map(({key:t,label,tip}) => (
+              <button key={t} onClick={() => setType(t)} style={{ flex:1, padding:'9px', borderRadius:8, border:'1px solid '+(type===t?'var(--accent)':'var(--border)'), background:type===t?'var(--accent-bg)':'var(--surface2)', color:type===t?'var(--accent)':'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                {label}<InfoDot tip={tip} />
               </button>
             ))}
           </div>
+          {type==='club' && <div style={{ marginTop:8, padding:'8px 12px', borderRadius:8, background:'var(--accent-bg)', border:'1px solid var(--border)', fontFamily:'var(--font)', fontSize:12, color:'var(--accent)', lineHeight:1.5 }}>A curated group of up to 50 members. Your inner circle — real relationships, more conversation. The people you build with daily.</div>}
+          {type==='channel' && <div style={{ marginTop:8, padding:'8px 12px', borderRadius:8, background:'var(--surface2)', border:'1px solid var(--border)', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>An open community with unlimited members. Built for broad reach — share ideas, host discussions, and grow your audience at scale.</div>}
         </div>
+        {/* Visibility */}
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Visibility</label>
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {VIS.map(v => (
+              <div key={v.key} onClick={() => setVisibility(v.key)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:10, border:'1px solid '+(visibility===v.key?'var(--accent)':'var(--border)'), background:visibility===v.key?'var(--accent-bg)':'var(--surface2)', cursor:'pointer', transition:'all 0.15s' }}>
+                <span style={{ fontSize:16 }}>{v.icon}</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:visibility===v.key?'var(--accent)':'var(--text)' }}>{v.label}</div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{v.desc}</div>
+                </div>
+                <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid '+(visibility===v.key?'var(--accent)':'var(--border)'), background:visibility===v.key?'var(--accent)':'transparent', flexShrink:0 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Country */}
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Country (optional)</label>
+          <select value={country} onChange={e=>setCountry(e.target.value)} style={{...inp, cursor:'pointer'}}>
+            <option value="">Select a country...</option>
+            {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        {/* Price */}
         <div style={{ marginBottom:14 }}>
           <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Monthly Price ($)</label>
-          <input value={price} onChange={e=>setPrice(e.target.value)} placeholder="Leave blank for free" type="number" min="0" style={inputStyle} />
+          <input value={price} onChange={e=>setPrice(e.target.value)} placeholder="Leave blank for free" type="number" min="0" style={inp} />
         </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Description</label>
-          <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="What is this group about?" rows={3} style={{...inputStyle, resize:'none'}} />
-        </div>
+        {/* Bio */}
         <div style={{ marginBottom:20 }}>
-          <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:8 }}>Color</label>
-          <div style={{ display:'flex', gap:8 }}>
-            {GRADS.map(g => <div key={g} onClick={() => setGrad(g)} style={{ width:28, height:28, borderRadius:8, background:g, cursor:'pointer', border: grad===g?'3px solid var(--text)':'3px solid transparent' }} />)}
-          </div>
+          <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Bio / Description</label>
+          <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Tell people what your group is about, what to expect, and who it's for..." rows={3} style={{...inp, resize:'none'}} />
         </div>
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={onClose} style={{ flex:1, padding:'11px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancel</button>
-          <button onClick={submit} disabled={!name.trim()} style={{ flex:1, padding:'11px', borderRadius:10, border:'none', background: name.trim()?'var(--accent)':'var(--surface3)', color: name.trim()?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor: name.trim()?'pointer':'default' }}>Create Group</button>
+          <button onClick={submit} disabled={!name.trim()} style={{ flex:1, padding:'11px', borderRadius:10, border:'none', background:name.trim()?'var(--accent)':'var(--surface3)', color:name.trim()?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:name.trim()?'pointer':'default' }}>Create Group</button>
         </div>
       </div>
     </div>
@@ -506,7 +716,7 @@ export default function GroupsTab({ currentUserId, searchQuery = '' }) {
   const [showCreate, setShowCreate] = useState(false);
 
   // Save groups to localStorage whenever they change
-  useEffect(() => { saveGroups(groups); }, [groups]);
+  useEffect(() => { if (mounted) saveGroups(groups); }, [groups, mounted]);
 
   const shown = filter==='clubs' ? groups.filter(g=>g.type==='club') :
                 filter==='channels' ? groups.filter(g=>g.type==='channel') : groups;
@@ -520,7 +730,10 @@ export default function GroupsTab({ currentUserId, searchQuery = '' }) {
   if (openGroup) {
     // Make sure we always open latest version of group
     const latest = groups.find(g => g.id === openGroup.id) || openGroup;
-    return <GroupRoom group={latest} onBack={() => setOpenGroup(null)} />;
+    return <GroupRoom group={latest} onBack={() => setOpenGroup(null)} onUpdateGroup={(updated) => {
+      setGroups(prev => prev.map(g => g.id === updated.id ? { ...g, ...updated } : g));
+      setOpenGroup(g => g ? { ...g, ...updated } : g);
+    }} />;
   }
 
   return (
@@ -537,6 +750,28 @@ export default function GroupsTab({ currentUserId, searchQuery = '' }) {
       </div>
 
       <div style={{ flex:1, overflowY:'auto', paddingBottom:8 }}>
+        {/* Club & Channel explainer cards */}
+        {filter !== "channels" && (
+          <div style={{ margin:"8px 12px 0", padding:"12px 14px", borderRadius:10, background:"var(--surface2)", border:"1px solid var(--border)" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+              <span style={{ fontFamily:"var(--font)", fontSize:12, fontWeight:700, color:"var(--text)" }}>Clubs</span>
+            </div>
+            <div style={{ fontFamily:"var(--font)", fontSize:11, color:"var(--text-muted)", lineHeight:1.6 }}>
+              Clubs are small, private groups capped at 50 members. Think of it as someone's inner circle â€” close-knit, high signal, real conversation every day.
+            </div>
+          </div>
+        )}
+        {filter !== "clubs" && (
+          <div style={{ margin:"8px 12px 0", padding:"12px 14px", borderRadius:10, background:"var(--surface2)", border:"1px solid var(--border)" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+              <span style={{ fontFamily:"var(--font)", fontSize:12, fontWeight:700, color:"var(--text)" }}>Channels</span>
+            </div>
+            <div style={{ fontFamily:"var(--font)", fontSize:11, color:"var(--text-muted)", lineHeight:1.6 }}>
+              Channels are where creators share their edge. Courses, trade ideas, market breakdowns, and live discussion â€” all in one place. Join free or paid channels from creators you trust.
+            </div>
+          </div>
+        )}
+        <div style={{ margin:"10px 12px 6px", borderBottom:"1px solid var(--border)" }} />
         {groups.length === 0 ? (
           <div style={{ padding:'40px 16px', textAlign:'center' }}>
             <div style={{ fontSize:32, marginBottom:10 }} suppressHydrationWarning>👥</div>
@@ -563,3 +798,48 @@ export default function GroupsTab({ currentUserId, searchQuery = '' }) {
     </div>
   );
 }
+function GroupRow({ g, onSelect }) {
+  const [hov, setHov] = useState(false);
+  const vis = g.visibility || 'open';
+  const visLabel = vis==='invite' ? 'Invite Only' : vis==='closed' ? 'Closed' : 'Open';
+  const visBg     = vis==='invite' ? '#faeeda' : vis==='closed' ? '#fcebeb' : '#eaf3de';
+  const visBorder = vis==='invite' ? '#fac775' : vis==='closed' ? '#f7c1c1' : '#c0dd97';
+  const visColor  = vis==='invite' ? '#854f0b' : vis==='closed' ? '#a32d2d' : '#3b6d11';
+  const memberStr = g.type==='club' ? g.members+'/'+(g.max||50)+' members' : (g.members||1)+' members';
+  return (
+    <div onClick={() => onSelect(g)}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? 'var(--surface2)' : 'var(--surface)',
+        border: '1px solid ' + (hov ? 'var(--border2,var(--border))' : 'var(--border)'),
+        borderRadius: 12, padding: '14px 16px',
+        cursor: 'pointer', margin: '6px 10px', transition: 'all 0.15s',
+      }}>
+      <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+        <div style={{ width:48, height:48, borderRadius:12, background:g.grad||'linear-gradient(135deg,#4f46e5,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+          {g.profileImg ? <img src={g.profileImg} alt={g.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4, flexWrap:'wrap' }}>
+            <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)' }}>{g.name}</span>
+            <span style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:'var(--surface2)', color:'var(--text-muted)', border:'1px solid var(--border)', textTransform:'capitalize' }}>{g.type}</span>
+            <span style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:visBg, color:visColor, border:'1px solid '+visBorder, fontWeight:600, marginLeft:'auto' }}>{visLabel}</span>
+          </div>
+          {g.desc ? (
+            <p style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', margin:'0 0 8px', lineHeight:1.5, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{g.desc}</p>
+          ) : null}
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{'members: '+memberStr}</span>
+            {g.country ? <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{'location: '+g.country}</span> : null}
+            {g.price > 0
+              ? <span style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:700, color:'var(--accent)' }}>{'$'+g.price+'/mo'}</span>
+              : <span style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--green)' }}>Free</span>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

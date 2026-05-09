@@ -5,9 +5,19 @@ function goToProfile(slug) {
     window.__goToProfile(slug);
   }
 };
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 // ── Constants ─────────────────────────────────────────────────
+
+function savePosts(posts) {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem('tr_feed_posts', JSON.stringify(posts)); } catch(e) {}
+}
+function loadPosts() {
+  if (typeof window === 'undefined') return [];
+  try { const d = localStorage.getItem('tr_feed_posts'); return d ? JSON.parse(d) : []; } catch(e) { return []; }
+}
+
 const TABS = ['Discover', 'Following', 'Ideas', 'Screeners', 'Strategies', 'COT Signals'];
 
 const TRENDING = [
@@ -221,7 +231,10 @@ function Post({ post, onLike, onRepost, onDelete }) {
 // ── Main FeedTab ──────────────────────────────────────────────
 export default function FeedTab() {
   const [activeTab, setActiveTab] = useState('Discover');
-  const [posts, setPosts]         = useState([]);
+  const [mounted, setMounted] = useState(false);
+  const [posts, setPosts] = useState([]);
+  useEffect(() => { setMounted(true); setPosts(loadPosts()); }, []);
+  useEffect(() => { if (mounted) savePosts(posts); }, [posts, mounted]);
   const [postText, setPostText]   = useState('');
   
   const fileInputRef              = useRef(null);
