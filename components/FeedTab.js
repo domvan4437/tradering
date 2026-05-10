@@ -244,8 +244,10 @@ function Post({ post, onLike, onRepost, onDelete }) {
 }
 
 // ── Main FeedTab ──────────────────────────────────────────────
-export default function FeedTab() {
-  const [activeTab, setActiveTab] = useState('Discover');
+export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
+  const [activeTabLocal, setActiveTabLocal] = useState('Discover');
+  const activeTab = activeTabProp || activeTabLocal;
+  const setActiveTab = (t) => { if (!activeTabProp) setActiveTabLocal(t); };
   const [mounted, setMounted] = useState(false);
   const [posts, setPosts] = useState([]);
   useEffect(() => { setMounted(true); setPosts(loadPosts()); }, []);
@@ -320,23 +322,23 @@ export default function FeedTab() {
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 260px', fontFamily:'var(--font)' }}>
       <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.mp4" style={{ display:'none' }} onChange={handleFileSelect} />
-
-      {/* ── Main feed ── */}
       <div style={{ borderRight:'1px solid var(--border)' }}>
 
-        {/* Single tab bar */}
-        <div style={{ display:'flex', borderBottom:'1px solid var(--border)', position:'sticky', top:0, background:'var(--surface)', zIndex:10, overflowX:'auto' }}>
-          {TABS.map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} style={{
-              padding:'12px 14px', fontSize:12, fontWeight: activeTab===t?700:400,
-              background:'none', border:'none',
-              borderBottom: activeTab===t?'2px solid var(--accent)':'2px solid transparent',
-              color: activeTab===t?'var(--text)':'var(--text-muted)',
-              cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap',
-              fontFamily:'var(--font)',
-            }}>{t}</button>
-          ))}
-        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         {/* Compose box */}
         <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)' }}>
