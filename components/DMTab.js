@@ -30,6 +30,7 @@ export default function DMTab({ initialUser }) {
   const [msgText, setMsgText] = useState('');
   const [newUser, setNewUser] = useState('');
   const [showNew, setShowNew] = useState(false);
+  const [dmSearch, setDmSearch] = useState('');
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -100,6 +101,24 @@ export default function DMTab({ initialUser }) {
       {/* Convo list */}
       <div style={{ width:'100%', display:'flex', flexDirection:'column', height:'100%' }}>
         <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+          <div style={{ marginBottom:10 }}>
+            <input
+  value={dmSearch}
+  onChange={e => setDmSearch(e.target.value)}
+  onKeyDown={e => {
+    if (e.key === 'Enter' && dmSearch.trim()) {
+      const existing = convos.find(c => c.user.toLowerCase() === dmSearch.trim().toLowerCase());
+      if (existing) { setActiveId(existing.id); setDmSearch(''); return; }
+      const newConvo = { id:Date.now(), user:dmSearch.trim(), messages:[], unread:0 };
+      setConvos(prev => { const u=[newConvo,...prev]; saveConvos(u); return u; });
+      setActiveId(newConvo.id);
+      setDmSearch('');
+    }
+  }}
+  placeholder="Search..."
+  style={{ width:'100%', padding:'8px 12px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none', boxSizing:'border-box' }}
+/>
+          </div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: showNew?10:0 }}>
             <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)' }}>Messages</span>
             <button onClick={() => setShowNew(s=>!s)} style={{ padding:'4px 10px', borderRadius:6, border:'none', background:PURPLE, color:'#fff', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer' }}>+ New</button>
@@ -119,7 +138,7 @@ export default function DMTab({ initialUser }) {
           </div>
         ) : (
           <div style={{ flex:1, overflowY:'auto' }}>
-            {convos.map(c => (
+            {convos.filter(c => !dmSearch.trim() || c.user.toLowerCase().includes(dmSearch.toLowerCase())).map(c => (
               <div key={c.id} onClick={() => setActiveId(c.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 14px', cursor:'pointer', borderBottom:'1px solid var(--border)', background: activeId===c.id ? 'var(--accent-bg)' : 'transparent', transition:'background 0.1s' }}
                 onMouseEnter={e => { if(activeId!==c.id) e.currentTarget.style.background='var(--surface2)'; }}
                 onMouseLeave={e => { if(activeId!==c.id) e.currentTarget.style.background='transparent'; }}>

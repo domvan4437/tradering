@@ -320,9 +320,8 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
   const charsLeft = 280 - postText.length;
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'1fr 260px', fontFamily:'var(--font)' }}>
+    <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)' }}>
       <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.mp4" style={{ display:'none' }} onChange={handleFileSelect} />
-      <div style={{ borderRight:'1px solid var(--border)' }}>
 
 
 
@@ -443,40 +442,6 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
         )}
       </div>
 
-      {/* ── Right sidebar ── */}
-      <div style={{ padding:'14px 16px', display:'flex', flexDirection:'column', gap:14 }}>
-        <div style={{ background:'var(--surface2)', borderRadius:20, padding:'8px 14px', display:'flex', alignItems:'center', gap:8, border:'1px solid var(--border)' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Search traders & ideas</span>
-        </div>
 
-        <div style={{ background:'var(--surface2)', borderRadius:12, padding:'14px', border:'1px solid var(--border)' }}>
-          <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:12 }}>Trending</div>
-          {TRENDING.map((t, i) => (
-            <div key={t.tag} style={{ padding:'8px 6px', borderRadius:8, cursor:'pointer', borderTop: i>0?'1px solid var(--border)':'none', transition:'background 0.1s' }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--surface)'}
-              onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-              <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{t.cat}</div>
-              <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)' }}>#{t.tag}</div>
-              <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{t.posts.toLocaleString()} posts</div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background:'var(--surface2)', borderRadius:12, padding:'14px', border:'1px solid var(--border)' }}>
-          <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:12 }}>Who to follow</div>
-          {WHO_TO_FOLLOW.map((u, i) => (
-            <div key={u.user} style={{ display:'flex', alignItems:'center', gap:8, paddingTop: i>0?10:0, borderTop: i>0?'1px solid var(--border)':'none' }}>
-              <Avatar letter={u.avatar} grad={u.grad} size={34} />
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{u.user} {u.verified && <span style={{ color:'var(--accent)', fontSize:11 }}>✓</span>}</div>
-                <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{u.winRate} win · {u.style}</div>
-              </div>
-              <button style={{ padding:'5px 12px', borderRadius:20, background:'var(--accent)', color:'#fff', border:'none', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer' }}>Follow</button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
