@@ -121,8 +121,8 @@ body {
 
 /* ── Ticker keyframe ── */
 @keyframes tr-ticker {
-  0%   { transform: translate3d(0, 0, 0); }
-  100% { transform: translate3d(-50%, 0, 0); }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 @keyframes tr-pulse  { 0%,100%{opacity:1} 50%{opacity:0.3} }
 @keyframes tr-fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -470,16 +470,16 @@ button, a, input, select {
 
 /* ── Ticker strip ── */
 @keyframes tk-scroll {
-  0%   { transform: translate3d(0, 0, 0); }
-  100% { transform: translate3d(-50%, 0, 0); }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 
 
 /* ── Ticker strip ── */
 @keyframes tk-scroll {
-  0%   { transform: translate3d(0, 0, 0); }
-  100% { transform: translate3d(-50%, 0, 0); }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 .tk-wrap {
   position: fixed;

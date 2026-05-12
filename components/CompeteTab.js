@@ -626,48 +626,136 @@ function LeaderboardTab() {
   );
 }
 
-export default function CompeteTab({ currentUserId, mode: modeProp, setMode: setModeProp }) {
-  const [localMode, setLocalMode] = useState('Home');
-  const mode_ = modeProp !== undefined ? modeProp : localMode;
-  const setMode = setModeProp || setLocalMode;
-  const mc = MODE_COLORS[mode_] || MODE_COLORS.Home;
+export default function CompeteTab({ currentUserId }) {
+  const PURPLE = '#4f46e5';
+  const [tab, setTab] = useState('compete');
 
-  if (mode_ !== 'Home') {
-    return (
-      <div style={{ fontFamily:'var(--font)', height:'100%', display:'flex', flexDirection:'column' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0 }}>
-          <button onClick={() => setMode('Home')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4, fontFamily:'var(--font)', fontSize:12, padding:'4px 8px', borderRadius:6 }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
-            onMouseLeave={e => e.currentTarget.style.background='none'}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-            Back
-          </button>
-          <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)' }}>{mode_}</span>
-        </div>
-        <div style={{ flex:1, overflowY:'auto' }}>
-          {mode_==='H2H' && <H2HTab />}
-          {mode_==='Leaderboard' && <LeaderboardTab />}
-          {mode_==='GroupContest' && <GroupContest />}
-          {mode_==='History' && <MatchHistory onExportNote={(match) => alert('Exported to Notes!')} />}
-          {mode_==='Group Battle' && <GroupBattleTab />}
-          {mode_==='Bracket' && <BracketTab />}
-          {mode_==='Contest' && <ContestTab />}
-        </div>
-      </div>
-    );
-  }
+  const navTabs = [
+    { key: 'compete', label: 'Compete' },
+    { key: 'groups', label: 'Group contests' },
+    { key: 'leaderboard', label: 'Leaderboard' },
+    { key: 'history', label: 'History' },
+  ];
+
+  const winRate = 68;
+  const rank = 7;
+  const winnings = 840;
+
+  const topTraders = [
+    { rank: 1, name: 'goldtrader', pct: '+18.4%', color: '#d97706' },
+    { rank: 2, name: 'cotmaster', pct: '+14.2%', color: '#0891b2' },
+    { rank: 3, name: 'swingking', pct: '+11.8%', color: '#16a34a' },
+  ];
+
+  const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' };
+  const statBox = { background: 'var(--surface2)', borderRadius: 8, padding: '10px 12px' };
+  const btnP = { padding: '8px 16px', background: PURPLE, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flex: 1 };
+  const btnO = { padding: '8px 16px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', flex: 1 };
 
   return (
-    <div style={{ fontFamily: 'var(--font)' }}>
-      {/* Sub-tabs */}
-      
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'var(--font)' }}>
+      <div style={{ background: PURPLE, padding: '0 20px', display: 'flex', alignItems: 'stretch', justifyContent: 'space-between', flexShrink: 0, position: 'sticky', top: 0, zIndex: 299 }}>
+        <div style={{ display: 'flex', gap: 0 }}>
+          {navTabs.map(({ key, label }) => (
+            <button key={key} onClick={() => setTab(key)}
+              style={{ padding: '11px 18px', background: 'none', border: 'none', borderBottom: tab === key ? '2px solid #fff' : '2px solid transparent', color: '#fff', opacity: tab === key ? 1 : 0.75, fontFamily: 'var(--font)', fontSize: 13, fontWeight: tab === key ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s', marginBottom: -1 }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+          <button onClick={() => setTab('groups')} style={{ padding: '5px 12px', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }}>Browse challenges</button>
+          <button style={{ padding: '5px 12px', background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }}>+ Challenge trader</button>
+        </div>
+      </div>
 
-      {/* Content */}
-      {mode_ === 'Home'          && <HomeTab setMode={setMode} />}
-      {mode_ === 'H2H'           && <H2HTab />}
-      {mode_ === 'Group Battle'  && <GroupBattleTab />}
-      {mode_ === 'Bracket'       && <BracketTab />}
-      {mode_ === 'Contest'       && <ContestTab />}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {tab === 'compete' && (
+          <div style={{ display: 'flex', height: '100%' }}>
+            <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
+              <div style={card}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Head-to-head</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>1 active</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, background: 'var(--surface2)', borderRadius: 8, marginBottom: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>D</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>you <span style={{ color: '#16a34a' }}>+4.2%</span></div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Winning · 3d left</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', background: 'var(--surface3)', borderRadius: 20, padding: '3px 8px' }}>VS</span>
+                  <div style={{ flex: 1, textAlign: 'right' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>trader99 <span style={{ color: 'var(--text-muted)' }}>+2.8%</span></div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>$50 stakes</div>
+                  </div>
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>T</div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button style={btnP} onClick={() => setTab('h2h')}>View match</button>
+                  <button style={btnO}>New challenge</button>
+                </div>
+              </div>
+
+              <div style={card}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Group contest</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#EAF3DE', color: '#27500A' }}>Joined</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, background: 'var(--surface2)', borderRadius: 8, marginBottom: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>COT Swing Challenge</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>12 traders · 5 days left</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 22, fontWeight: 600, color: PURPLE }}>#3</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>$500 pool</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button style={btnP} onClick={() => setTab('groups')}>View rankings</button>
+                  <button style={btnO} onClick={() => setTab('groups')}>Browse contests</button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ width: 220, borderLeft: '1px solid var(--border)', padding: 16, background: 'var(--surface)', flexShrink: 0, overflowY: 'auto' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Your stats</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>All time</div>
+              <div style={{ ...statBox, marginBottom: 8 }}>
+                <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>{winRate}%</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Win rate</div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+                <div style={statBox}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>#{rank}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Global rank</div>
+                </div>
+                <div style={statBox}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>${winnings}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Winnings</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Top 3 this week</div>
+              {topTraders.map(t => (
+                <div key={t.rank} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: PURPLE, width: 20 }}>#{t.rank}</span>
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: t.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{t.name[0].toUpperCase()}</div>
+                  <span style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>{t.name}</span>
+                  <span style={{ fontSize: 11, color: '#16a34a' }}>{t.pct}</span>
+                </div>
+              ))}
+              <button style={{ width: '100%', marginTop: 12, padding: '8px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border2)', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }} onClick={() => setTab('leaderboard')}>Full leaderboard →</button>
+            </div>
+          </div>
+        )}
+        {tab === 'h2h' && <div style={{ padding: 20 }}><H2HTab /></div>}
+        {tab === 'groups' && <div style={{ padding: 20 }}><GroupBattleTab /></div>}
+        {tab === 'leaderboard' && <div style={{ padding: 20 }}><LeaderboardTab /></div>}
+        {tab === 'history' && <div style={{ padding: 20 }}><MatchHistory /></div>}
+      </div>
     </div>
   );
 }

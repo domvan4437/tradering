@@ -34,7 +34,7 @@ export default function CompetitionBanner({ onNavigate }) {
     return () => clearInterval(interval);
   }, [competitions]);
 
-  if (dismissed) return null;
+  if (dismissed) return <div style={{ height:0, overflow:'hidden' }} />;
 
   const comp = competitions[current] || PLACEHOLDER;
   const daysLeft = comp.endDate

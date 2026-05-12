@@ -34,6 +34,7 @@ import StrategyBacktestTab from './StrategyBacktestTab'
 import NewsTab from './NewsTab'
 import SocialTab from './SocialTab'
 import GroupsTab from './GroupsTab'
+import TabTooltip from './TabTooltip'
 import CompeteTab from './CompeteTab'
 import CommunityLayout from './CommunityLayout'
 import CompeteLayout from './CompeteLayout'
@@ -80,7 +81,7 @@ const STAGES = [
 
 const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil','Natural Gas','Gasoline','Heating Oil','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Lean Hogs','Rice','Oats','Lumber']
 const SECTION_TABS = {
-  community:   ['Feed','Groups'],
+  community:   ['Feed','Groups','Messages'],
   compete:     ['Compete','Leaderboard'],
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','News'],
   charts:      ['Workspace'],
@@ -471,7 +472,7 @@ export default function App() {
     <div style={{ minHeight:'100vh', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontFamily:'var(--font)', fontSize:13 }}>
 
       {/* ── Navbar — TradingView style ── */}
-      <div style={{ background:'var(--bg1)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)' }}>
+      <div data-community-nav="true" style={{ background:'var(--bg1)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)' }}>
         <div style={{ display:'flex', alignItems:'center', height:46, padding:'0 16px', gap:0, overflow:'visible' }}>
 
           {/* Logo with ring */}
@@ -534,7 +535,7 @@ export default function App() {
                       border: '1px solid var(--border2)',
                       borderRadius: '0 0 8px 8px',
                       boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-                      zIndex: 500,
+                      zIndex: 99999,
                       minWidth: 200,
                       padding: '6px 0',
                       animation: 'tr-fadeUp 0.12s ease both',
@@ -626,7 +627,7 @@ export default function App() {
 
         
       </div>
-      <CompetitionBanner onNavigate={(sec) => { setSection(sec); setTab(''); }} />
+      {/* CompetitionBanner disabled */}
       <TickerStrip />
 
 
@@ -641,14 +642,14 @@ export default function App() {
       )}
 
       {/* Main content — full width, no max-width cap on outer, padding on inner */}
-      <div style={{ padding: section==='community' ? '0' : '20px 24px', paddingTop: section==='community' ? 0 : 120, overflow: section==='community' ? 'hidden' : 'visible' }} onClick={()=>setShowAccount(false)}>
+      <div style={{ padding: (section==='community'||section==='compete') ? '0' : '20px 24px', paddingTop: (section==='community'||section==='compete') ? 0 : 120 }} onClick={()=>setShowAccount(false)}>
         {section==='markets' ? (
           <div>
             {tab==='News' && <div style={{padding:'20px 24px'}}><NewsTab /></div>}
             {tab!=='News' && <MarketsLayout tab={tab} setTab={setTab} plan={plan} onUpgrade={()=>handleUpgrade()} currentUserId={session?.user?.id} />}
           </div>
         ) : section==='community' ? (
-          <CommunityLayout tab={tab} setTab={setTab} currentUserId={session?.user?.id} />
+          <CommunityLayout externalTab={tab} currentUserId={session?.user?.id} />
         ) : section==='compete' ? (
           <CompeteLayout currentUserId={session?.user?.id} />
         ) : section==='creator' ? (
@@ -658,9 +659,9 @@ export default function App() {
         ) : section==='journal' ? (
           <div style={{padding:'20px 24px'}}>
             {!tab && <JournalLanding onSelect={t=>setTab(t)} />}
-            {tab==='Notes' && <NotesTab />}
-            {tab==='Review'               && <JournalReviewTab />}
-            {tab==='Trade Log' && <JournalTradeLogTab />}
+            {tab==='Notes' && <><TabTooltip tab='Notes' /><NotesTab /></>}
+            {tab==='Review' && <><TabTooltip tab='Review' /><JournalReviewTab /></>}
+            {tab==='Trade Log' && <><TabTooltip tab='Trade Log' /><JournalTradeLogTab /></>}
           </div>
         ) : section==='tools2' ? (
           <div style={{padding:'20px 24px'}}>
@@ -669,20 +670,20 @@ export default function App() {
             {tab==='Notes'      && <div style={{padding:'20px 24px'}}><NotesTab /></div>}
             {tab==='Review'     && <div style={{padding:'20px 24px'}}><JournalReviewTab /></div>}
             {tab==='Trade Log'  && <div style={{padding:'20px 24px'}}><JournalTradeLogTab /></div>}
-            {tab==='Trade Calc' && <TradeCalcTab />}
-            {tab==='Trade Plan Builder'      && <TradePlanTab />}
-            {tab==='Strategy Backtest'       && <StrategyBacktestTab />}
-            {tab==='COT Alerts'              && <COTAlertsTab />}
-            {tab==='Screener'               && <ScreenerBuilder user={userInfo} />}
-            {tab==='Import'                 && <ImportTab />}
+            {tab==='Trade Calc' && <><TabTooltip tab='Trade Calc' /><TradeCalcTab /></>}
+            {tab==='Trade Plan Builder' && <><TabTooltip tab='Trade Plan Builder' /><TradePlanTab /></>}
+            {tab==='Strategy Backtest' && <><TabTooltip tab='Strategy Backtest' /><StrategyBacktestTab /></>}
+            {tab==='COT Alerts' && <><TabTooltip tab='COT Alerts' /><COTAlertsTab /></>}
+            {tab==='Screener' && <><TabTooltip tab='Screener' /><ScreenerBuilder user={userInfo} /></>}
+            {tab==='Import' && <><TabTooltip tab='Import' /><ImportTab /></>}
           </div>
         ) : section==='account' ? (
           <div style={{padding:'20px 24px'}}>
             {!tab && <AccountLanding onSelect={t=>setTab(t)} onViewProfile={()=>{ const slug = userInfo?.profileSlug || userInfo?.id; if(slug) setViewingProfile(slug); }} />}
-            {tab==='Broker'     && <BrokerTab />}
-            {tab==='My Profile' && <ProfileTab user={userInfo} session={session} />}
+            {tab==='Broker' && <><TabTooltip tab='Broker' /><BrokerTab /></>}
+            {tab==='My Profile' && <><TabTooltip tab='My Profile' /><ProfileTab user={userInfo} session={session} /></>}
             
-            {tab==='Settings'               && <SettingsTab user={userInfo} />}
+            {tab==='Settings' && <><TabTooltip tab='Settings' /><SettingsTab user={userInfo} /></>}
           </div>
         ) : (
           <>
@@ -702,7 +703,7 @@ export default function App() {
             {/* Tools tabs */}
             {(!tab || tab === 'Tools') && <ToolsLanding onSelect={(t) => setTab(t)} />}
             {tab==='Trade Calc'     && <TradeCalcTab />}
-            {tab==='AI Coach'           && <AICoachTab />}
+            {tab==='AI Coach' && <><TabTooltip tab='AI Coach' /><AICoachTab /></>}
             {tab==='Trade Plan Builder'  && <TradePlanTab />}
             {tab==='COT Alerts'           && <COTAlertsTab />}
             {tab==='Backtesting'          && <BacktestTab />}

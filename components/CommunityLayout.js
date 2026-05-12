@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import FeedTab from './FeedTab';
 import DMTab from './DMTab';
 
@@ -49,7 +50,7 @@ function UserSearch() {
         placeholder="Search traders..."
         style={{ width:'100%', padding:'7px 14px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', boxSizing:'border-box' }} />
       {open && query.trim() && (
-        <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 12px 40px rgba(0,0,0,0.2)', zIndex:500, maxHeight:320, overflowY:'auto' }}>
+        <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 12px 40px rgba(0,0,0,0.2)', zIndex:2990, maxHeight:320, overflowY:'auto' }}>
           {loading ? <div style={{ padding:16, fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', textAlign:'center' }}>Searching...</div>
           : results.length === 0 ? <div style={{ padding:16, fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', textAlign:'center' }}>No traders found</div>
           : results.map(u => (
@@ -173,7 +174,7 @@ function GroupChatRoom({ group, activeRoom }) {
           <div ref={popRef} style={{ position:'relative', flexShrink:0 }}>
             <button onClick={() => setPopover(p => !p)} style={{ width:28, height:28, borderRadius:'50%', background:popover?PURPLE:'var(--accent-bg,#EEEDFE)', border:'1px solid '+(popover?PURPLE:'#4f46e5'), display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:popover?'#fff':PURPLE, fontSize:20, lineHeight:1, fontWeight:300, outline:'none' }}>+</button>
             {popover && (
-              <div style={{ position:'absolute', bottom:'calc(100% + 8px)', left:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'6px', minWidth:160, zIndex:9999, boxShadow:'0 8px 24px rgba(0,0,0,0.15)' }}>
+              <div style={{ position:'fixed', bottom:'auto', top:0, left:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'6px', minWidth:160, zIndex:99999, boxShadow:'0 8px 24px rgba(0,0,0,0.15)' }}>
                 {popItems.map(item => (
                   <button key={item.label} onClick={item.action} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', cursor:'pointer', textAlign:'left' }}
                     onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
@@ -326,8 +327,8 @@ function GroupsView({ currentUserId }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
       {/* Fixed dropdown rendered at body level via fixed positioning */}
-      {dropdownOpen && openGroup && (
-        <div onClick={e => e.stopPropagation()} style={{ position:'fixed', top:dropdownPos.top, left:dropdownPos.left, width:230, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, zIndex:99999, overflow:'hidden', boxShadow:'0 8px 32px rgba(0,0,0,0.25)' }}>
+      {dropdownOpen && openGroup && typeof document !== 'undefined' && ReactDOM.createPortal(
+        <div onClick={e => e.stopPropagation()} style={{ position:'fixed', top:dropdownPos.top, left:dropdownPos.left, width:230, zIndex:99999, transform:'translateZ(0)', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.25)' }}>
           <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10 }}>
             <div style={{ width:32, height:32, borderRadius:10, background:openGroup.grad||PURPLE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0 }}>
               {openGroup.profileImg ? <img src={openGroup.profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (openGroup.name||'G')[0].toUpperCase()}
@@ -367,7 +368,7 @@ function GroupsView({ currentUserId }) {
             </button>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {showSettings && openGroup && <GroupSettings group={openGroup} onClose={() => setShowSettings(false)} onUpdate={(u) => { setOpenGroup(g => ({...g, ...u})); setGroups(prev => prev.map(g => g.id===openGroup.id ? {...g,...u} : g)); }} />}
       {/* Icon rail */}
@@ -482,28 +483,19 @@ function GroupsView({ currentUserId }) {
 }
 
 
-export default function CommunityLayout({ currentUserId }) {
-  const [tab, setTab] = useState('feed');
+export default function CommunityLayout({ currentUserId, externalTab, onTabChange }) {
+  const TAB_MAP = { 'Feed':'feed', 'Groups':'groups', 'Messages':'dms', 'feed':'feed', 'groups':'groups', 'dms':'dms' };
+  const [tab, setTabInternal] = useState('feed');
   const [feedTab, setFeedTab] = useState('Discover');
-  const containerRef = useRef(null);
-  const [topOffset, setTopOffset] = useState(120);
-
-  useEffect(() => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setTopOffset(Math.round(rect.top));
-    }
-  }, []);
-
-  const h = 'calc(100vh - ' + topOffset + 'px)';
-
+  const setTab = (t) => { setTabInternal(t); if(onTabChange) onTabChange(t); };
+  useEffect(() => { if(externalTab && TAB_MAP[externalTab]) setTabInternal(TAB_MAP[externalTab]); }, [externalTab]);
   return (
-    <div ref={containerRef} style={{ display:'flex', flexDirection:'column', height:h, fontFamily:'var(--font)', overflow:'hidden' }}>
+    <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)', height:'100%', minHeight:0, overflow:'hidden' }}>
       {/* Purple top nav */}
-      <div style={{ background:PURPLE, padding:'0 20px', display:'flex', alignItems:'stretch', justifyContent:'space-between', flexShrink:0 }}>
+      <div style={{ background:PURPLE, padding:'0 20px', display:'flex', alignItems:'stretch', justifyContent:'space-between', flexShrink:0, position:'sticky', top:0, zIndex:299, pointerEvents:'all' }}>
         <div style={{ display:'flex', gap:0 }}>
           {[['feed','Feed'],['groups','Groups'],['dms','Messages']].map(([t,l]) => (
-            <button key={t} onClick={() => setTab(t)} style={{ padding:'11px 20px', background:'none', border:'none', borderBottom:tab===t?'2px solid #fff':'2px solid transparent', color:tab===t?'#fff':'rgba(255,255,255,0.6)', fontFamily:'var(--font)', fontSize:13, fontWeight:tab===t?600:400, cursor:'pointer', transition:'all 0.15s', marginBottom:-1 }}>{l}</button>
+            <button key={t} onClick={(e) => { e.stopPropagation(); setTab(t); }} style={{ padding:'11px 20px', background:'none', border:'none', borderBottom:tab===t?'2px solid #fff':'2px solid transparent', color:tab===t?'#fff':'rgba(255,255,255,0.6)', fontFamily:'var(--font)', fontSize:13, fontWeight:tab===t?600:400, cursor:'pointer', transition:'all 0.15s', marginBottom:-1 }}>{l}</button>
           ))}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:14, color:'rgba(255,255,255,0.7)' }}>
@@ -536,7 +528,7 @@ export default function CommunityLayout({ currentUserId }) {
           </div>
         )}
         {tab === 'groups' && (
-          <div style={{ flex:1, overflow:'hidden' }}>
+          <div style={{ flex:1, overflow:'visible' }}>
             <GroupsView currentUserId={currentUserId} />
           </div>
         )}

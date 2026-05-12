@@ -8,79 +8,74 @@ datasource db {
 }
 
 model User {
-  id                 String    @id @default(cuid())
-  email              String    @unique
-  password           String
-  name               String?
-  username           String?   @unique
-
-  // Profile & verification fields
-  displayName      String?
-  tradingStyle     String?   // scalper | daytrader | swing | position | macro
-  primaryAssets    String?   // JSON array e.g. ["Gold","Crude Oil","EUR/USD"]
-  profileVisibility String   @default("private") // private | invite | public
-  verifiedBadge    Boolean   @default(false)
-  badgeEarnedAt    DateTime?
-  profileSlug      String?   @unique // custom URL e.g. tradering.com/p/dominic
-  twitterHandle    String?
-  propFirmInterest Boolean   @default(false)
-  propFirmReferredAt DateTime?
-  propFirmPartnerId String?
-  bio                String?
-  createdAt          DateTime  @default(now())
-  stripeCustomerId   String?   @unique
-  subscriptionId     String?   @unique
-  subscriptionStatus String?
-  plan               String    @default("free")
-  trialEndsAt        DateTime?
-  screeningsToday    Int       @default(0)
-  screeningsReset    DateTime  @default(now())
-  isPublic           Boolean   @default(false)
-
-  screenings    Screening[]
-  watchlist     WatchlistItem[]
-  alerts        Alert[]
-  positions     Position[]
-  ideas         Idea[]
-  priceAlerts   PriceAlert[]
-  posts         CommunityPost[]
-  checklists    Checklist[]
-  notes         Note[]
-  tradeMedia    TradeMedia[]
-  weeklyReviews WeeklyReview[]
-  aiConversations AIConversation[]
-  calendarNotes   CalendarNote[]
-  cotAlerts       COTAlert[]
-  tradePlans      TradePlan[]
-  socialPosts     SocialPost[]
-  socialComments  SocialComment[]
-  postLikes       PostLike[]
-  sentMessages    DirectMessage[]  @relation("SentMessages")
-  receivedMessages DirectMessage[] @relation("ReceivedMessages")
-  followers       UserFollow[]     @relation("Followers")
-  following       UserFollow[]     @relation("Following")
-  ownedGroups     Group[]          @relation("OwnedGroups")
-  groupMembers    GroupMember[]
-  groupMessages   GroupMessage[]
-  createdTournaments Tournament[] @relation("CreatedTournaments")
-  tournamentEntries  TournamentEntry[]
-  tradeCalls         TradeCall[]
-  brokerConnections  BrokerConnection[]
-  brokerTrades       BrokerTrade[]
-  groupMemberships   GroupMembership[]
-  creatorPayouts     CreatorPayout[]
-  tradeIdeas         TradeIdea[]      @relation("AuthoredIdeas")
-  theme         String   @default("dark-gold")
-  dashboardLayout Json?
-  customFields  Json?
-  propFirmReferrals PropFirmReferral[] @relation("PropFirmReferrals")
-  leaderboardSnapshots LeaderboardSnapshot[] @relation("LeaderboardSnapshots")
-
-  // Relations
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  password             String
+  name                 String?
+  username             String?               @unique
+  bio                  String?
+  createdAt            DateTime              @default(now())
+  stripeCustomerId     String?               @unique
+  subscriptionId       String?               @unique
+  subscriptionStatus   String?
+  plan                 String                @default("free")
+  trialEndsAt          DateTime?
+  screeningsToday      Int                   @default(0)
+  screeningsReset      DateTime              @default(now())
+  isPublic             Boolean               @default(false)
+  theme                String                @default("dark-gold")
+  dashboardLayout      Json?
+  customFields         Json?
+  badgeEarnedAt        DateTime?
+  displayName          String?
+  primaryAssets        String?
+  profileSlug          String?               @unique
+  profileVisibility    String                @default("private")
+  propFirmInterest     Boolean               @default(false)
+  propFirmPartnerId    String?
+  propFirmReferredAt   DateTime?
+  tradingStyle         String?
+  twitterHandle        String?
+  verifiedBadge        Boolean               @default(false)
+  aiConversations      AIConversation[]
+  alerts               Alert[]
+  brokerConnections    BrokerConnection[]
+  brokerTrades         BrokerTrade[]
+  cotAlerts            COTAlert[]
+  calendarNotes        CalendarNote[]
+  checklists           Checklist[]
+  posts                CommunityPost[]
+  creatorPayouts       CreatorPayout[]
+  sentMessages         DirectMessage[]       @relation("SentMessages")
+  receivedMessages     DirectMessage[]       @relation("ReceivedMessages")
+  ownedGroups          Group[]               @relation("OwnedGroups")
+  groupMembers         GroupMember[]
+  groupMemberships     GroupMembership[]
+  groupMessages        GroupMessage[]
   h2hChallenges        H2HMatch[]            @relation("H2HChallenger")
   h2hOpponents         H2HMatch[]            @relation("H2HOpponent")
-  consistency          TraderConsistency?
+  ideas                Idea[]
+  leaderboardSnapshots LeaderboardSnapshot[] @relation("LeaderboardSnapshots")
+  notes                Note[]
+  positions            Position[]
+  postLikes            PostLike[]
+  priceAlerts          PriceAlert[]
+  propFirmReferrals    PropFirmReferral[]    @relation("PropFirmReferrals")
   screenerTemplates    ScreenerTemplate[]    @relation("UserScreeners")
+  screenings           Screening[]
+  socialComments       SocialComment[]
+  socialPosts          SocialPost[]
+  createdTournaments   Tournament[]          @relation("CreatedTournaments")
+  tournamentEntries    TournamentEntry[]
+  tradeCalls           TradeCall[]
+  tradeIdeas           TradeIdea[]           @relation("AuthoredIdeas")
+  tradeMedia           TradeMedia[]
+  tradePlans           TradePlan[]
+  consistency          TraderConsistency?
+  followers            UserFollow[]          @relation("Followers")
+  following            UserFollow[]          @relation("Following")
+  watchlist            WatchlistItem[]
+  weeklyReviews        WeeklyReview[]
 }
 
 model Screening {
@@ -109,6 +104,7 @@ model WatchlistItem {
   notes     String?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, commodity])
 }
 
@@ -123,47 +119,47 @@ model Alert {
 }
 
 model Position {
-  id            String    @id @default(cuid())
-  userId        String
-  symbol        String
-  name          String
-  direction     String    // LONG or SHORT
-  entryPrice    Float
-  currentPrice  Float?
-  stopPrice     Float?
-  targetPrice   Float?
-  contracts     Int       @default(1)
-  contractSize  Float     @default(1)
-  status        String    @default("open") // open, closed
-  exitPrice     Float?
-  exitDate      DateTime?
-  pnl           Float?
-  notes         String?
-  tags          String[]
-  openedAt      DateTime  @default(now())
-  createdAt     DateTime  @default(now())
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  userId       String
+  symbol       String
+  name         String
+  direction    String
+  entryPrice   Float
+  currentPrice Float?
+  stopPrice    Float?
+  targetPrice  Float?
+  contracts    Int       @default(1)
+  contractSize Float     @default(1)
+  status       String    @default("open")
+  exitPrice    Float?
+  exitDate     DateTime?
+  pnl          Float?
+  notes        String?
+  tags         String[]
+  openedAt     DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Idea {
-  id          String   @id @default(cuid())
-  userId      String
-  title       String
-  symbol      String?
-  direction   String?  // BUY, SELL, WATCHING
-  timeframe   String?  // Daily, Weekly, Monthly
-  status      String   @default("watching") // watching, active, passed, invalid
-  thesis      String?
-  entry       String?
-  stop        String?
-  target      String?
-  confidence  Int?     // 1-10
-  tags        String[]
-  isPublic    Boolean  @default(false)
-  imageUrl    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  symbol     String?
+  direction  String?
+  timeframe  String?
+  status     String   @default("watching")
+  thesis     String?
+  entry      String?
+  stop       String?
+  target     String?
+  confidence Int?
+  tags       String[]
+  isPublic   Boolean  @default(false)
+  imageUrl   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PriceAlert {
@@ -171,7 +167,7 @@ model PriceAlert {
   userId      String
   symbol      String
   name        String
-  condition   String    // above, below, cotIndex_above, cotIndex_below, seasonal_window
+  condition   String
   value       Float?
   message     String?
   triggered   Boolean   @default(false)
@@ -201,9 +197,9 @@ model Checklist {
   id        String          @id @default(cuid())
   userId    String
   name      String
-  items     ChecklistItem[]
   createdAt DateTime        @default(now())
   user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     ChecklistItem[]
 }
 
 model ChecklistItem {
@@ -240,29 +236,29 @@ model TradeMedia {
 }
 
 model WeeklyReview {
-  id           String   @id @default(cuid())
-  userId       String
-  weekOf       DateTime
-  whatWorked   String?
-  whatDidnt    String?
+  id            String   @id @default(cuid())
+  userId        String
+  weekOf        DateTime
+  whatWorked    String?
+  whatDidnt     String?
   biggestLesson String?
   nextWeekFocus String?
-  mentalState  String?
+  mentalState   String?
   rulesFollowed Int?
-  totalTrades  Int?
-  pnl          Float?
-  createdAt    DateTime @default(now())
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalTrades   Int?
+  pnl           Float?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model AIConversation {
-  id        String        @id @default(cuid())
+  id        String      @id @default(cuid())
   userId    String
-  title     String        @default("New Conversation")
+  title     String      @default("New Conversation")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  AIMessage[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model AIMessage {
@@ -290,8 +286,8 @@ model COTAlert {
   id          String    @id @default(cuid())
   userId      String
   commodity   String
-  condition   String    // above, below
-  threshold   Int       // 0-100 COT index value
+  condition   String
+  threshold   Int
   label       String?
   enabled     Boolean   @default(true)
   triggered   Boolean   @default(false)
@@ -302,50 +298,49 @@ model COTAlert {
 }
 
 model TradePlan {
-  id          String   @id @default(cuid())
-  userId      String
-  commodity   String
-  direction   String
-  entry       String?
-  stop        String?
-  target      String?
-  riskReward  String?
-  thesis      String?
-  cotContext  String?
+  id              String   @id @default(cuid())
+  userId          String
+  commodity       String
+  direction       String
+  entry           String?
+  stop            String?
+  target          String?
+  riskReward      String?
+  thesis          String?
+  cotContext      String?
   seasonalContext String?
-  status      String   @default("active") // active, executed, cancelled
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ── Social / Community ─────────────────────────────────────────
 model SocialPost {
-  id          String        @id @default(cuid())
-  userId      String
-  content     String
-  imageUrl    String?
-  assetTag    String?       // e.g. "Gold", "EUR/USD"
-  direction   String?       // LONG, SHORT, NEUTRAL
-  likes       Int           @default(0)
-  reposts     Int           @default(0)
-  isPublic    Boolean       @default(true)
-  groupId     String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comments    SocialComment[]
-  postLikes   PostLike[]
+  id        String          @id @default(cuid())
+  userId    String
+  content   String
+  imageUrl  String?
+  assetTag  String?
+  direction String?
+  likes     Int             @default(0)
+  reposts   Int             @default(0)
+  isPublic  Boolean         @default(true)
+  groupId   String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  postLikes PostLike[]
+  comments  SocialComment[]
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model SocialComment {
-  id        String      @id @default(cuid())
+  id        String     @id @default(cuid())
   postId    String
   userId    String
   content   String
-  createdAt DateTime    @default(now())
-  post      SocialPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  post      SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PostLike {
@@ -355,21 +350,22 @@ model PostLike {
   createdAt DateTime   @default(now())
   post      SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([postId, userId])
 }
 
 model DirectMessage {
-  id          String   @id @default(cuid())
-  fromUserId  String
-  toUserId    String
-  content     String
-  imageUrl    String?
-  fileUrl     String?
-  fileName    String?
-  read        Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  fromUser    User     @relation("SentMessages",     fields: [fromUserId], references: [id], onDelete: Cascade)
-  toUser      User     @relation("ReceivedMessages", fields: [toUserId],   references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  content    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  fileName   String?
+  fileUrl    String?
+  imageUrl   String?
+  fromUser   User     @relation("SentMessages", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser     User     @relation("ReceivedMessages", fields: [toUserId], references: [id], onDelete: Cascade)
 }
 
 model UserFollow {
@@ -377,44 +373,45 @@ model UserFollow {
   followerId  String
   followingId String
   createdAt   DateTime @default(now())
-  follower    User     @relation("Followers",  fields: [followerId],  references: [id], onDelete: Cascade)
-  following   User     @relation("Following",  fields: [followingId], references: [id], onDelete: Cascade)
+  follower    User     @relation("Followers", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
   @@unique([followerId, followingId])
 }
 
-// ── Groups (Skool/Discord style) ───────────────────────────────
 model Group {
-  id          String        @id @default(cuid())
-  ownerId     String
-  name        String
-  slug        String        @unique
-  description String?
-  imageUrl    String?
-  price       Float         @default(0)   // 0 = free
-  currency    String        @default("usd")
-  platformFee Float         @default(0.05) // 5% to TradeRing
-  isPublic    Boolean       @default(true)
-  memberCount Int           @default(0)
-  category    String?       // "Futures", "Forex", etc.
-  createdAt   DateTime      @default(now())
-  monthlyPrice Float         @default(0)
-  isPrivate    Boolean       @default(false)
-  owner       User          @relation("OwnedGroups", fields: [ownerId], references: [id], onDelete: Cascade)
-  members     GroupMember[]
-  channels    GroupChannel[]
-  courses     GroupCourse[]
-  memberships GroupMembership[]
-  tradeIdeas  TradeIdea[]
+  id           String            @id @default(cuid())
+  ownerId      String
+  name         String
+  slug         String            @unique
+  description  String?
+  imageUrl     String?
+  price        Float             @default(0)
+  currency     String            @default("usd")
+  platformFee  Float             @default(0.05)
+  isPublic     Boolean           @default(true)
+  memberCount  Int               @default(0)
+  category     String?
+  createdAt    DateTime          @default(now())
+  isPrivate    Boolean           @default(false)
+  monthlyPrice Float             @default(0)
+  owner        User              @relation("OwnedGroups", fields: [ownerId], references: [id], onDelete: Cascade)
+  channels     GroupChannel[]
+  courses      GroupCourse[]
+  members      GroupMember[]
+  memberships  GroupMembership[]
+  tradeIdeas   TradeIdea[]
 }
 
 model GroupMember {
-  id        String   @id @default(cuid())
-  groupId   String
-  userId    String
-  role      String   @default("member") // member, moderator, owner
-  joinedAt  DateTime @default(now())
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([groupId, userId])
 }
 
@@ -422,7 +419,7 @@ model GroupChannel {
   id        String         @id @default(cuid())
   groupId   String
   name      String
-  type      String         @default("chat") // chat, announcements
+  type      String         @default("chat")
   order     Int            @default(0)
   createdAt DateTime       @default(now())
   group     Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -441,213 +438,205 @@ model GroupMessage {
 }
 
 model GroupCourse {
-  id          String        @id @default(cuid())
+  id          String         @id @default(cuid())
   groupId     String
   title       String
   description String?
-  order       Int           @default(0)
-  createdAt   DateTime      @default(now())
-  group       Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  order       Int            @default(0)
+  createdAt   DateTime       @default(now())
   lessons     CourseLesson[]
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 model CourseLesson {
-  id          String      @id @default(cuid())
-  courseId    String
-  title       String
-  content     String      @default("")
-  videoUrl    String?
-  order       Int         @default(0)
-  createdAt   DateTime    @default(now())
-  course      GroupCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id        String      @id @default(cuid())
+  courseId  String
+  title     String
+  content   String      @default("")
+  videoUrl  String?
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+  course    GroupCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
 }
 
-// ── Competitions ───────────────────────────────────────────────
 model Tournament {
-  // Trade filter fields
-  traderStyle      String?   // scalper | daytrader | swing | position | macro
-  minHoldHours     Int?      // minimum hours a trade must be held
-  maxHoldHours     Int?      // maximum hours a trade must be held
-  maxTradesPerWeek Int?      // cap on trades submitted per week per user
-  minRiskReward    Float?    // e.g. 1.5 means R:R must be >= 1.5
-  maxRiskPct       Float?    // max % risk per trade (e.g. 3.0 = 3%)
-  allowedAssets    String?   // JSON array of allowed symbols, null = all
-  requireStopLoss  Boolean   @default(true)
-  requireTarget    Boolean   @default(true)
-  h2hMatches      H2HMatch[]
-  // Trade filter fields
-
-  id            String    @id @default(cuid())
-  creatorId     String
-  name          String
-  description   String?
-  type          String    @default("tournament") // tournament, h2h
-  status        String    @default("open")       // open, active, completed, cancelled
-  assetClasses  String[]  // ["commodities","forex","stocks","any"]
-  maxCallsPerDay Int      @default(3)
-  startDate     DateTime
-  endDate       DateTime
-  buyIn         Float     @default(0)
-  prizePool     Float     @default(0)
-  payoutStructure Json?   // [{place:1,pct:50},{place:2,pct:30},{place:3,pct:20}]
-  maxTeams      Int?
-  minTeams      Int       @default(2)
-  platformFee   Float     @default(0.05)
-  createdAt     DateTime  @default(now())
-  creator       User      @relation("CreatedTournaments", fields: [creatorId], references: [id], onDelete: Cascade)
-  entries       TournamentEntry[]
-  calls         TradeCall[]
+  id               String            @id @default(cuid())
+  creatorId        String
+  name             String
+  description      String?
+  type             String            @default("tournament")
+  status           String            @default("open")
+  assetClasses     String[]
+  maxCallsPerDay   Int               @default(3)
+  startDate        DateTime
+  endDate          DateTime
+  buyIn            Float             @default(0)
+  prizePool        Float             @default(0)
+  payoutStructure  Json?
+  maxTeams         Int?
+  minTeams         Int               @default(2)
+  platformFee      Float             @default(0.05)
+  createdAt        DateTime          @default(now())
+  allowedAssets    String?
+  maxHoldHours     Int?
+  maxRiskPct       Float?
+  maxTradesPerWeek Int?
+  minHoldHours     Int?
+  minRiskReward    Float?
+  requireStopLoss  Boolean           @default(true)
+  requireTarget    Boolean           @default(true)
+  traderStyle      String?
+  h2hMatches       H2HMatch[]
+  creator          User              @relation("CreatedTournaments", fields: [creatorId], references: [id], onDelete: Cascade)
+  entries          TournamentEntry[]
+  calls            TradeCall[]
 }
-
 
 model H2HMatch {
-  id              String   @id @default(cuid())
+  id              String     @id @default(cuid())
   tournamentId    String
-  tournament      Tournament @relation(fields: [tournamentId], references: [id])
   challengerId    String
-  challenger      User     @relation("H2HChallenger", fields: [challengerId], references: [id])
   opponentId      String?
-  opponent        User?    @relation("H2HOpponent", fields: [opponentId], references: [id])
-  status          String   @default("waiting") // waiting | active | completed
+  status          String     @default("waiting")
   winnerId        String?
-  challengerScore Float    @default(0)
-  opponentScore   Float    @default(0)
+  challengerScore Float      @default(0)
+  opponentScore   Float      @default(0)
   startDate       DateTime?
   endDate         DateTime?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime   @default(now())
+  challenger      User       @relation("H2HChallenger", fields: [challengerId], references: [id])
+  opponent        User?      @relation("H2HOpponent", fields: [opponentId], references: [id])
+  tournament      Tournament @relation(fields: [tournamentId], references: [id])
 }
 
 model TraderConsistency {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id])
-  totalTrades     Int      @default(0)
-  winRate         Float    @default(0)
-  avgRR           Float    @default(0)
-  avgHoldHours    Float    @default(0)
-  traderStyle     String?
-  consistencyScore Float   @default(0)
-  lastUpdated     DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  totalTrades      Int      @default(0)
+  winRate          Float    @default(0)
+  avgRR            Float    @default(0)
+  avgHoldHours     Float    @default(0)
+  traderStyle      String?
+  consistencyScore Float    @default(0)
+  lastUpdated      DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id])
 }
 
 model TournamentEntry {
-  id           String     @id @default(cuid())
-  tournamentId String
-  groupId      String?
-  userId       String     // captain / solo entry
-  teamName     String?
-  score        Float      @default(0)
-  rank         Int?
-  paid         Boolean    @default(false)
-  paidOut            Boolean    @default(false)
-  totalDollarPnL     Float      @default(0)
-  autoBrokerSync     Boolean    @default(false)  // user chooses per competition
-  joinedAt           DateTime   @default(now())
-  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  calls        TradeCall[]
+  id             String      @id @default(cuid())
+  tournamentId   String
+  groupId        String?
+  userId         String
+  teamName       String?
+  score          Float       @default(0)
+  rank           Int?
+  paid           Boolean     @default(false)
+  paidOut        Boolean     @default(false)
+  totalDollarPnL Float       @default(0)
+  autoBrokerSync Boolean     @default(false)
+  joinedAt       DateTime    @default(now())
+  tournament     Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calls          TradeCall[]
+
   @@unique([tournamentId, userId])
 }
 
 model TradeCall {
-  // Validation fields
-  entryTimestamp   DateTime? // when trade was officially entered
-  closeTimestamp   DateTime? // when trade was closed
-  holdHours        Float?    // calculated hold duration
+  id               String          @id @default(cuid())
+  entryId          String
+  tournamentId     String
+  userId           String
+  asset            String
+  symbol           String
+  direction        String
+  entryPrice       Float
+  stopPrice        Float
+  targetPrice      Float
+  currentPrice     Float?
+  contractSize     Float           @default(1)
+  contracts        Int             @default(1)
+  dollarRisk       Float?
+  dollarTarget     Float?
+  dollarPnL        Float?
+  isRealMoney      Boolean         @default(false)
+  status           String          @default("open")
+  rMultiple        Float?
+  points           Float           @default(0)
+  submittedAt      DateTime        @default(now())
+  resolvedAt       DateTime?
+  expiresAt        DateTime?
+  closeTimestamp   DateTime?
+  disqualReason    String?
+  entryTimestamp   DateTime?
+  holdHours        Float?
+  riskPct          Float?
   stopLoss         Float?
   takeProfit       Float?
-  riskPct          Float?
-
-  validationStatus String    @default("pending") // pending | valid | disqualified
-  disqualReason    String?
-  consistencyDelta Float?    // how much this trade moved consistency score
-  // Validation fields
-
-  id              String           @id @default(cuid())
-  entryId         String
-  tournamentId    String
-  userId          String
-  asset           String
-  symbol          String
-  direction       String           // LONG, SHORT
-  entryPrice      Float
-  stopPrice       Float
-  targetPrice     Float
-  currentPrice    Float?
-  contractSize    Float            @default(1)
-  contracts       Int              @default(1)
-  dollarRisk      Float?           // calculated: |entry-stop| * contractSize * contracts
-  dollarTarget    Float?           // calculated: |target-entry| * contractSize * contracts
-  dollarPnL       Float?           // actual dollar P&L when resolved
-  isRealMoney     Boolean          @default(false)
-  status          String           @default("open") // open, won, lost, expired
-  rMultiple       Float?
-  points          Float            @default(0)
-  submittedAt     DateTime         @default(now())
-  resolvedAt      DateTime?
-  expiresAt       DateTime?
-  entry           TournamentEntry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  tournament      Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  validationStatus String          @default("pending")
+  consistencyDelta Float?
+  entry            TournamentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  tournament       Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ── Broker Integrations ────────────────────────────────────────
 model BrokerConnection {
-  id            String    @id @default(cuid())
-  userId        String
-  broker        String    // tradovate, ibkr, alpaca, schwab
-  label         String?   // user-set nickname e.g. "My Futures Account"
-  apiKey        String?   // encrypted in production
-  apiSecret     String?
-  accountId     String?
-  accessToken   String?
-  refreshToken  String?
-  tokenExpiry   DateTime?
-  status        String    @default("connected") // connected, error, disconnected
-  lastSynced    DateTime?
-  autoCompete   Boolean   @default(true)  // auto-enter trades into competitions
-  showPnL       Boolean   @default(false) // show real P&L publicly
-  createdAt     DateTime  @default(now())
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  brokerTrades  BrokerTrade[]
+  id           String        @id @default(cuid())
+  userId       String
+  broker       String
+  label        String?
+  apiKey       String?
+  apiSecret    String?
+  accountId    String?
+  accessToken  String?
+  refreshToken String?
+  tokenExpiry  DateTime?
+  status       String        @default("connected")
+  lastSynced   DateTime?
+  autoCompete  Boolean       @default(true)
+  showPnL      Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brokerTrades BrokerTrade[]
 }
 
 model BrokerTrade {
-  id              String           @id @default(cuid())
-  connectionId    String
-  userId          String
-  brokerTradeId   String           // original ID from broker
-  asset           String
-  symbol          String
-  direction       String           // LONG, SHORT
-  entryPrice      Float
-  exitPrice       Float?
-  stopPrice       Float?
-  targetPrice     Float?
-  quantity        Float            @default(1)
-  contractSize    Float            @default(1)
-  realizedPnL     Float?
-  status          String           @default("open") // open, closed
-  openedAt        DateTime
-  closedAt        DateTime?
-  tradeCallId     String?          // linked competition call if auto-entered
-  createdAt       DateTime         @default(now())
-  connection      BrokerConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String           @id @default(cuid())
+  connectionId  String
+  userId        String
+  brokerTradeId String
+  asset         String
+  symbol        String
+  direction     String
+  entryPrice    Float
+  exitPrice     Float?
+  stopPrice     Float?
+  targetPrice   Float?
+  quantity      Float            @default(1)
+  contractSize  Float            @default(1)
+  realizedPnL   Float?
+  status        String           @default("open")
+  openedAt      DateTime
+  closedAt      DateTime?
+  tradeCallId   String?
+  createdAt     DateTime         @default(now())
+  connection    BrokerConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([connectionId, brokerTradeId])
 }
 
-// ── Creator Economy ────────────────────────────────────────────────
 model GroupMembership {
-  id          String   @id @default(cuid())
-  groupId     String
-  userId      String
-  monthlyFee  Float    @default(0)
-  status      String   @default("active") // active, cancelled, past_due
-  joinedAt    DateTime @default(now())
-  renewsAt    DateTime?
-  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  groupId    String
+  userId     String
+  monthlyFee Float     @default(0)
+  status     String    @default("active")
+  joinedAt   DateTime  @default(now())
+  renewsAt   DateTime?
+  group      Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([groupId, userId])
 }
 
@@ -655,119 +644,113 @@ model CreatorPayout {
   id          String   @id @default(cuid())
   creatorId   String
   amount      Float
-  type        String   // membership_fee, tournament_hosting, course_sale
-  sourceId    String?  // groupId or tournamentId
+  type        String
+  sourceId    String?
   description String?
   paidOut     Boolean  @default(false)
   createdAt   DateTime @default(now())
   creator     User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 }
 
-
 model ScreenerTemplate {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation("UserScreeners", fields: [userId], references: [id])
-  name          String
-  description   String?
-  assetClass    String?   // commodities | forex | futures | stocks | any
-  traderStyle   String?   // scalper | daytrader | swing | position | macro
-  minScore      Float     @default(60)
-  isPublic      Boolean   @default(false)
-  isPinned      Boolean   @default(false)
-  useCount      Int       @default(0)
-  forkCount     Int       @default(0)
-  forkedFromId  String?
-  signals       ScreenerSignal[]
-  runs          ScreenerRun[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String           @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  assetClass   String?
+  traderStyle  String?
+  minScore     Float            @default(60)
+  isPublic     Boolean          @default(false)
+  isPinned     Boolean          @default(false)
+  useCount     Int              @default(0)
+  forkCount    Int              @default(0)
+  forkedFromId String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  runs         ScreenerRun[]
+  signals      ScreenerSignal[]
+  user         User             @relation("UserScreeners", fields: [userId], references: [id])
 }
 
 model ScreenerSignal {
-  id           String   @id @default(cuid())
-  templateId   String
-  template     ScreenerTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  sortOrder    Int      @default(0)
-  // What data point
-  dataSource   String   // price | cot | seasonal | technical | fundamental | custom
-  metric       String   // exact metric name trader types in
-  // The condition
-  operator     String   // gt | lt | gte | lte | between | crosses_above | crosses_below | equals
-  valueA       Float    // primary threshold
-  valueB       Float?   // secondary threshold for 'between'
-  unit         String?  // % | percentile | raw | score
-  // Scoring
-  weight       Int      @default(1)  // 1-5, how much this matters
-  isRequired   Boolean  @default(false)
-  // Trader's own notes on why they use this number
-  notes        String?
-  createdAt    DateTime @default(now())
+  id         String           @id @default(cuid())
+  templateId String
+  sortOrder  Int              @default(0)
+  dataSource String
+  metric     String
+  operator   String
+  valueA     Float
+  valueB     Float?
+  unit       String?
+  weight     Int              @default(1)
+  isRequired Boolean          @default(false)
+  notes      String?
+  createdAt  DateTime         @default(now())
+  template   ScreenerTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 }
 
 model ScreenerRun {
-  id           String   @id @default(cuid())
+  id           String           @id @default(cuid())
   templateId   String
-  template     ScreenerTemplate @relation(fields: [templateId], references: [id])
   userId       String
-  assets       String   // JSON array of assets scanned
-  results      String   // JSON array of {asset, score, passed, signals}
-  flaggedCount Int      @default(0)
-  ranAt        DateTime @default(now())
+  assets       String
+  results      String
+  flaggedCount Int              @default(0)
+  ranAt        DateTime         @default(now())
+  template     ScreenerTemplate @relation(fields: [templateId], references: [id])
 }
 
 model ScreenerFork {
-  id           String   @id @default(cuid())
-  originalId   String
-  forkedById   String
-  forkedAt     DateTime @default(now())
+  id         String   @id @default(cuid())
+  originalId String
+  forkedById String
+  forkedAt   DateTime @default(now())
 }
 
-
 model PropFirmReferral {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation("PropFirmReferrals", fields: [userId], references: [id])
-  firmName    String
-  firmSlug    String
-  status      String   @default("pending") // pending | submitted | accepted | funded
-  referredAt  DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  notes       String?
+  id         String   @id @default(cuid())
+  userId     String
+  firmName   String
+  firmSlug   String
+  status     String   @default("pending")
+  referredAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  notes      String?
+  user       User     @relation("PropFirmReferrals", fields: [userId], references: [id])
 }
 
 model LeaderboardSnapshot {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation("LeaderboardSnapshots", fields: [userId], references: [id])
-  period       String   // monthly | quarterly | annual | alltime
-  periodKey    String   // e.g. "2026-04" for April 2026
-  assetClass   String   // commodities | forex | stocks | crypto | overall
-  rank         Int
-  score        Float
-  winRate      Float
-  avgRR        Float
-  totalTrades  Int
-  snappedAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  period      String
+  periodKey   String
+  assetClass  String
+  rank        Int
+  score       Float
+  winRate     Float
+  avgRR       Float
+  totalTrades Int
+  snappedAt   DateTime @default(now())
+  user        User     @relation("LeaderboardSnapshots", fields: [userId], references: [id])
 }
 
 model TradeIdea {
-  id          String   @id @default(cuid())
-  authorId    String
-  groupId     String?
-  asset       String
-  symbol      String
-  direction   String   // LONG, SHORT, NEUTRAL
-  entryPrice  Float?
-  stopPrice   Float?
-  targetPrice Float?
+  id           String   @id @default(cuid())
+  authorId     String
+  groupId      String?
+  asset        String
+  symbol       String
+  direction    String
+  entryPrice   Float?
+  stopPrice    Float?
+  targetPrice  Float?
   currentPrice Float?
-  thesis      String
-  cotIndex    Float?
+  thesis       String
+  cotIndex     Float?
   seasonalBias Float?
-  status      String   @default("open") // open, hit_target, hit_stop, closed
-  likes       Int      @default(0)
-  createdAt   DateTime @default(now())
-  author      User     @relation("AuthoredIdeas", fields: [authorId], references: [id], onDelete: Cascade)
-  group       Group?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  status       String   @default("open")
+  likes        Int      @default(0)
+  createdAt    DateTime @default(now())
+  author       User     @relation("AuthoredIdeas", fields: [authorId], references: [id], onDelete: Cascade)
+  group        Group?   @relation(fields: [groupId], references: [id])
 }
