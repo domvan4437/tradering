@@ -1,260 +1,254 @@
 'use client';
 import { useState } from 'react';
 
-const ASSET_CLASSES = ['Open (Any)','Forex','Commodities','Futures','Stocks','Crypto'];
-const DURATIONS = ['1 Day','3 Days','1 Week','2 Weeks','1 Month','3 Months','6 Months','Custom'];
-const PRIZE_STRUCTURES = ['Winner Take All','Top 2 Split','Top 3 Split','Top 5 Split','Custom %'];
-
 const MOCK_CONTESTS = [
-  {
-    id:1, name:'May Commodities Cup', host:'cotmaster', asset:'Commodities',
-    duration:'1 Month', endsIn:'18d 4h', entryFee:'$50/group',
-    prizePool:'$4,200', prizeStructure:'Top 3 Split', prizes:['$2,100','$1,260','$840'],
-    maxGroups:15, groups:9, minTrades:10, public:true, started:true,
-    groups_list:[
-      { name:'COT Masters', members:6, pnl:'+12.4%', rank:1, trades:24 },
-      { name:'Grain Alliance', members:5, pnl:'+8.1%', rank:2, trades:18 },
-      { name:'Metal Bulls', members:7, pnl:'+5.7%', rank:3, trades:31 },
-      { name:'Your Group', members:4, pnl:'+3.2%', rank:4, trades:12, isYou:true },
-    ],
-  },
-  {
-    id:2, name:'Weekly Forex Sprint', host:'fxswing99', asset:'Forex',
-    duration:'1 Week', endsIn:'3d 12h', entryFee:'$25/group',
-    prizePool:'$750', prizeStructure:'Top 2 Split', prizes:['$500','$250'],
-    maxGroups:8, groups:5, minTrades:5, public:true, started:true,
-    groups_list:[
-      { name:'Pip Masters', members:4, pnl:'+6.8%', rank:1, trades:15 },
-      { name:'FX Warriors', members:3, pnl:'+4.2%', rank:2, trades:11 },
-    ],
-  },
+  { id:1, name:'May Commodities Cup', host:'cotmaster', asset:'Commodities', duration:'1 Month', endsIn:'18d 4h', entryFee:'$50', prizePool:'$4,200', prizeStructure:'Top 3 Split', prizes:['$2,100','$1,260','$840'], maxGroups:15, groupsEntered:9, minTrades:10, public:true, started:true,
+    standings:[{name:'COT Masters',pnl:'+12.4%',trades:24,rank:1},{name:'Grain Alliance',pnl:'+8.1%',trades:18,rank:2},{name:'Metal Bulls',pnl:'+5.7%',trades:31,rank:3,isYou:true},{name:'Your Group',pnl:'+3.2%',trades:12,rank:4},{name:'Forex Kings',pnl:'+1.8%',trades:9,rank:5}] },
+  { id:2, name:'Forex Weekly Sprint', host:'fxswing99', asset:'Forex', duration:'1 Week', endsIn:'3d 2h', entryFee:'$25', prizePool:'$800', prizeStructure:'Winner Take All', prizes:['$800'], maxGroups:8, groupsEntered:4, minTrades:5, public:true, started:true,
+    standings:[{name:'FX Masters',pnl:'+9.2%',trades:14,rank:1},{name:'Euro Bulls',pnl:'+4.8%',trades:11,rank:2},{name:'Cable Gang',pnl:'+2.1%',trades:8,rank:3},{name:'DXY Shorts',pnl:'-1.2%',trades:6,rank:4}] },
+  { id:3, name:'COT Futures Open', host:'edgefinder', asset:'Futures', duration:'2 Weeks', endsIn:'Starts in 2d', entryFee:'$100', prizePool:'$2,000', prizeStructure:'Top 2 Split', prizes:['$1,400','$600'], maxGroups:10, groupsEntered:3, minTrades:8, public:true, started:false, standings:[] },
 ];
 
-function PrizeBar({ prizes, structure }) {
-  const colors = ['#d97706','#6b7280','#b45309','#4f46e5','#0891b2'];
+const MY_CONTESTS = [
+  { id:1, name:'May Commodities Cup', group:'Metal Bulls', rank:3, pnl:'+5.7%', trades:31, prize:'$840', daysLeft:18, pct:35, status:'active' },
+  { id:2, name:'COT Futures Sprint', group:'Metal Bulls', rank:2, pnl:'+8.3%', trades:22, prize:'+$630 won', daysLeft:0, pct:100, status:'completed' },
+];
+
+const ASSET_CLASSES = ['Any','Forex','Commodities','Futures','Stocks','Crypto'];
+const DURATIONS = ['1 Day','3 Days','1 Week','2 Weeks','1 Month','3 Months'];
+const STAKES = ['$10','$25','$50','$100','$250','$500'];
+const STRUCTURES = ['Winner Take All','Top 2 Split','Top 3 Split','Top 5 Split'];
+
+function ContestCard({ c, onEnter, onSpectate }) {
+  const lc = c.host[0].toUpperCase();
+  const colors = ['#534AB7','#0891b2','#d97706','#16a34a','#dc2626','#7c3aed'];
+  const color = colors[c.id % colors.length];
   return (
-    <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
-      {prizes.map((p,i) => (
-        <div key={i} style={{ display:'flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:'var(--surface2)', border:'1px solid var(--border)' }}>
-          <span style={{ fontFamily:'var(--font-mono)', fontSize:10, color:colors[i], fontWeight:700 }}>#{i+1}</span>
-          <span style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:700, color:'var(--text)' }}>{p}</span>
+    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 18px' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+        <div style={{ width:38, height:38, borderRadius:'50%', background:`linear-gradient(135deg,${color},${color}aa)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, color:'#fff', flexShrink:0 }}>{lc}</div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)' }}>{c.host}</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{c.groupsEntered}/{c.maxGroups} groups entered</div>
         </div>
-      ))}
-    </div>
-  );
-}
-
-function ContestCard({ contest, onEnter, onSpectate }) {
-  const [expanded, setExpanded] = useState(false);
-  const pct = Math.round((contest.groups/contest.maxGroups)*100);
-  return (
-    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden' }}>
-      <div style={{ height:3, background:`linear-gradient(90deg,var(--accent),#7c3aed)` }} />
-      <div style={{ padding:'18px 20px' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-          <div>
-            <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:3 }}>{contest.name}</div>
-            <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>Hosted by {contest.host} · {contest.asset} · {contest.duration}</div>
-          </div>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:20, fontWeight:800, color:'var(--accent)' }}>{contest.prizePool}</div>
-            <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>prize pool</div>
-          </div>
+        <div style={{ textAlign:'right' }}>
+          <div style={{ fontFamily:'var(--font)', fontSize:20, fontWeight:700, color:'var(--accent)' }}>{c.prizePool}</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>prize pool</div>
         </div>
-
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:14 }}>
-          {[
-            { label:'Entry', value:contest.entryFee },
-            { label:'Groups', value:`${contest.groups}/${contest.maxGroups}` },
-            { label:'Ends in', value:contest.endsIn },
-          ].map(s => (
-            <div key={s.label} style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
-              <div style={{ fontFamily:'var(--font-mono)', fontSize:12, fontWeight:700, color:'var(--text)' }}>{s.value}</div>
-              <div style={{ fontFamily:'var(--font)', fontSize:9, color:'var(--text-muted)' }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ marginBottom:10 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-            <span style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{contest.prizeStructure}</span>
-            <span style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{pct}% full</span>
-          </div>
-          <div style={{ height:4, background:'var(--surface2)', borderRadius:2, overflow:'hidden' }}>
-            <div style={{ height:'100%', width:`${pct}%`, background:'var(--accent)', borderRadius:2 }} />
-          </div>
-          <PrizeBar prizes={contest.prizes} structure={contest.prizeStructure} />
-        </div>
-
-        {/* Live leaderboard preview */}
-        {expanded && (
-          <div style={{ marginTop:14, border:'1px solid var(--border)', borderRadius:10, overflow:'hidden' }}>
-            <div style={{ padding:'8px 12px', background:'var(--surface2)', borderBottom:'1px solid var(--border)', fontFamily:'var(--font)', fontSize:11, fontWeight:700, color:'var(--text-muted)' }}>LIVE STANDINGS</div>
-            {contest.groups_list?.map((g,i) => (
-              <div key={g.name} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderBottom: i<contest.groups_list.length-1?'1px solid var(--border)':'none', background: g.isYou?'var(--accent-bg)':'transparent' }}>
-                <div style={{ width:22, fontFamily:'var(--font-mono)', fontSize:12, fontWeight:700, color: i===0?'#d97706':i===1?'#6b7280':i===2?'#b45309':'var(--text-muted)', textAlign:'center' }}>#{i+1}</div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color: g.isYou?'var(--accent)':'var(--text)' }}>{g.name}{g.isYou?' (you)':''}</div>
-                  <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{g.members} members · {g.trades} trades</div>
-                </div>
-                <div style={{ fontFamily:'var(--font-mono)', fontSize:13, fontWeight:700, color: g.pnl.startsWith('+')?'var(--green)':'var(--red)' }}>{g.pnl}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={{ display:'flex', gap:8, marginTop:14 }}>
-          <button onClick={() => setExpanded(!expanded)} style={{ flex:1, padding:'8px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-            {expanded ? 'Hide Standings' : 'Live Standings'}
-          </button>
-          <button onClick={() => onSpectate && onSpectate(contest)} style={{ flex:1, padding:'8px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-            👁 Spectate
-          </button>
-          <button onClick={() => onEnter(contest)} style={{ flex:2, padding:'8px', borderRadius:8, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-            Enter Contest →
-          </button>
-        </div>
+      </div>
+      <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', marginBottom:10 }}>{c.name}</div>
+      <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+        {[c.asset, c.duration, c.entryFee+'/group', c.started?c.endsIn:'Starts '+c.endsIn].map((t,i) => (
+          <span key={i} style={{ fontFamily:'var(--font)', fontSize:11, padding:'3px 9px', borderRadius:20, border:'1px solid var(--border)', color:'var(--text-muted)' }}>{t}</span>
+        ))}
+      </div>
+      <div style={{ display:'flex', gap:8 }}>
+        <button onClick={() => onSpectate(c)} style={{ flex:1, padding:'8px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>👁 Spectate</button>
+        <button onClick={() => onEnter(c)} disabled={c.groupsEntered >= c.maxGroups} style={{ flex:2, padding:'8px', borderRadius:8, border:'none', background: c.groupsEntered >= c.maxGroups ? 'var(--surface2)' : 'var(--accent)', color: c.groupsEntered >= c.maxGroups ? 'var(--text-muted)' : '#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor: c.groupsEntered >= c.maxGroups ? 'not-allowed' : 'pointer' }}>
+          {c.groupsEntered >= c.maxGroups ? 'Full' : 'Enter with group →'}
+        </button>
       </div>
     </div>
   );
 }
 
-function CreateContestModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({
-    name:'', asset:'Open (Any)', duration:'1 Month', customDuration:'',
-    entryFee:'50', maxGroups:'15', minTrades:'10',
-    prizeStructure:'Top 3 Split', customPrizes:'', public:true, description:'',
-  });
-  const set = (k,v) => setForm(p=>({...p,[k]:v}));
-
-  const inputStyle = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', boxSizing:'border-box' };
-  const labelStyle = { fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', display:'block', marginBottom:6 };
-
-  const estimatedPool = form.entryFee && form.maxGroups ? `$${(parseFloat(form.entryFee||0)*parseInt(form.maxGroups||0)).toLocaleString()}` : '$0';
-
-  return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:520, maxWidth:'92vw', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
-        <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>Create Group Contest</div>
-        <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:20 }}>Everything is customizable to your trading style and community.</div>
-
-        <div style={{ marginBottom:14 }}>
-          <label style={labelStyle}>Contest Name</label>
-          <input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. May Commodities Cup" style={inputStyle} />
-        </div>
-
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
-          <div>
-            <label style={labelStyle}>Asset Class</label>
-            <select value={form.asset} onChange={e=>set('asset',e.target.value)} style={inputStyle}>
-              {ASSET_CLASSES.map(a => <option key={a}>{a}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Duration</label>
-            <select value={form.duration} onChange={e=>set('duration',e.target.value)} style={inputStyle}>
-              {DURATIONS.map(d => <option key={d}>{d}</option>)}
-            </select>
-          </div>
-          {form.duration==='Custom' && (
-            <div style={{ gridColumn:'1/-1' }}>
-              <label style={labelStyle}>Custom Duration</label>
-              <input value={form.customDuration} onChange={e=>set('customDuration',e.target.value)} placeholder="e.g. 45 days" style={inputStyle} />
-            </div>
-          )}
-          <div>
-            <label style={labelStyle}>Entry Fee Per Group ($)</label>
-            <input type="number" min="0" value={form.entryFee} onChange={e=>set('entryFee',e.target.value)} placeholder="50" style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Max Groups</label>
-            <input type="number" min="2" value={form.maxGroups} onChange={e=>set('maxGroups',e.target.value)} placeholder="15" style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Min Trades Required</label>
-            <input type="number" min="1" value={form.minTrades} onChange={e=>set('minTrades',e.target.value)} placeholder="10" style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Prize Structure</label>
-            <select value={form.prizeStructure} onChange={e=>set('prizeStructure',e.target.value)} style={inputStyle}>
-              {PRIZE_STRUCTURES.map(p => <option key={p}>{p}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {form.prizeStructure==='Custom %' && (
-          <div style={{ marginBottom:14 }}>
-            <label style={labelStyle}>Custom Prize Split (e.g. "50%, 30%, 20%")</label>
-            <input value={form.customPrizes} onChange={e=>set('customPrizes',e.target.value)} placeholder="50%, 30%, 20%" style={inputStyle} />
-          </div>
-        )}
-
-        <div style={{ marginBottom:14 }}>
-          <label style={labelStyle}>Description & Rules</label>
-          <textarea value={form.description} onChange={e=>set('description',e.target.value)} placeholder="Describe the contest, any specific rules, trading requirements..." rows={3} style={{...inputStyle, resize:'none'}} />
-        </div>
-
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
-          <button onClick={() => set('public',!form.public)} style={{ width:40, height:22, borderRadius:11, background: form.public?'var(--accent)':'var(--surface2)', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s' }}>
-            <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: form.public?20:3, transition:'left 0.2s' }} />
-          </button>
-          <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text)' }}>{form.public?'Public contest — anyone can join':'Invite only — share link to invite groups'}</span>
-        </div>
-
-        {/* Estimated pool preview */}
-        <div style={{ background:'var(--accent-bg)', border:'1px solid var(--accent-border)', borderRadius:10, padding:'12px 14px', marginBottom:20 }}>
-          <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--accent)', marginBottom:4 }}>Estimated Prize Pool</div>
-          <div style={{ fontFamily:'var(--font-mono)', fontSize:22, fontWeight:800, color:'var(--accent)' }}>{estimatedPool}</div>
-          <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>at {form.maxGroups} groups × ${form.entryFee}/group</div>
-        </div>
-
-        <div style={{ display:'flex', gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, padding:'11px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancel</button>
-          <button onClick={() => { onCreate(form); onClose(); }} disabled={!form.name.trim()} style={{ flex:2, padding:'11px', borderRadius:10, border:'none', background: form.name.trim()?'var(--accent)':'var(--surface3)', color: form.name.trim()?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor: form.name.trim()?'pointer':'default' }}>Create Contest</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function GroupContest({ onSpectate }) {
-  const [contests, setContests] = useState(MOCK_CONTESTS);
-  const [showCreate, setShowCreate] = useState(false);
+export default function GroupContest({ currentUserId }) {
+  const [subTab, setSubTab] = useState('my contests');
+  const [filterAsset, setFilterAsset] = useState('Any');
   const [entered, setEntered] = useState(null);
+  const [spectating, setSpectating] = useState(null);
+  const [form, setForm] = useState({ name:'', asset:'Any', duration:'1 Month', fee:'$50', maxGroups:10, structure:'Top 3 Split', minTrades:10, desc:'' });
+  const setF = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const TABS = ['my contests','browse','rankings','spectate','create contest'];
+  const filtered = MOCK_CONTESTS.filter(c => filterAsset === 'Any' || c.asset === filterAsset);
+
+  const tabStyle = (t) => ({ padding:'11px 16px', background:'none', border:'none', borderBottom: subTab===t?'2px solid var(--accent)':'2px solid transparent', color: subTab===t?'var(--accent)':'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight: subTab===t?700:400, cursor:'pointer', whiteSpace:'nowrap', textTransform:'capitalize' });
+  const btn = (txt, onClick, primary=true) => <button onClick={onClick} style={{ flex:1, padding:'9px 14px', background: primary?'var(--accent)':'transparent', color: primary?'#fff':'var(--text-muted)', border: primary?'none':'1px solid var(--border)', borderRadius:8, fontFamily:'var(--font)', fontSize:13, fontWeight:primary?700:500, cursor:'pointer' }}>{txt}</button>;
+  const sbox = (val, lbl) => <div style={{ background:'var(--surface2)', borderRadius:8, padding:'10px 12px', flex:1, textAlign:'center' }}><div style={{ fontFamily:'var(--font)', fontSize:20, fontWeight:700, color:'var(--text)' }}>{val}</div><div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)', marginTop:2 }}>{lbl}</div></div>;
 
   return (
-    <div style={{ fontFamily:'var(--font)', padding:'20px' }}>
-      {showCreate && <CreateContestModal onClose={() => setShowCreate(false)} onCreate={form => setContests(p => [{
-        id:Date.now(), name:form.name, host:'you', asset:form.asset,
-        duration:form.duration==='Custom'?form.customDuration:form.duration,
-        endsIn:'Upcoming', entryFee:`$${form.entryFee}/group`,
-        prizePool:'$0 (filling)', prizeStructure:form.prizeStructure,
-        prizes:['TBD'], maxGroups:parseInt(form.maxGroups), groups:0,
-        minTrades:parseInt(form.minTrades), public:form.public, started:false, groups_list:[],
-      },...p])} />}
-
+    <div style={{ fontFamily:'var(--font)' }}>
+      {/* Entered modal */}
       {entered && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div style={{ background:'var(--surface)', borderRadius:16, padding:32, width:360, textAlign:'center', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+          <div style={{ background:'var(--surface)', borderRadius:16, padding:32, width:360, textAlign:'center' }}>
             <div style={{ fontSize:48, marginBottom:12 }}>🏆</div>
-            <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:8 }}>Your group is entered!</div>
-            <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', marginBottom:20 }}>{entered.name} · {entered.prizePool} pool</div>
-            <button onClick={() => setEntered(null)} style={{ width:'100%', padding:'11px', borderRadius:10, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>Got it</button>
+            <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:8 }}>Contest entered!</div>
+            <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', marginBottom:20 }}>{entered.name} · {entered.duration} · {entered.entryFee}/group</div>
+            <button onClick={() => { setEntered(null); setSubTab('my contests'); }} style={{ width:'100%', padding:11, borderRadius:10, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>View in My Contests →</button>
           </div>
         </div>
       )}
 
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-        <div>
-          <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)' }}>Group Open Contests</div>
-          <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Groups compete for massive prize pools · Fully customizable</div>
-        </div>
-        <button onClick={() => setShowCreate(true)} style={{ padding:'9px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:10, fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>+ Create Contest</button>
+      {/* Sub-tab bar */}
+      <div style={{ display:'flex', borderBottom:'1px solid var(--border)', background:'var(--surface)', overflowX:'auto' }}>
+        {TABS.map(t => <button key={t} onClick={() => setSubTab(t)} style={tabStyle(t)}>{t}</button>)}
       </div>
 
-      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-        {contests.map(c => <ContestCard key={c.id} contest={c} onEnter={setEntered} onSpectate={onSpectate} />)}
-      </div>
+      {/* MY CONTESTS */}
+      {subTab === 'my contests' && (
+        <div style={{ padding:'20px' }}>
+          <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>My Contests</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:20 }}>1 active · 1 completed</div>
+          {MY_CONTESTS.map(c => (
+            <div key={c.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 18px', marginBottom:12 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                <div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)' }}>{c.name}</div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>Your group: {c.group} · {c.status === 'active' ? c.daysLeft+'d remaining' : 'Completed'}</div>
+                </div>
+                <span style={{ fontSize:11, padding:'3px 9px', borderRadius:20, background: c.status==='active'?'#EAF3DE':'var(--surface2)', color: c.status==='active'?'#27500A':'var(--text-muted)', fontWeight:600 }}>{c.status==='active'?`Active · #${c.rank}`:'Completed'}</span>
+              </div>
+              {c.status === 'active' && (
+                <>
+                  <div style={{ display:'flex', gap:10, marginBottom:14 }}>
+                    {sbox(`#${c.rank}`,'Current rank')}
+                    {sbox(c.pnl,'Group P&L')}
+                    {sbox(c.prize,'Prize if top 3')}
+                    {sbox(c.trades,'Trades logged')}
+                  </div>
+                  <div style={{ height:5, background:'var(--surface2)', borderRadius:3, overflow:'hidden', marginBottom:6 }}>
+                    <div style={{ height:'100%', width:c.pct+'%', background:'var(--accent)', borderRadius:3 }} />
+                  </div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)', marginBottom:14 }}>{c.pct}% complete</div>
+                  <div style={{ display:'flex', gap:8 }}>{btn('View live standings →', () => setSubTab('rankings'))}{btn('Leave contest', ()=>{}, false)}</div>
+                </>
+              )}
+              {c.status === 'completed' && (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Finished #{c.rank} · {c.pnl} P&L</div>
+                  <span style={{ fontSize:13, fontWeight:700, color:'#27500A' }}>{c.prize}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* BROWSE */}
+      {subTab === 'browse' && (
+        <div style={{ padding:'20px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+            <div>
+              <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)' }}>Group Contest Marketplace</div>
+              <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{MOCK_CONTESTS.length} open contests · Enter with your group</div>
+            </div>
+            <button onClick={() => setSubTab('create contest')} style={{ padding:'9px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:10, fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>+ Create Contest</button>
+          </div>
+          <div style={{ display:'flex', gap:6, marginBottom:16, flexWrap:'wrap' }}>
+            {ASSET_CLASSES.map(a => (
+              <button key={a} onClick={() => setFilterAsset(a)} style={{ padding:'4px 12px', borderRadius:20, border:'1px solid var(--border)', background: filterAsset===a?'var(--accent)':'transparent', color: filterAsset===a?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:500, cursor:'pointer' }}>{a}</button>
+            ))}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            {filtered.map(c => <ContestCard key={c.id} c={c} onEnter={setEntered} onSpectate={setSpectating} />)}
+          </div>
+        </div>
+      )}
+
+      {/* RANKINGS */}
+      {subTab === 'rankings' && (
+        <div style={{ padding:'20px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+            <div>
+              <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)' }}>Live rankings</div>
+              <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>May Commodities Cup · 18d remaining</div>
+            </div>
+            <select style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)' }}>
+              {MOCK_CONTESTS.map(c => <option key={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 80px 70px 70px', gap:10, padding:'10px 16px', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+              <div>#</div><div>Group</div><div style={{ textAlign:'right' }}>P&L</div><div style={{ textAlign:'right' }}>Trades</div><div style={{ textAlign:'right' }}>Prize</div>
+            </div>
+            {MOCK_CONTESTS[0].standings.map((s,i) => (
+              <div key={i} style={{ display:'grid', gridTemplateColumns:'36px 1fr 80px 70px 70px', gap:10, padding:'12px 16px', background: s.isYou?'#EEEDFE':'transparent', borderBottom:'1px solid var(--border)', alignItems:'center' }}>
+                <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--accent)' }}>{s.rank}</div>
+                <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight: s.isYou?700:400, color: s.isYou?'#3C3489':'var(--text)' }}>{s.name}{s.isYou?' (you)':''}</div>
+                <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'#16a34a', textAlign:'right' }}>{s.pnl}</div>
+                <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', textAlign:'right' }}>{s.trades}</div>
+                <div style={{ fontFamily:'var(--font)', fontSize:13, color: MOCK_CONTESTS[0].prizes[i]?'var(--accent)':'var(--text-muted)', fontWeight: MOCK_CONTESTS[0].prizes[i]?600:400, textAlign:'right' }}>{MOCK_CONTESTS[0].prizes[i]||'—'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SPECTATE */}
+      {subTab === 'spectate' && (
+        <div style={{ padding:'20px' }}>
+          <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>Live contests</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:20 }}>2 live · 1 starting soon</div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            {MOCK_CONTESTS.filter(c => c.started).map(c => (
+              <div key={c.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 18px' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                  <div>
+                    <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)' }}>{c.name}</div>
+                    <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{c.groupsEntered} groups · {c.endsIn} left</div>
+                  </div>
+                  <span style={{ fontSize:11, padding:'3px 9px', borderRadius:20, background:'#EAF3DE', color:'#27500A', fontWeight:600 }}>Live</span>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+                  {c.standings.slice(0,3).map((s,i) => {
+                    const pct = Math.max(20, 100 - i*25);
+                    return (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <span style={{ fontFamily:'var(--font)', fontSize:12, color: s.isYou?'var(--accent)':'var(--text-muted)', width:90, flexShrink:0 }}>{s.name}</span>
+                        <div style={{ flex:1, height:5, background:'var(--surface2)', borderRadius:3, overflow:'hidden' }}><div style={{ height:'100%', width:pct+'%', background:'var(--accent)', borderRadius:3 }} /></div>
+                        <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'#16a34a', width:44, textAlign:'right' }}>{s.pnl}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button onClick={() => setSpectating(c)} style={{ width:'100%', padding:'9px', borderRadius:8, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>Watch live →</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* CREATE CONTEST */}
+      {subTab === 'create contest' && (
+        <div style={{ padding:'20px' }}>
+          <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>Create a group contest</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:20 }}>Set the rules, prize structure, and entry fee. Other groups join to compete.</div>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'20px' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+              <div style={{ gridColumn:'1/-1' }}>
+                <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Contest name</label>
+                <input value={form.name} onChange={e=>setF('name',e.target.value)} placeholder="e.g. COT Monthly Commodities Cup" style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', boxSizing:'border-box' }} />
+              </div>
+              {[['Asset class','asset',ASSET_CLASSES],['Duration','duration',DURATIONS],['Entry fee / group','fee',STAKES],['Prize structure','structure',STRUCTURES]].map(([lbl,key,opts]) => (
+                <div key={key}>
+                  <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', display:'block', marginBottom:6 }}>{lbl}</label>
+                  <select value={form[key]} onChange={e=>setF(key,e.target.value)} style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none' }}>
+                    {opts.map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </div>
+              ))}
+              <div>
+                <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Max groups</label>
+                <input type="number" value={form.maxGroups} onChange={e=>setF('maxGroups',e.target.value)} style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', boxSizing:'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Min trades required</label>
+                <input type="number" value={form.minTrades} onChange={e=>setF('minTrades',e.target.value)} style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', boxSizing:'border-box' }} />
+              </div>
+              <div style={{ gridColumn:'1/-1' }}>
+                <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Rules / description</label>
+                <textarea value={form.desc} onChange={e=>setF('desc',e.target.value)} rows={3} placeholder="Describe rules, allowed assets, and any special conditions..." style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', resize:'none', boxSizing:'border-box' }} />
+              </div>
+            </div>
+            <div style={{ background:'var(--surface2)', borderRadius:8, padding:'12px 14px', marginBottom:14, fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>
+              Estimated prize pool: <strong style={{ color:'var(--text)' }}>{`$${parseInt(form.fee.replace('$','')) * parseInt(form.maxGroups)}`}</strong> ({form.maxGroups} groups × {form.fee})
+            </div>
+            <button style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:14, fontWeight:700, cursor:'pointer' }}>Create contest →</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

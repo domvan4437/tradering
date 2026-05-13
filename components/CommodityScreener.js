@@ -82,7 +82,7 @@ const STAGES = [
 const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil','Natural Gas','Gasoline','Heating Oil','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Lean Hogs','Rice','Oats','Lumber']
 const SECTION_TABS = {
   community:   ['Feed','Groups','Messages'],
-  compete:     ['Compete','Leaderboard'],
+  compete:     ['Home','H2H','Group Contests','Leaderboard','History'],
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','News'],
   charts:      ['Workspace'],
   creator:     ['Creator Studio'],
@@ -651,7 +651,7 @@ export default function App() {
         ) : section==='community' ? (
           <CommunityLayout externalTab={tab} currentUserId={session?.user?.id} />
         ) : section==='compete' ? (
-          <CompeteLayout currentUserId={session?.user?.id} />
+          <CompeteLayout currentUserId={session?.user?.id} externalTab={tab} />
         ) : section==='creator' ? (
           <div style={{padding:'20px 24px'}}><CreatorStudioTab /></div>
         ) : section==='charts' ? (

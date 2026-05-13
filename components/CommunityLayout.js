@@ -490,9 +490,9 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
   const setTab = (t) => { setTabInternal(t); if(onTabChange) onTabChange(t); };
   useEffect(() => { if(externalTab && TAB_MAP[externalTab]) setTabInternal(TAB_MAP[externalTab]); }, [externalTab]);
   return (
-    <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)', height:'100%', minHeight:0, overflow:'hidden' }}>
+    <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)' }}>
       {/* Purple top nav */}
-      <div style={{ background:PURPLE, padding:'0 20px', display:'flex', alignItems:'stretch', justifyContent:'space-between', flexShrink:0, position:'sticky', top:0, zIndex:299, pointerEvents:'all' }}>
+      <div style={{ background:PURPLE, padding:'0 20px', display:'flex', alignItems:'stretch', justifyContent:'space-between', flexShrink:0, position:'sticky', top:82, zIndex:299, pointerEvents:'all' }}>
         <div style={{ display:'flex', gap:0 }}>
           {[['feed','Feed'],['groups','Groups'],['dms','Messages']].map(([t,l]) => (
             <button key={t} onClick={(e) => { e.stopPropagation(); setTab(t); }} style={{ padding:'11px 20px', background:'none', border:'none', borderBottom:tab===t?'2px solid #fff':'2px solid transparent', color:tab===t?'#fff':'rgba(255,255,255,0.6)', fontFamily:'var(--font)', fontSize:13, fontWeight:tab===t?600:400, cursor:'pointer', transition:'all 0.15s', marginBottom:-1 }}>{l}</button>
@@ -505,7 +505,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
       </div>
       {/* Feed sub-tabs */}
       {tab === 'feed' && (
-        <div style={{ background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0, display:'flex', alignItems:'stretch', overflowX:'auto' }}>
+        <div style={{ background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0, display:'flex', alignItems:'stretch', overflowX:'auto', position:'sticky', top:120, zIndex:298 }}>
           {[{key:'Discover',icon:'trending-up'},{key:'Following',icon:'users'},{key:'Ideas'},{key:'Screeners'},{key:'Strategies'},{key:'COT Signals'}].map(({key:ft,icon}) => (
             <button key={ft} onClick={() => setFeedTab(ft)} style={{ padding:'10px 16px', background:'none', border:'none', borderBottom:feedTab===ft?'2px solid '+PURPLE:'2px solid transparent', color:feedTab===ft?PURPLE:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:feedTab===ft?600:400, cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.15s', marginBottom:-1, display:'flex', alignItems:'center', gap:6 }}>
               {icon==='trending-up' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
@@ -516,11 +516,11 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
         </div>
       )}
       {/* Tab content */}
-      <div style={{ flex:1, display:'flex', minHeight:0 }}>
+      <div style={{ flex:1, display:'flex' }}>
         {tab === 'feed' && (
-          <div style={{ flex:1, display:'flex', minHeight:0, overflow:'hidden' }}>
-            <div style={{ flex:1, overflowY:'auto', minWidth:0 }}>
-              <FeedTab currentUserId={currentUserId} activeTab={feedTab} />
+          <div style={{ flex:1, display:'flex' }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ height: 40 }} /><FeedTab currentUserId={currentUserId} activeTab={feedTab} />
             </div>
             <div style={{ width:220, borderLeft:'1px solid var(--border)', overflowY:'auto', padding:'16px 14px', flexShrink:0 }}>
               <RightSidebar />
@@ -528,7 +528,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
           </div>
         )}
         {tab === 'groups' && (
-          <div style={{ flex:1, overflow:'visible' }}>
+          <div style={{ flex:1, overflow:'visible', paddingTop:56 }}>
             <GroupsView currentUserId={currentUserId} />
           </div>
         )}

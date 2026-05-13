@@ -206,6 +206,7 @@ function MatchDetail({ match, onBack, onExportNote }) {
 export default function MatchHistory({ onExportNote }) {
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [historyTab, setHistoryTab] = useState('h2h');
 
   const matches = MOCK_MATCHES.filter(m => filter==='all' || m.result===filter);
 
@@ -213,57 +214,102 @@ export default function MatchHistory({ onExportNote }) {
 
   return (
     <div style={{ fontFamily:'var(--font)', padding:'20px' }}>
-      <div style={{ marginBottom:16 }}>
-        <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>Match History</div>
-        <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Detailed post-match analytics · Grades · AI review</div>
+      {/* H2H / Group Contests subtabs */}
+      <div style={{ display:'flex', borderBottom:'1px solid var(--border)', background:'var(--surface)', margin:'-20px -20px 20px -20px' }}>
+        {[['h2h','H2H Matches'],['group','Group Contests']].map(([key,lbl]) => (
+          <button key={key} onClick={() => setHistoryTab(key)} style={{ padding:'11px 16px', background:'none', border:'none', borderBottom: historyTab===key?'2px solid var(--accent)':'2px solid transparent', color: historyTab===key?'var(--accent)':'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight: historyTab===key?700:400, cursor:'pointer', whiteSpace:'nowrap' }}>
+            {lbl}
+          </button>
+        ))}
       </div>
 
-      {/* Summary stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:16 }}>
-        {[
-          { label:'Total Matches', value:'18', color:'var(--text)' },
-          { label:'Wins', value:'13', color:'var(--green)' },
-          { label:'Losses', value:'5', color:'var(--red)' },
-          { label:'Avg Grade', value:'B+', color:'#0891b2' },
-        ].map(s => (
-          <div key={s.label} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'12px', textAlign:'center' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:20, fontWeight:800, color:s.color, marginBottom:2 }}>{s.value}</div>
-            <div style={{ fontFamily:'var(--font)', fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{s.label}</div>
+      {historyTab === 'h2h' && (
+        <div>
+          <div style={{ marginBottom:16 }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>Match History</div>
+            <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Detailed post-match analytics · Grades · AI review</div>
           </div>
-        ))}
-      </div>
 
-      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-        {['all','win','loss'].map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{ padding:'5px 14px', borderRadius:20, border:'1px solid var(--border)', background: filter===f?'var(--accent)':'transparent', color: filter===f?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:500, cursor:'pointer', textTransform:'capitalize' }}>{f==='all'?'All':f==='win'?'Wins':'Losses'}</button>
-        ))}
-      </div>
+          {/* Summary stats */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:16 }}>
+            {[
+              { label:'Total Matches', value:'18', color:'var(--text)' },
+              { label:'Wins', value:'13', color:'var(--green)' },
+              { label:'Losses', value:'5', color:'var(--red)' },
+              { label:'Avg Grade', value:'B+', color:'#0891b2' },
+            ].map(s => (
+              <div key={s.label} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'12px', textAlign:'center' }}>
+                <div style={{ fontFamily:'var(--font-mono)', fontSize:20, fontWeight:800, color:s.color, marginBottom:2 }}>{s.value}</div>
+                <div style={{ fontFamily:'var(--font)', fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
 
-      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        {matches.map(m => {
-          const isWin = m.result === 'win';
-          return (
-            <div key={m.id} onClick={() => setSelected(m)} style={{ background:'var(--surface)', border:`1px solid ${isWin?'var(--green-border)':'var(--red-border)'}`, borderRadius:12, padding:'14px 16px', cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', gap:12 }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
-              onMouseLeave={e => e.currentTarget.style.background='var(--surface)'}>
-              <div style={{ width:40, height:40, borderRadius:10, background: isWin?'var(--green-bg)':'var(--red-bg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>{isWin?'🏆':'📉'}</div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
-                  <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)' }}>vs {m.opponent}</span>
-                  <span style={{ fontFamily:'var(--font)', fontSize:10, padding:'1px 6px', borderRadius:4, background: isWin?'var(--green-bg)':'var(--red-bg)', color: isWin?'var(--green)':'var(--red)', fontWeight:600 }}>{isWin?'WIN':'LOSS'}</span>
-                  <span style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{m.grades.overall} grade</span>
+          <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+            {['all','win','loss'].map(f => (
+              <button key={f} onClick={() => setFilter(f)} style={{ padding:'5px 14px', borderRadius:20, border:'1px solid var(--border)', background: filter===f?'var(--accent)':'transparent', color: filter===f?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight:500, cursor:'pointer', textTransform:'capitalize' }}>{f==='all'?'All':f==='win'?'Wins':'Losses'}</button>
+            ))}
+          </div>
+
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {matches.map(m => {
+              const isWin = m.result === 'win';
+              return (
+                <div key={m.id} onClick={() => setSelected(m)} style={{ background:'var(--surface)', border:`1px solid ${isWin?'var(--green-border)':'var(--red-border)'}`, borderRadius:12, padding:'14px 16px', cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', gap:12 }}
+                  onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
+                  onMouseLeave={e => e.currentTarget.style.background='var(--surface)'}>
+                  <div style={{ width:40, height:40, borderRadius:10, background: isWin?'var(--green-bg)':'var(--red-bg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>{isWin?'🏆':'📉'}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
+                      <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)' }}>vs {m.opponent}</span>
+                      <span style={{ fontFamily:'var(--font)', fontSize:10, padding:'1px 6px', borderRadius:4, background: isWin?'var(--green-bg)':'var(--red-bg)', color: isWin?'var(--green)':'var(--red)', fontWeight:600 }}>{isWin?'WIN':'LOSS'}</span>
+                      <span style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{m.grades.overall} grade</span>
+                    </div>
+                    <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.type} · {m.asset} · {m.duration} · {m.settled}</div>
+                  </div>
+                  <div style={{ textAlign:'right', flexShrink:0 }}>
+                    <div style={{ fontFamily:'var(--font-mono)', fontSize:14, fontWeight:800, color: isWin?'var(--green)':'var(--red)' }}>{m.pnl}</div>
+                    <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{m.myStats.pnl} P&L</div>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" style={{ flexShrink:0 }}><polyline points="9 18 15 12 9 6"/></svg>
                 </div>
-                <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.type} · {m.asset} · {m.duration} · {m.settled}</div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {historyTab === 'group' && (
+        <div>
+          <div style={{ marginBottom:16 }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>Group Contest History</div>
+            <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Your past group contest results</div>
+          </div>
+          {[
+            { name:'May Commodities Cup', result:'win', rank:2, prize:'+$1,260', pnl:'+8.1%', group:'Metal Bulls', traders:9, settled:'2 weeks ago' },
+            { name:'COT Futures Sprint', result:'win', rank:1, prize:'+$800', pnl:'+12.3%', group:'Metal Bulls', traders:6, settled:'1 month ago' },
+            { name:'Forex Weekly Open', result:'loss', rank:4, prize:'—', pnl:'+2.1%', group:'Metal Bulls', traders:8, settled:'2 months ago' },
+          ].map((c,i) => (
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid '+(c.result==='win'?'var(--green-border)':'var(--border)'), borderRadius:12, padding:'16px', marginBottom:12 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
+                <div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)' }}>{c.name}</div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{c.group} · {c.traders} traders · {c.settled}</div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontFamily:'var(--font)', fontSize:20, fontWeight:700, color:c.result==='win'?'var(--green)':'var(--text-muted)' }}>{c.prize}</div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>Rank #{c.rank}</div>
+                </div>
               </div>
-              <div style={{ textAlign:'right', flexShrink:0 }}>
-                <div style={{ fontFamily:'var(--font-mono)', fontSize:14, fontWeight:800, color: isWin?'var(--green)':'var(--red)' }}>{m.pnl}</div>
-                <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{m.myStats.pnl} P&L</div>
+              <div style={{ display:'flex', gap:10 }}>
+                <div style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 12px', flex:1, textAlign:'center' }}><div style={{ fontSize:16, fontWeight:700, color:'var(--green)', fontFamily:'var(--font)' }}>{c.pnl}</div><div style={{ fontSize:10, color:'var(--text-muted)', fontFamily:'var(--font)' }}>P&L</div></div>
+                <div style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 12px', flex:1, textAlign:'center' }}><div style={{ fontSize:16, fontWeight:700, color:'var(--accent)', fontFamily:'var(--font)' }}>#{c.rank}</div><div style={{ fontSize:10, color:'var(--text-muted)', fontFamily:'var(--font)' }}>Rank</div></div>
+                <div style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 12px', flex:1, textAlign:'center' }}><div style={{ fontSize:16, fontWeight:700, color:c.result==='win'?'var(--green)':'var(--red)', fontFamily:'var(--font)' }}>{c.result==='win'?'Won':'Lost'}</div><div style={{ fontSize:10, color:'var(--text-muted)', fontFamily:'var(--font)' }}>Result</div></div>
               </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" style={{ flexShrink:0 }}><polyline points="9 18 15 12 9 6"/></svg>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
