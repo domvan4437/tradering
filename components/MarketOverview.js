@@ -125,7 +125,7 @@ function SectionLabel({ children, style }) {
   )
 }
 
-function LeftPanel({ selectedAsset, onSelectAsset }) {
+function LeftPanel({ selectedAsset, onSelectAsset, onSelect }) {
   return (
     <div style={{
       width: 260, flexShrink: 0,
@@ -471,7 +471,7 @@ export default function MarketOverview({ onSelect }) {
 
       {/* 3-column body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
-        <LeftPanel selectedAsset={selectedAsset} onSelectAsset={handleSelectAsset} />
+        <LeftPanel selectedAsset={selectedAsset} onSelectAsset={handleSelectAsset} onSelect={onSelect} />
         <MainPanel asset={selectedAsset} onOpenChart={handleOpenChart} />
         <NewsSidebar />
       </div>
