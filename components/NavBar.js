@@ -30,9 +30,8 @@ export default function NavBar({ activeSection, onSelect, user, hoveredSection, 
   return (
     <nav suppressHydrationWarning style={{
       position:'fixed', top:0, left:0, right:0, height:48,
-      background:'var(--bg)',
-      backdropFilter:'blur(20px)',
-      borderBottom:'1px solid var(--border)',
+      background:'#4B44C8',
+      borderBottom:'none',
       display:'flex', alignItems:'center',
       paddingLeft:18, paddingRight:18,
       zIndex:300,
@@ -43,15 +42,15 @@ export default function NavBar({ activeSection, onSelect, user, hoveredSection, 
         style={{ display:'flex', alignItems:'center', gap:8, marginRight:28, flexShrink:0, cursor:'pointer' }}>
         <div style={{
           width:26, height:26, borderRadius:'50%',
-          border:'2.5px solid '+PURPLE,
+          border:'2.5px solid rgba(255,255,255,0.8)',
           display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow:'0 0 0 3px rgba(79,70,229,0.12)',
+          boxShadow:'0 0 0 3px rgba(255,255,255,0.15)',
         }}>
-          <div style={{ width:8, height:8, borderRadius:'50%', background:PURPLE }} />
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#fff' }} />
         </div>
         <span style={{
           fontFamily:'var(--font)', fontSize:15, fontWeight:800,
-          color:'var(--text)', letterSpacing:'-0.3px',
+          color:'#ffffff', letterSpacing:'-0.3px',
         }}>TradeRing</span>
       </div>
 
@@ -70,13 +69,14 @@ export default function NavBar({ activeSection, onSelect, user, hoveredSection, 
               <button
                 onClick={() => { onSelect(sec); setTab(''); setHoveredSection(null); }}
                 style={{
-                  background: isActive ? 'rgba(79,70,229,0.1)' : 'transparent',
-                  color: isActive ? PURPLE : 'var(--text-muted)',
+                  background: isActive ? 'rgba(255,255,255,0.18)' : 'transparent',
+                  color: isActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
                   border:'none',
-                  borderRadius:8,
+                  borderBottom: isActive ? '2px solid #fff' : '2px solid transparent',
+                  borderRadius:0,
                   padding:'6px 12px',
                   fontSize:13,
-                  fontWeight: isActive ? 700 : 500,
+                  fontWeight: isActive ? 600 : 400,
                   cursor:'pointer',
                   fontFamily:'var(--font)',
                   transition:'all 0.15s',
@@ -94,7 +94,7 @@ export default function NavBar({ activeSection, onSelect, user, hoveredSection, 
                   borderRadius:10,
                   padding:6,
                   minWidth:160,
-                  boxShadow:'0 8px 32px rgba(0,0,0,0.15)',
+                  boxShadow:'0 8px 32px rgba(0,0,0,0.35)',
                   zIndex:400,
                 }}>
                   {tabs.map(t => (
@@ -124,7 +124,7 @@ export default function NavBar({ activeSection, onSelect, user, hoveredSection, 
         <span style={{
           fontSize:10, fontWeight:700, textTransform:'uppercase',
           letterSpacing:'0.08em', padding:'3px 10px', borderRadius:20,
-          background:ps.bg, color:ps.color,
+          background:'rgba(255,255,255,0.15)', color:'rgba(255,255,255,0.9)',
         }}>{plan}</span>
         <button
           onClick={() => onSelect('account')}

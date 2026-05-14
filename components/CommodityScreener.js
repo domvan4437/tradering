@@ -336,18 +336,19 @@ function FuturesOverviewTab() {
 
 // ── Markets Layout — must be defined before App()
 function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
-  const [subTab, setSubTab] = React.useState('Screener');
+  const [subTab, setSubTab] = React.useState('');
   const showLanding = !tab || tab === 'Markets';
 
   React.useEffect(() => {
-    // Default to empty subTab so MarketOverview shows first
-    setSubTab('');
+    if (tab && tab !== 'Markets') {
+      setSubTab('Overview');
+    } else { setSubTab(''); }
   }, [tab]);
 
   const section = (tab || 'commodities').toLowerCase();
 
   const SUB_TABS = {
-    commodities: ['Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
+    commodities: ['Overview','Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
     forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
     stocks:      ['Overview','Sectors','Earnings','Key Levels'],
     crypto:      ['Overview'],
@@ -356,12 +357,22 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
   };
   const subTabs = SUB_TABS[section] || [];
   if (showLanding) {
-    return <MarketOverview onSelect={(key) => { const t = key.charAt(0).toUpperCase() + key.slice(1); setTab(t); setSubTab(key === 'commodities' ? 'Screener' : 'Overview'); }} />;
+    return <MarketOverview onSelect={(key, sym) => {
+        if (key === 'charts') { setSection('charts'); setTab(''); return; }
+        const t = key.charAt(0).toUpperCase() + key.slice(1);
+        setTab(t);
+        setSubTab(key === 'commodities' ? 'Screener' : 'Overview');
+      }} />;
   }
 
   // Show market overview when no subTab selected
   if (!subTab && section !== 'charts') {
-    return <MarketOverview onSelect={(key) => { const t = key.charAt(0).toUpperCase() + key.slice(1); setTab(t); setSubTab(key === 'commodities' ? 'Screener' : 'Overview'); }} />;
+    return <MarketOverview onSelect={(key, sym) => {
+        if (key === 'charts') { setSection('charts'); setTab(''); return; }
+        const t = key.charAt(0).toUpperCase() + key.slice(1);
+        setTab(t);
+        setSubTab(key === 'commodities' ? 'Screener' : 'Overview');
+      }} />;
   }
 
 
@@ -393,6 +404,10 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
         {section === 'charts' && <ChartWorkspace />}
         {section === 'crypto' && <CryptoTab />}
         {section === 'commodities' && <>
+          {subTab==='Overview'          && <MarketOverview onSelect={(key, sym) => {
+              if (key === 'charts') { setSection('charts'); setTab(''); return; }
+              setSubTab(key === 'commodities' ? 'Screener' : key.charAt(0).toUpperCase() + key.slice(1));
+            }} />}
           {subTab==='Screener'          && <ScreenerBuilder user={null} />}
           {subTab==='COT Index'         && <COTIndexTab />}
           {subTab==='Seasonal'          && <SeasonalTab />}
@@ -472,15 +487,15 @@ export default function App() {
     <div style={{ minHeight:'100vh', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontFamily:'var(--font)', fontSize:13 }}>
 
       {/* ── Navbar — TradingView style ── */}
-      <div data-community-nav="true" style={{ background:'var(--bg1)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)' }}>
+      <div data-community-nav="true" style={{ background:'#4B44C8', position:'sticky', top:0, zIndex:300, borderBottom:'none' }}>
         <div style={{ display:'flex', alignItems:'center', height:46, padding:'0 16px', gap:0, overflow:'visible' }}>
 
           {/* Logo with ring */}
           <div style={{ display:'flex', alignItems:'center', gap:7, marginRight:20, flexShrink:0 }}>
-            <div style={{ width:20, height:20, borderRadius:'50%', border:'2px solid var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div style={{ width:20, height:20, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.85)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <div style={{ width:7, height:7, background:'var(--accent)', borderRadius:'50%' }} />
             </div>
-            <span style={{ fontSize:15, fontWeight:700, color:'var(--text)', letterSpacing:'-0.4px' }}>TradeRing</span>
+            <span style={{ fontSize:15, fontWeight:700, color:'#ffffff', letterSpacing:'-0.4px' }}>TradeRing</span>
           </div>
 
           {/* Nav links with hover dropdowns */}
@@ -500,14 +515,14 @@ export default function App() {
                   <button
                     onClick={() => { setSection(sec); setTab(''); setHoveredSection(null); }}
                     style={{
-                      background: isActive ? 'var(--accent-bg)' : 'transparent',
-                      color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                      background: isActive ? 'rgba(255,255,255,0.18)' : 'transparent',
+                      color: '#ffffff',
                       border: 'none',
-                      borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                      borderBottom: isActive ? '2px solid #ffffff' : '2px solid transparent',
                       padding: '0 12px',
                       height: 46,
                       fontSize: 12,
-                      fontWeight: isActive ? 600 : 400,
+                      fontWeight: isActive ? 700 : 500,
                       cursor: 'pointer',
                       fontFamily: 'var(--font)',
                       whiteSpace: 'nowrap',
@@ -586,7 +601,7 @@ export default function App() {
           {/* Right side */}
           <div style={{ display:'flex', alignItems:'center', gap:8, marginLeft:8, flexShrink:0 }}>
             {plan==='free' && userInfo && (
-              <span style={{ fontSize:11, fontWeight:600, color:'var(--accent)', background:'var(--accent-bg)', border:'1px solid var(--accent-border)', padding:'3px 9px', borderRadius:5 }}>
+              <span style={{ fontSize:11, fontWeight:600, color:'#fff', background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.3)', padding:'3px 9px', borderRadius:5 }}>
                 FREE · {userInfo.screeningsToday}/{userInfo.limits?.screeningsPerDay}
               </span>
             )}
@@ -594,17 +609,17 @@ export default function App() {
             {plan==='trader' && <span style={{ fontSize:11, fontWeight:600, color:'var(--gold)', background:'var(--gold-bg)', padding:'3px 8px', borderRadius:3 }}>TRADER</span>}
             {plan==='free' && (
               <button onClick={()=>handleUpgrade()}
-                style={{ background:'var(--accent)', color:'#fff', border:'none', padding:'5px 13px', borderRadius:3, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' }}>
+                style={{ background:'rgba(255,255,255,0.2)', color:'#fff', border:'1px solid rgba(255,255,255,0.4)', padding:'5px 13px', borderRadius:3, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' }}>
                 Upgrade
               </button>
             )}
             <button onClick={toggle}
-              style={{ background:'transparent', border:'1px solid var(--border2)', color:'var(--text-muted)', width:28, height:28, borderRadius:3, cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              style={{ background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.25)', color:'#fff', width:28, height:28, borderRadius:3, cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
               {theme==='dark'?'○':'●'}
             </button>
             <div style={{ position:'relative' }}>
               <button onClick={()=>setShowAccount(s=>!s)}
-                style={{ background:'var(--surface2)', color:'var(--text)', border:'1px solid var(--border)', padding:'4px 10px', fontSize:12, fontWeight:500, borderRadius:3, cursor:'pointer', fontFamily:'var(--font)', display:'flex', alignItems:'center', gap:6 }}>
+                style={{ background:'rgba(255,255,255,0.15)', color:'#fff', border:'1px solid rgba(255,255,255,0.3)', padding:'4px 10px', fontSize:12, fontWeight:500, borderRadius:3, cursor:'pointer', fontFamily:'var(--font)', display:'flex', alignItems:'center', gap:6 }}>
                 <span style={{ width:20, height:20, borderRadius:'50%', background:'var(--accent)', color:'#fff', fontSize:9, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   {(session?.user?.email?.charAt(0)||'U').toUpperCase()}
                 </span>
@@ -642,10 +657,10 @@ export default function App() {
       )}
 
       {/* Main content — full width, no max-width cap on outer, padding on inner */}
-      <div style={{ padding: (section==='community'||section==='compete') ? '0' : '20px 24px', paddingTop: (section==='community'||section==='compete') ? 0 : 120 }} onClick={()=>setShowAccount(false)}>
+      <div style={{ padding: 0, paddingTop: (section==='community'||section==='compete'||section==='markets') ? 0 : 82 }} onClick={()=>setShowAccount(false)}>
         {section==='markets' ? (
-          <div>
-            {tab==='News' && <div style={{padding:'20px 24px'}}><NewsTab /></div>}
+          <div style={{height:'calc(100vh - 82px)', overflow:'hidden', display:'flex', flexDirection:'column'}}>
+            {tab==='News' && <div style={{padding:'20px 24px', overflowY:'auto', flex:1}}><NewsTab /></div>}
             {tab!=='News' && <MarketsLayout tab={tab} setTab={setTab} plan={plan} onUpgrade={()=>handleUpgrade()} currentUserId={session?.user?.id} />}
           </div>
         ) : section==='community' ? (

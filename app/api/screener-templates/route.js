@@ -4,6 +4,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '../../../lib/prisma';
 
 export async function GET(req) {
+  try {
   const session = await getServerSession(authOptions);
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -33,9 +34,9 @@ export async function GET(req) {
   });
 
   return Response.json({ templates });
-}
-
-export async function POST(req) {
+  } catch(e) { return Response.json({ templates: [] }); }
+}export async function POST(req) {
+  try {
   const session = await getServerSession(authOptions);
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -81,4 +82,5 @@ export async function POST(req) {
   }
 
   return Response.json({ template });
+  } catch(e) { return Response.json({ error: "Server error" }, { status: 500 }); }
 }
