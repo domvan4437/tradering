@@ -48,6 +48,7 @@ import ImportTab from './ImportTab'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
 import CreatorDashboard from './CreatorDashboard'
 import { StocksOverviewTab, StocksSectorsTab, StocksEarningsTab, StocksKeyLevelsTab } from './StocksSection'
+import FuturesOverviewTabNew from './FuturesOverviewTab'
 
 const STAGES = [
   { id: 'seasonal', label: 'Stage 1', title: 'Seasonal Tendency',
@@ -383,7 +384,7 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
 
   return (
     <div>
-      {subTabs.length > 0 && (
+      {subTabs.length > 0 && section !== 'stocks' && (
         <div style={{ display:'flex', borderBottom:'1px solid var(--border)', padding:'0 24px', background:'var(--surface)', position:'sticky', top:46, zIndex:50, overflowX:'auto' }}>
           {subTabs.map(t => (
             <button key={t} onClick={() => setSubTab(t)} style={{
@@ -402,7 +403,7 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
       )}
       <div style={{ padding:'20px 24px' }}>
         {section === 'charts' && <ChartWorkspace />}
-        {section === 'crypto' && <CryptoTab />}
+        {section === 'crypto' && <div style={{ marginTop: 82 }}><CryptoTab /></div>}
         {section === 'commodities' && <>
           {subTab==='Overview'          && <MarketOverview onSelect={(key, sym) => {
               if (key === 'charts') { setSection('charts'); setTab(''); return; }
@@ -421,19 +422,19 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
           {subTab==='Checklist'         && <ChecklistTab />}
         </>}
         {section === 'forex' && <>
-          {subTab==='Overview'          && <ForexOverviewTab />}
+          {subTab==='Overview'          && <div style={{ marginTop: 82 }}><ForexOverviewTab /></div>}
           {subTab==='COT Data'          && <ForexCOTTab />}
           {subTab==='Key Levels'        && <ForexKeyLevelsTab />}
           {subTab==='Economic Calendar' && <CalendarTab />}
         </>}
         {section === 'stocks' && <>
-          {subTab==='Overview'   && <StocksOverviewTab />}
+          {subTab==='Overview'   && <div style={{ marginTop: 82 }}><StocksOverviewTab /></div>}
           {subTab==='Sectors'    && <StocksSectorsTab />}
           {subTab==='Earnings'   && <StocksEarningsTab />}
           {subTab==='Key Levels' && <StocksKeyLevelsTab />}
         </>}
         {section === 'futures' && <>
-          {subTab==='Overview'      && <FuturesOverviewTab />}
+          {subTab==='Overview'      && <div style={{ marginTop: 82 }}><FuturesOverviewTabNew /></div>}
           {subTab==='Financial COT' && <COTIndexTab />}
           {subTab==='Yield Curve'   && <ComingSoonTab section="futures" tab="Yield Curve" />}
           {subTab==='Key Levels'    && <ComingSoonTab section="futures" tab="Key Levels" />}

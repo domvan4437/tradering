@@ -1,4 +1,5 @@
-'use client'
+const fs = require("fs");
+const content = "'use client'
 import React, { useState, useEffect } from 'react'
 
 const INDICES = [
@@ -50,7 +51,7 @@ const SECTOR_GROUPS = [
     { symbol: 'PG',   name: 'P&G',         cap: '$397B' },
     { symbol: 'NFLX', name: 'Netflix',     cap: '$269B' },
     { symbol: 'NKE',  name: 'Nike',        cap: '$133B' },
-    { symbol: 'MCD',  name: "McDonald's",  cap: '$212B' },
+    { symbol: 'MCD',  name: \"McDonald's\",  cap: '$212B' },
   ]},
   { name: 'Energy', etf: 'XLE', etfPct: +1.4, pill: { bg: '#eaf3de', color: '#27500A' }, stocks: [
     { symbol: 'XOM', name: 'ExxonMobil',    cap: '$450B' },
@@ -70,22 +71,22 @@ const SECTOR_GROUPS = [
 ]
 
 const EARNINGS_DATA = {
-  GOOGL: { date: 'Apr 29', time: 'AC', urgency: 'week',     estEps: '$1.84', estRev: '$89.1B',  expMove: '±6.2%',  lastQtr: { label: 'Beat +9%',  type: 'beat'   }, note: 'Cloud and YouTube revenue key. Last 4 qtrs: beat, beat, beat, miss.' },
-  META:  { date: 'Apr 30', time: 'AC', urgency: 'week',     estEps: '$4.68', estRev: '$36.2B',  expMove: '±8.4%',  lastQtr: { label: 'Beat +12%', type: 'beat'   }, note: 'AI ad revenue and cost discipline key. Beat 5 of last 6 quarters.' },
-  MSFT:  { date: 'Apr 30', time: 'AC', urgency: 'week',     estEps: '$3.22', estRev: '$68.4B',  expMove: '±5.1%',  lastQtr: { label: 'Beat +7%',  type: 'beat'   }, note: 'Azure cloud growth % is the key number. Consensus expects 28% growth.' },
-  AAPL:  { date: 'May 1',  time: 'AC', urgency: 'month',    estEps: '$1.61', estRev: '$94.2B',  expMove: '±4.3%',  lastQtr: { label: 'In-line',   type: 'inline' }, note: 'iPhone 16 cycle and China sales key. Services revenue expected $24.1B.' },
-  AMZN:  { date: 'May 1',  time: 'AC', urgency: 'month',    estEps: '$1.36', estRev: '$142.5B', expMove: '±7.1%',  lastQtr: { label: 'Beat +14%', type: 'beat'   }, note: 'AWS cloud growth and operating margin key. Beat last 6 quarters straight.' },
-  NVDA:  { date: 'May 28', time: 'AC', urgency: 'month',    estEps: '$0.89', estRev: '$24.6B',  expMove: '±9.8%',  lastQtr: { label: 'Beat +18%', type: 'beat'   }, note: 'Blackwell GPU demand is the only number that matters.' },
+  GOOGL: { date: 'Apr 29', time: 'AC', urgency: 'week',     estEps: '$1.84', estRev: '$89.1B',  expMove: '\u00b16.2%',  lastQtr: { label: 'Beat +9%',  type: 'beat'   }, note: 'Cloud and YouTube revenue key. Last 4 qtrs: beat, beat, beat, miss.' },
+  META:  { date: 'Apr 30', time: 'AC', urgency: 'week',     estEps: '$4.68', estRev: '$36.2B',  expMove: '\u00b18.4%',  lastQtr: { label: 'Beat +12%', type: 'beat'   }, note: 'AI ad revenue and cost discipline key. Beat 5 of last 6 quarters.' },
+  MSFT:  { date: 'Apr 30', time: 'AC', urgency: 'week',     estEps: '$3.22', estRev: '$68.4B',  expMove: '\u00b15.1%',  lastQtr: { label: 'Beat +7%',  type: 'beat'   }, note: 'Azure cloud growth % is the key number. Consensus expects 28% growth.' },
+  AAPL:  { date: 'May 1',  time: 'AC', urgency: 'month',    estEps: '$1.61', estRev: '$94.2B',  expMove: '\u00b14.3%',  lastQtr: { label: 'In-line',   type: 'inline' }, note: 'iPhone 16 cycle and China sales key. Services revenue expected $24.1B.' },
+  AMZN:  { date: 'May 1',  time: 'AC', urgency: 'month',    estEps: '$1.36', estRev: '$142.5B', expMove: '\u00b17.1%',  lastQtr: { label: 'Beat +14%', type: 'beat'   }, note: 'AWS cloud growth and operating margin key. Beat last 6 quarters straight.' },
+  NVDA:  { date: 'May 28', time: 'AC', urgency: 'month',    estEps: '$0.89', estRev: '$24.6B',  expMove: '\u00b19.8%',  lastQtr: { label: 'Beat +18%', type: 'beat'   }, note: 'Blackwell GPU demand is the only number that matters.' },
   JPM:   { date: 'Apr 11', time: 'BO', urgency: 'reported', estEps: '$4.61', actEps: '$5.07',   surprise: { label: 'Beat +10%', type: 'beat' }, reaction: '+4.8%', reactionUp: true,  note: 'Record Q1 revenue. Net interest income beat on strong loan growth.' },
   TSLA:  { date: 'Apr 22', time: 'AC', urgency: 'reported', estEps: '$0.62', actEps: '$0.45',   surprise: { label: 'Miss -27%', type: 'miss' }, reaction: '-8.2%', reactionUp: false, note: 'Gross margin compressed to 17.4%. Deliveries down 9% YoY.' },
   WFC:   { date: 'Apr 11', time: 'BO', urgency: 'reported', estEps: '$1.23', actEps: '$1.39',   surprise: { label: 'Beat +13%', type: 'beat' }, reaction: '+2.1%', reactionUp: true,  note: 'Net interest income held up better than feared. Loan losses in line.' },
 }
 
 const SEARCH_MOCK = {
-  SHOP: { name: 'Shopify',   price: '$74.22',  pct: +2.1, date: 'May 8',  time: 'BO', urgency: 'month', estEps: '$0.21', estRev: '$2.33B', expMove: '±11.2%', lastQtr: { label: 'Beat +16%', type: 'beat' }, note: 'GMV growth and merchant count key.' },
-  ROKU: { name: 'Roku',      price: '$62.14',  pct: -1.2, date: 'May 2',  time: 'AC', urgency: 'month', estEps: '-$0.22',estRev: '$880M',  expMove: '±12.4%', lastQtr: { label: 'Beat +8%',  type: 'beat' }, note: 'Active account growth and ARPU are the key metrics.' },
-  SNOW: { name: 'Snowflake', price: '$148.33', pct: +3.4, date: 'May 21', time: 'AC', urgency: 'month', estEps: '$0.16', estRev: '$850M',  expMove: '±14.1%', lastQtr: { label: 'Miss -4%',  type: 'miss' }, note: 'Product revenue growth rate key.' },
-  PLTR: { name: 'Palantir',  price: '$24.88',  pct: +1.8, date: 'May 5',  time: 'AC', urgency: 'month', estEps: '$0.08', estRev: '$612M',  expMove: '±9.2%',  lastQtr: { label: 'Beat +22%', type: 'beat' }, note: 'US commercial growth and AIP adoption key.' },
+  SHOP: { name: 'Shopify',   price: '$74.22',  pct: +2.1, date: 'May 8',  time: 'BO', urgency: 'month', estEps: '$0.21', estRev: '$2.33B', expMove: '\u00b111.2%', lastQtr: { label: 'Beat +16%', type: 'beat' }, note: 'GMV growth and merchant count key.' },
+  ROKU: { name: 'Roku',      price: '$62.14',  pct: -1.2, date: 'May 2',  time: 'AC', urgency: 'month', estEps: '-$0.22',estRev: '$880M',  expMove: '\u00b112.4%', lastQtr: { label: 'Beat +8%',  type: 'beat' }, note: 'Active account growth and ARPU are the key metrics.' },
+  SNOW: { name: 'Snowflake', price: '$148.33', pct: +3.4, date: 'May 21', time: 'AC', urgency: 'month', estEps: '$0.16', estRev: '$850M',  expMove: '\u00b114.1%', lastQtr: { label: 'Miss -4%',  type: 'miss' }, note: 'Product revenue growth rate key.' },
+  PLTR: { name: 'Palantir',  price: '$24.88',  pct: +1.8, date: 'May 5',  time: 'AC', urgency: 'month', estEps: '$0.08', estRev: '$612M',  expMove: '\u00b19.2%',  lastQtr: { label: 'Beat +22%', type: 'beat' }, note: 'US commercial growth and AIP adoption key.' },
 }
 
 const SECTORS_LIST = [
@@ -106,7 +107,7 @@ const KEY_LEVELS = [
   { name: 'S&P 500 (ES)',    support: '5,100', resistance: '5,500', pivot: '5,300', note: 'Watch 200-day MA near 5,200' },
   { name: 'Nasdaq 100 (NQ)', support: '17,500', resistance: '19,500', pivot: '18,500', note: 'Tech earnings driving volatility' },
   { name: 'Dow Jones (YM)',  support: '38,500', resistance: '41,000', pivot: '39,750', note: 'Financials sector key driver' },
-  { name: 'Russell 2000',    support: '1,900', resistance: '2,100', pivot: '2,000', note: 'Rate-sensitive — watch Fed signals' },
+  { name: 'Russell 2000',    support: '1,900', resistance: '2,100', pivot: '2,000', note: 'Rate-sensitive \u2014 watch Fed signals' },
 ]
 
 function usePrices(symbols) {
@@ -136,7 +137,7 @@ function EarnRow({ data }) {
     <tr>
       <td colSpan={7} style={{ padding: '10px 16px', background: 'rgba(75,68,200,0.04)', borderBottom: '0.5px solid var(--border)', borderLeft: '2px solid #4B44C8' }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
-          {isRep ? 'Reported ' : 'Reports '}{data.date} · {data.time}
+          {isRep ? 'Reported ' : 'Reports '}{data.date} \u00b7 {data.time}
         </div>
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 6 }}>
           {!isRep ? (
@@ -151,7 +152,7 @@ function EarnRow({ data }) {
               <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Est EPS</div><div style={{ fontSize: 12, fontWeight: 500 }}>{data.estEps}</div></div>
               <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Actual EPS</div><div style={{ fontSize: 12, fontWeight: 500, color: data.reactionUp ? 'var(--green)' : 'var(--red)' }}>{data.actEps}</div></div>
               <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Surprise</div><div style={{ marginTop: 2 }}><EarnBadge type={data.surprise.type} label={data.surprise.label} /></div></div>
-              <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stock reaction</div><div style={{ fontSize: 12, fontWeight: 500, color: data.reactionUp ? 'var(--green)' : 'var(--red)' }}>{data.reactionUp ? '▲' : '▼'} {data.reaction}</div></div>
+              <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stock reaction</div><div style={{ fontSize: 12, fontWeight: 500, color: data.reactionUp ? 'var(--green)' : 'var(--red)' }}>{data.reactionUp ? '\u25b2' : '\u25bc'} {data.reaction}</div></div>
             </>
           )}
         </div>
@@ -192,7 +193,7 @@ function EarningsPanel({ watchlist, onAddWatchlist }) {
           <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{sym}</span>
           {data.name && <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>{data.name}</span>}
           {!data.name && <span style={{ flex: 1 }} />}
-          <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 6px', borderRadius: 3, background: dateBg, color: dateColor, whiteSpace: 'nowrap' }}>{data.date} · {data.time}</span>
+          <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 6px', borderRadius: 3, background: dateBg, color: dateColor, whiteSpace: 'nowrap' }}>{data.date} \u00b7 {data.time}</span>
           {isSearch && <button onClick={() => onAddWatchlist(sym)} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: '0.5px solid #4B44C8', background: 'transparent', color: '#4B44C8', cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap' }}>+ Watchlist</button>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
@@ -214,7 +215,7 @@ function EarningsPanel({ watchlist, onAddWatchlist }) {
               <div style={{ width: '0.5px', height: 22, background: 'var(--border)' }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}><span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Surprise</span><EarnBadge type={data.surprise.type} label={data.surprise.label} /></div>
               <div style={{ width: '0.5px', height: 22, background: 'var(--border)' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}><span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Reaction</span><span style={{ fontSize: 11, fontWeight: 500, color: data.reactionUp ? 'var(--green)' : 'var(--red)' }}>{data.reactionUp ? '▲' : '▼'} {data.reaction}</span></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}><span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Reaction</span><span style={{ fontSize: 11, fontWeight: 500, color: data.reactionUp ? 'var(--green)' : 'var(--red)' }}>{data.reactionUp ? '\u25b2' : '\u25bc'} {data.reaction}</span></div>
             </>
           )}
         </div>
@@ -224,28 +225,28 @@ function EarningsPanel({ watchlist, onAddWatchlist }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', border: '0.5px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', border: '0.5px solid var(--border)', borderRadius: 12, overflow: 'hidden', height: '100%' }}>
       <div style={{ padding: '10px 12px', borderBottom: '0.5px solid var(--border)', background: 'var(--surface2)', flexShrink: 0 }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)', marginBottom: 2 }}>Earnings intelligence</div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8 }}>
-          Beat rate: <span style={{ color: 'var(--green)', fontWeight: 500 }}>74%</span> · Avg surprise: <span style={{ color: 'var(--green)', fontWeight: 500 }}>+8.2%</span> · 142 remaining
+          Beat rate: <span style={{ color: 'var(--green)', fontWeight: 500 }}>74%</span> \u00b7 Avg surprise: <span style={{ color: 'var(--green)', fontWeight: 500 }}>+8.2%</span> \u00b7 142 remaining
         </div>
         <div style={{ display: 'flex', gap: 5 }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <span style={{ position: 'absolute', left: 7, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-muted)', pointerEvents: 'none' }}>⌕</span>
-            <input value={query} onChange={e => { setQuery(e.target.value); setNotFound(false) }} onKeyDown={e => e.key === 'Enter' && handleSearch()} placeholder="Any ticker — SHOP, SNOW..." style={{ width: '100%', height: 26, padding: '0 7px 0 22px', border: '0.5px solid var(--border2)', borderRadius: 5, background: 'var(--surface)', fontSize: 10, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font)', boxSizing: 'border-box' }} />
+            <span style={{ position: 'absolute', left: 7, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-muted)', pointerEvents: 'none' }}>\u2315</span>
+            <input value={query} onChange={e => { setQuery(e.target.value); setNotFound(false) }} onKeyDown={e => e.key === 'Enter' && handleSearch()} placeholder=\"Any ticker \u2014 SHOP, SNOW...\" style={{ width: '100%', height: 26, padding: '0 7px 0 22px', border: '0.5px solid var(--border2)', borderRadius: 5, background: 'var(--surface)', fontSize: 10, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font)', boxSizing: 'border-box' }} />
           </div>
           <button onClick={handleSearch} style={{ height: 26, padding: '0 9px', background: '#4B44C8', color: '#fff', border: 'none', borderRadius: 5, fontSize: 10, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap' }}>Look up</button>
         </div>
-        {notFound && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 5 }}>No data found for "{query.toUpperCase()}"</div>}
+        {notFound && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 5 }}>No data found for \"{query.toUpperCase()}\"</div>}
       </div>
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {searchResult && <EItem sym={searchResult.sym} data={searchResult.data} isSearch />}
-        <SHdr label="Reporting this week" color="#791F1F" />
+        <SHdr label=\"Reporting this week\" color=\"#791F1F\" />
         {weekItems.map(([sym, data]) => <EItem key={sym} sym={sym} data={data} />)}
-        <SHdr label="Next 30 days" color="#3C3489" />
+        <SHdr label=\"Next 30 days\" color=\"#3C3489\" />
         {monthItems.map(([sym, data]) => <EItem key={sym} sym={sym} data={data} />)}
-        <SHdr label="Recently reported" color="var(--text-muted)" />
+        <SHdr label=\"Recently reported\" color=\"var(--text-muted)\" />
         {reportedItems.map(([sym, data]) => <EItem key={sym} sym={sym} data={data} />)}
       </div>
     </div>
@@ -264,11 +265,7 @@ export function StocksOverviewTab() {
   }
 
   return (
-    <div style={{ fontFamily: 'var(--font)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)' }}>Stocks</span>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>NYSE · NASDAQ · S&P 500</span>
-      </div>
+    <div style={{ fontFamily: 'var(--font)', paddingTop: 8 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 12 }}>
         {INDICES.map(idx => {
           const d = idxPrices[idx.symbol]
@@ -276,31 +273,15 @@ export function StocksOverviewTab() {
           return (
             <div key={idx.symbol} style={{ background: 'var(--surface2)', borderRadius: 7, padding: '8px 10px' }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>{idx.label}</div>
-              <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', marginBottom: 1 }}>{idxLoading ? '—' : d?.price ? d.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</div>
-              <div style={{ fontSize: 11, color: up ? 'var(--green)' : 'var(--red)' }}>{d ? `${up ? '+' : ''}${d.changePct?.toFixed(2)}%` : '—'}</div>
+              <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', marginBottom: 1 }}>{idxLoading ? '\u2014' : d?.price ? d.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014'}</div>
+              <div style={{ fontSize: 11, color: up ? 'var(--green)' : 'var(--red)' }}>{d ? `${up ? '+' : ''}${d.changePct?.toFixed(2)}%` : '\u2014'}</div>
             </div>
           )
         })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '60% 40%', gap: 12, height: 'calc(100vh - 220px)', overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '60% 40%', gap: 12, height: 'calc(100vh - 168px)', overflow: 'hidden' }}>
         <div style={{ overflowY: 'auto', height: '100%' }}>
-          {watchlist.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', padding: '6px 0 8px', borderBottom: '0.5px solid var(--border)', marginBottom: 4 }}>
-              <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>Watching</span>
-              {watchlist.map(wsym => {
-                const wd = stockPrices[wsym]
-                const wup = (wd?.changePct || 0) >= 0
-                return (
-                  <div key={wsym} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 4, border: '0.5px solid rgba(75,68,200,0.3)', background: 'rgba(75,68,200,0.06)', fontSize: 11, cursor: 'pointer' }}
-                    onClick={() => setSelected(selected === wsym ? null : wsym)}>
-                    <span style={{ fontWeight: 500, color: 'var(--text)' }}>{wsym}</span>
-                    {wd && <span style={{ color: wup ? 'var(--green)' : 'var(--red)', fontSize: 10 }}>{wup ? '+' : ''}{wd.changePct?.toFixed(2)}%</span>}
-                  </div>
-                )
-              })}
-            </div>
-          )}
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead>
               <tr>
@@ -338,26 +319,26 @@ export function StocksOverviewTab() {
                         >
                           <td style={TD}><span style={{ fontWeight: 500, fontSize: 12 }}>{stock.symbol}</span></td>
                           <td style={{ ...TD, color: 'var(--text-muted)', fontSize: 11 }}>{stock.name}</td>
-                          <td style={{ ...TD, fontFamily: 'var(--font-mono)', fontSize: 11, textAlign: 'center' }}>{stockLoading ? '—' : d?.price ? `$${d.price.toFixed(2)}` : '—'}</td>
-                          <td style={{ ...TD, fontSize: 11, fontWeight: 500, color: up ? 'var(--green)' : 'var(--red)', textAlign: 'center' }}>{d ? `${up ? '+' : ''}${d.changePct?.toFixed(2)}%` : '—'}</td>
+                          <td style={{ ...TD, fontFamily: 'var(--font-mono)', fontSize: 11, textAlign: 'center' }}>{stockLoading ? '\u2014' : d?.price ? `$${d.price.toFixed(2)}` : '\u2014'}</td>
+                          <td style={{ ...TD, fontSize: 11, fontWeight: 500, color: up ? 'var(--green)' : 'var(--red)', textAlign: 'center' }}>{d ? `${up ? '+' : ''}${d.changePct?.toFixed(2)}%` : '\u2014'}</td>
                           <td style={{ ...TD, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>{stock.cap}</td>
                           <td style={{ ...TD, padding: '4px 4px', textAlign: 'center' }}>
                             <button onClick={e => { e.stopPropagation(); toggleWl(stock.symbol) }} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: `0.5px solid ${inWl ? 'rgba(75,68,200,0.3)' : 'var(--border2)'}`, background: inWl ? 'rgba(75,68,200,0.1)' : 'transparent', color: inWl ? '#3C3489' : 'var(--text-muted)', cursor: 'pointer', fontFamily: 'var(--font)', lineHeight: 1.6 }}>
-                              {inWl ? '✓' : '+'}
+                              {inWl ? '\u2713' : '+'}
                             </button>
                           </td>
                           <td style={{ ...TD, borderLeft: '0.5px solid var(--border2)', padding: '4px 12px' }}>
                             {inWl ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', borderRadius: 5, background: isOpen ? 'rgba(75,68,200,0.08)' : 'var(--surface2)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text)' }}>{stock.symbol}</div>
                                   <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{stock.name}</div>
                                 </div>
                                 {d && <span style={{ fontSize: 10, fontWeight: 500, color: up ? 'var(--green)' : 'var(--red)' }}>{up ? '+' : ''}{d.changePct?.toFixed(2)}%</span>}
-                                <button onClick={e => { e.stopPropagation(); toggleWl(stock.symbol) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12, padding: 0, lineHeight: 1 }}>×</button>
+                                <span style={{ fontSize: 9, color: isOpen ? '#4B44C8' : 'var(--text-muted)' }}>{isOpen ? '\u25b2' : '\u25bc'}</span>
                               </div>
                             ) : (
-                              <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>—</span>
+                              <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>\u2014</span>
                             )}
                           </td>
                         </tr>
@@ -368,8 +349,8 @@ export function StocksOverviewTab() {
                           <tr>
                             <td colSpan={7} style={{ padding: '10px 16px', background: 'rgba(75,68,200,0.04)', borderBottom: '0.5px solid var(--border)', borderLeft: '2px solid #4B44C8' }}>
                               <div style={{ display: 'flex', gap: 24 }}>
-                                <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Price</div><div style={{ fontSize: 13, fontWeight: 500 }}>{d?.price ? `$${d.price.toFixed(2)}` : '—'}</div></div>
-                                <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Day change</div><div style={{ fontSize: 13, fontWeight: 500, color: up ? 'var(--green)' : 'var(--red)' }}>{d ? `${up ? '+' : ''}${d.changePct?.toFixed(2)}%` : '—'}</div></div>
+                                <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Price</div><div style={{ fontSize: 13, fontWeight: 500 }}>{d?.price ? `$${d.price.toFixed(2)}` : '\u2014'}</div></div>
+                                <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Day change</div><div style={{ fontSize: 13, fontWeight: 500, color: up ? 'var(--green)' : 'var(--red)' }}>{d ? `${up ? '+' : ''}${d.changePct?.toFixed(2)}%` : '\u2014'}</div></div>
                                 <div><div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mkt Cap</div><div style={{ fontSize: 13, fontWeight: 500 }}>{stock.cap}</div></div>
                                 <div style={{ fontSize: 10, color: 'var(--text-muted)', alignSelf: 'center' }}>No earnings data on file for this stock.</div>
                               </div>
@@ -384,7 +365,7 @@ export function StocksOverviewTab() {
             </tbody>
           </table>
         </div>
-        <div style={{ height: '100%', overflowY: 'auto' }}>
+        <div style={{ height: '100%' }}>
           <EarningsPanel watchlist={watchlist} onAddWatchlist={sym => setWatchlist(w => [...new Set([...w, sym])])} />
         </div>
       </div>
@@ -415,8 +396,8 @@ export function StocksSectorsTab() {
                 <div style={{ height: '100%', width: `${(Math.abs(s.pct) / max) * 100}%`, background: up ? 'var(--green)' : 'var(--red)', borderRadius: 4 }} />
               </div>
               <div style={{ width: 80, textAlign: 'right' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: up ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>{loading ? '—' : d ? `${up ? '+' : ''}${s.pct.toFixed(2)}%` : '—'}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>{d?.price?.toFixed(2) || '—'}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: up ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>{loading ? '\u2014' : d ? `${up ? '+' : ''}${s.pct.toFixed(2)}%` : '\u2014'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>{d?.price?.toFixed(2) || '\u2014'}</div>
               </div>
             </div>
           )
@@ -456,3 +437,7 @@ export function StocksKeyLevelsTab() {
     </div>
   )
 }
+";
+fs.writeFileSync("components/StocksSection.js", content, "utf8");
+console.log("Written:", content.split("
+").length, "lines");
