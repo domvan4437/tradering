@@ -23,6 +23,7 @@ import { UpgradeModal } from './UpgradeModal'
 import { ForexOverviewTab, ForexCOTTab, ForexKeyLevelsTab } from './ForexSection'
 import AICoachTab from './AICoachTab'
 import { JournalLanding } from './JournalLanding'
+import TradeRingJournal from './TradeRingJournal'
 import JournalReviewTab from './JournalReviewTab'
 import JournalTradeLogTab from './JournalTradeLogTab'
 import { ToolsLanding2 } from './ToolsLanding2'
@@ -89,7 +90,7 @@ const SECTION_TABS = {
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','News'],
   charts:      ['Workspace'],
   tools2:      ['Journal','Trade Calc','Trade Plan Builder','Strategy Backtest','COT Alerts','Screener','Import'],
-  journal:     ['Notes','Review','Trade Log'],
+  journal:     ['Journal'],
   account:     ['Overview'],
 }
 const TABS = SECTION_TABS.commodities
@@ -680,10 +681,7 @@ export default function App() {
         ) : section==='tools2' ? (
           <div style={{padding:'20px 24px'}}>
             {!tab && <ToolsLanding2 onSelect={t=>setTab(t)} />}
-            {tab==='Journal'    && <div style={{padding:'20px 24px'}}><JournalLanding onSelect={t=>setTab(t)} /></div>}
-            {tab==='Notes'      && <div style={{padding:'20px 24px'}}><NotesTab /></div>}
-            {tab==='Review'     && <div style={{padding:'20px 24px'}}><JournalReviewTab /></div>}
-            {tab==='Trade Log'  && <div style={{padding:'20px 24px'}}><JournalTradeLogTab /></div>}
+            {tab==='Journal'    && <TradeRingJournal />}
             {tab==='Trade Calc' && <><TabTooltip tab='Trade Calc' /><TradeCalcTab /></>}
             {tab==='Trade Plan Builder' && <><TabTooltip tab='Trade Plan Builder' /><TradePlanTab /></>}
             {tab==='Strategy Backtest' && <><TabTooltip tab='Strategy Backtest' /><StrategyBacktestTab /></>}
