@@ -4,6 +4,7 @@ import FeedTab from './FeedTab'
 import { MarketsLanding, CommunityLanding, ToolsLanding, NewsLanding } from './SectionLanding'
 import CryptoTab from './CryptoTab'
 import ProfileTab from './ProfileTab'
+import AccountTab from './AccountTab'
 import GlobalLeaderboard from './GlobalLeaderboard'
 // ── TradeRing DS import
 import { LiveDot } from './DS';
@@ -48,6 +49,7 @@ import ImportTab from './ImportTab'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
 import CreatorDashboard from './CreatorDashboard'
 import { StocksOverviewTab, StocksSectorsTab, StocksEarningsTab, StocksKeyLevelsTab } from './StocksSection'
+import CommoditiesOverviewTab from './CommoditiesOverviewTab'
 import FuturesOverviewTabNew from './FuturesOverviewTab'
 
 const STAGES = [
@@ -86,10 +88,9 @@ const SECTION_TABS = {
   compete:     ['Home','H2H','Group Contests','Leaderboard','History'],
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','News'],
   charts:      ['Workspace'],
-  creator:     ['Creator Studio'],
   tools2:      ['Journal','Trade Calc','Trade Plan Builder','Strategy Backtest','COT Alerts','Screener','Import'],
   journal:     ['Notes','Review','Trade Log'],
-  account:     ['Broker','My Profile','Settings'],
+  account:     ['Overview'],
 }
 const TABS = SECTION_TABS.commodities
 const C = {
@@ -349,11 +350,11 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
   const section = (tab || 'commodities').toLowerCase();
 
   const SUB_TABS = {
-    commodities: ['Overview','Screener','COT Index','Seasonal','Watchlist','Positions','Journal','Ideas','Economic Calendar','Analytics','Alerts','Checklist'],
-    forex:       ['Overview','COT Data','Key Levels','Economic Calendar'],
+    commodities: ['Overview'],
+    forex:       ['Overview'],
     stocks:      ['Overview','Sectors','Earnings','Key Levels'],
     crypto:      ['Overview'],
-    futures:     ['Overview','Financial COT','Yield Curve','Key Levels'],
+    futures:     ['Overview'],
     charts:      ['Workspace'],
   };
   const subTabs = SUB_TABS[section] || [];
@@ -384,7 +385,7 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
 
   return (
     <div>
-      {subTabs.length > 0 && section !== 'stocks' && (
+      {subTabs.length > 1 && section !== 'stocks' && (
         <div style={{ display:'flex', borderBottom:'1px solid var(--border)', padding:'0 24px', background:'var(--surface)', position:'sticky', top:46, zIndex:50, overflowX:'auto' }}>
           {subTabs.map(t => (
             <button key={t} onClick={() => setSubTab(t)} style={{
@@ -405,10 +406,7 @@ function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
         {section === 'charts' && <ChartWorkspace />}
         {section === 'crypto' && <div style={{ marginTop: 82 }}><CryptoTab /></div>}
         {section === 'commodities' && <>
-          {subTab==='Overview'          && <MarketOverview onSelect={(key, sym) => {
-              if (key === 'charts') { setSection('charts'); setTab(''); return; }
-              setSubTab(key === 'commodities' ? 'Screener' : key.charAt(0).toUpperCase() + key.slice(1));
-            }} />}
+          {subTab==='Overview'          && <div style={{ marginTop: 82 }}><CommoditiesOverviewTab /></div>}
           {subTab==='Screener'          && <ScreenerBuilder user={null} />}
           {subTab==='COT Index'         && <COTIndexTab />}
           {subTab==='Seasonal'          && <SeasonalTab />}
@@ -482,7 +480,7 @@ export default function App() {
   const goToProfile = (slug) => { setViewingProfile(slug); }
   // Expose globally so child components can navigate to profiles
   if (typeof window !== 'undefined') window.__goToProfile = goToProfile;
-  const navItems = [['Community','community'],['Compete','compete'],['Markets','markets'],['Charts','charts'],['Creator','creator'],['Tools','tools2'],['Account','account']]
+  const navItems = [['Community','community'],['Compete','compete'],['Markets','markets'],['Charts','charts'],['Tools','tools2'],['Account','account']]
 
   return (
     <div style={{ minHeight:'100vh', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontFamily:'var(--font)', fontSize:13 }}>
@@ -694,13 +692,7 @@ export default function App() {
             {tab==='Import' && <><TabTooltip tab='Import' /><ImportTab /></>}
           </div>
         ) : section==='account' ? (
-          <div style={{padding:'20px 24px'}}>
-            {!tab && <AccountLanding onSelect={t=>setTab(t)} onViewProfile={()=>{ const slug = userInfo?.profileSlug || userInfo?.id; if(slug) setViewingProfile(slug); }} />}
-            {tab==='Broker' && <><TabTooltip tab='Broker' /><BrokerTab /></>}
-            {tab==='My Profile' && <><TabTooltip tab='My Profile' /><ProfileTab user={userInfo} session={session} /></>}
-            
-            {tab==='Settings' && <><TabTooltip tab='Settings' /><SettingsTab user={userInfo} /></>}
-          </div>
+          <div style={{ marginTop: 82 }}><AccountTab user={userInfo} /></div>
         ) : (
           <>
             {/* Commodities tabs */}
