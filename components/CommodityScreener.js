@@ -26,7 +26,7 @@ import { JournalLanding } from './JournalLanding'
 import TradeRingJournal from './TradeRingJournal'
 import JournalReviewTab from './JournalReviewTab'
 import JournalTradeLogTab from './JournalTradeLogTab'
-import { ToolsLanding2 } from './ToolsLanding2'
+import { ToolsLanding2, TOOLS_LIST } from './ToolsLanding2'
 import { AccountLanding } from './AccountLanding'
 import COTAlertsTab from './COTAlertsTab'
 import TradePlanTab from './TradePlanTab'
@@ -555,7 +555,18 @@ export default function App() {
                       padding: '6px 0',
                       animation: 'tr-fadeUp 0.12s ease both',
                     }}>
-                      {tabs.map(t => (
+                      {sec === 'tools2' ? TOOLS_LIST.map(tool => (
+                        <button
+                          key={tool.key}
+                          onClick={() => { setSection(sec); setTab(tool.key); setHovered(null); }}
+                          style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'8px 16px', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', textAlign:'left' }}
+                          onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                          onMouseLeave={e=>e.currentTarget.style.background='none'}
+                        >
+                          <i className={`ti ${tool.icon}`} style={{fontSize:13,color:tool.color}} />
+                          {tool.title}
+                        </button>
+                      )) : tabs.map(t => (
                         <button
                           key={t}
                           onClick={() => { setSection(sec); setTab(t); setHoveredSection(null); }}
