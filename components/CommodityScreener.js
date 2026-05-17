@@ -558,7 +558,7 @@ export default function App() {
                       {sec === 'tools2' ? TOOLS_LIST.map(tool => (
                         <button
                           key={tool.key}
-                          onClick={() => { setSection(sec); setTab(tool.key); setHovered(null); }}
+                          onClick={() => { setSection(sec); setTab(tool.key); }}
                           style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'8px 16px', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', textAlign:'left' }}
                           onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
                           onMouseLeave={e=>e.currentTarget.style.background='none'}
