@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import LeagueSystem from './LeagueSystem';
 import ChallengeMarketplace from './ChallengeMarketplace';
 import GroupContest from './GroupContest';
@@ -77,8 +77,8 @@ function HomeTab({ setMode }) {
   );
 }
 // ── H2H ─────────────────────────────────────────────────────
-function H2HTab() {
-  const [subTab, setSubTab] = useState('browse');
+function H2HTab({ subTab = 'browse', setSubTab }) {
+  // subTab controlled by parent
   const [accepted, setAccepted] = useState(null);
 
   const MY_MATCHES = [
@@ -129,13 +129,6 @@ function H2HTab() {
         </div>
       )}
 
-      <div style={{ display:'flex', borderBottom:'1px solid var(--border)', background:'var(--surface)', overflowX:'auto' }}>
-        {['browse','my matches','invites','spectate','post challenge'].map(t => (
-          <button key={t} onClick={() => setSubTab(t)} style={{ padding:'11px 16px', background:'none', border:'none', borderBottom: subTab===t?'2px solid var(--accent)':'2px solid transparent', color: subTab===t?'var(--accent)':'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight: subTab===t?700:400, cursor:'pointer', whiteSpace:'nowrap', textTransform:'capitalize' }}>
-            {t}{t==='invites'&&INVITES.length>0?` (${INVITES.length})`:''}
-          </button>
-        ))}
-      </div>
 
       {subTab==='browse' && (
         <div style={{ padding:'20px' }}>
@@ -848,10 +841,84 @@ function CompeteHome({ setTab }) {
 }
 
 
+
+function CompeteSidebar({ tab, setTab, h2hSubTab, setH2hSubTab, groupSubTab, setGroupSubTab, historySubTab, setHistorySubTab }) {
+  const [open, setOpen] = useState(false)
+  const [pinned, setPinned] = useState(false)
+  const isOpen = open || pinned
+  const timer = useRef(null)
+  const TABS = [
+    { key:'compete',     label:'Home',           icon:'ti-home' },
+    { key:'h2h',         label:'H2H',            icon:'ti-sword' },
+    { key:'groups',      label:'Group Contests',  icon:'ti-users' },
+    { key:'leaderboard', label:'Leaderboard',     icon:'ti-trophy' },
+    { key:'history',     label:'History',         icon:'ti-history' },
+  ]
+  return (
+    <div
+      onMouseEnter={() => { clearTimeout(timer.current); setOpen(true) }}
+      onMouseLeave={() => { timer.current = setTimeout(() => { if(!pinned) setOpen(false) }, 180) }}
+      style={{ width:isOpen?200:54, minWidth:isOpen?200:54, background:'var(--surface2)', borderRight:'0.5px solid var(--border)', display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'10px 6px', paddingTop:92, transition:'width 0.18s ease, min-width 0.18s ease', overflow:'hidden', flexShrink:0, zIndex:20, position:'sticky', top:82, height:'calc(100vh - 82px)' }}>
+      <div onClick={() => setPinned(p=>!p)} style={{ width:42, height:38, background:'#4B44C8', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, marginBottom:8 }}>
+        <i className="ti ti-menu-2" style={{ fontSize:20, color:'#fff' }} aria-hidden="true" />
+      </div>
+      {TABS.map(t => {
+        const isActive = tab === t.key
+        return (
+          <React.Fragment key={t.key}>
+          <button onClick={() => setTab(t.key)}
+            style={{ display:'flex', alignItems:'center', gap:isOpen?8:0, padding:'8px', borderRadius:8, background:isActive?'rgba(75,68,200,0.1)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:isOpen?'100%':42, justifyContent:isOpen?'flex-start':'center', position:'relative', flexShrink:0 }}>
+            {isActive && <div style={{ position:'absolute', left:0, top:'50%', transform:'translateY(-50%)', width:3, height:22, background:'#4B44C8', borderRadius:'0 3px 3px 0' }} />}
+            <i className={`ti ${t.icon}`} style={{ fontSize:19, color:isActive?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
+            {isOpen && <span style={{ fontSize:12, color:isActive?'#3C3489':'var(--text-muted)', fontWeight:isActive?500:400, whiteSpace:'nowrap' }}>{t.label}</span>}
+          </button>
+          {t.key === 'h2h' && isActive && isOpen && (
+            <div style={{ width:'100%', paddingLeft:8, display:'flex', flexDirection:'column', gap:1, marginBottom:4 }}>
+              {['browse','my matches','invites','spectate','post challenge'].map(ft => (
+                <button key={ft} onClick={() => setH2hSubTab(ft)}
+                  style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 8px', borderRadius:5, background:h2hSubTab===ft?'rgba(75,68,200,0.08)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:'100%', textAlign:'left' }}>
+                  <i className="ti ti-chevron-right" style={{ fontSize:11, color:h2hSubTab===ft?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
+                  <span style={{ fontSize:11, color:h2hSubTab===ft?'#3C3489':'var(--text-muted)', fontWeight:h2hSubTab===ft?500:400, whiteSpace:'nowrap', textTransform:'capitalize' }}>{ft}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {t.key === 'groups' && isActive && isOpen && (
+            <div style={{ width:'100%', paddingLeft:8, display:'flex', flexDirection:'column', gap:1, marginBottom:4 }}>
+              {['my contests','browse','rankings','spectate','create contest'].map(ft => (
+                <button key={ft} onClick={() => setGroupSubTab(ft)}
+                  style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 8px', borderRadius:5, background:groupSubTab===ft?'rgba(75,68,200,0.08)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:'100%', textAlign:'left' }}>
+                  <i className="ti ti-chevron-right" style={{ fontSize:11, color:groupSubTab===ft?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
+                  <span style={{ fontSize:11, color:groupSubTab===ft?'#3C3489':'var(--text-muted)', fontWeight:groupSubTab===ft?500:400, whiteSpace:'nowrap', textTransform:'capitalize' }}>{ft}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {t.key === 'history' && isActive && isOpen && (
+            <div style={{ width:'100%', paddingLeft:8, display:'flex', flexDirection:'column', gap:1, marginBottom:4 }}>
+              {['overview','my trades','opponent','ai review'].map(ft => (
+                <button key={ft} onClick={() => setHistorySubTab(ft)}
+                  style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 8px', borderRadius:5, background:historySubTab===ft?'rgba(75,68,200,0.08)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:'100%', textAlign:'left' }}>
+                  <i className="ti ti-chevron-right" style={{ fontSize:11, color:historySubTab===ft?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
+                  <span style={{ fontSize:11, color:historySubTab===ft?'#3C3489':'var(--text-muted)', fontWeight:historySubTab===ft?500:400, whiteSpace:'nowrap', textTransform:'capitalize' }}>{ft}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          </React.Fragment>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function CompeteTab({ currentUserId, externalTab }) {
   const PURPLE = '#4f46e5';
   const TAB_MAP = { 'Home': 'compete', 'H2H': 'h2h', 'Group Contests': 'groups', 'Leaderboard': 'leaderboard', 'History': 'history', 'compete': 'compete', 'h2h': 'h2h', 'groups': 'groups', 'leaderboard': 'leaderboard', 'history': 'history' };
   const [tab, setTab] = useState('compete');
+  const [h2hSubTab, setH2hSubTab] = useState('browse');
+  const [groupSubTab, setGroupSubTab] = useState('my contests');
+  const [historySubTab, setHistorySubTab] = useState('overview');
   useEffect(() => { if (externalTab && TAB_MAP[externalTab]) setTab(TAB_MAP[externalTab]); }, [externalTab]);
 
   const navTabs = [
@@ -863,28 +930,14 @@ export default function CompeteTab({ currentUserId, externalTab }) {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'var(--font)' }}>
-      <div style={{ background: PURPLE, padding: '0 20px', display: 'flex', alignItems: 'stretch', justifyContent: 'space-between', flexShrink: 0, position: 'sticky', top: 82, zIndex: 299 }}>
-        <div style={{ display: 'flex', gap: 0 }}>
-          {navTabs.map(({ key, label }) => (
-            <button key={key} onClick={() => setTab(key)}
-              style={{ padding: '11px 18px', background: 'none', border: 'none', borderBottom: tab === key ? '2px solid #fff' : '2px solid transparent', color: '#fff', opacity: tab === key ? 1 : 0.75, fontFamily: 'var(--font)', fontSize: 13, fontWeight: tab === key ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s', marginBottom: -1 }}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
-          <button onClick={() => setTab('groups')} style={{ padding: '5px 12px', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }}>Browse challenges</button>
-          <button onClick={() => setTab('h2h')} style={{ padding: '5px 12px', background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }}>+ Challenge trader</button>
-        </div>
-      </div>
-
-      <div style={{ padding: '16px 20px', paddingTop: 60 }}>
+    <div style={{ display: 'flex', flexDirection: 'row', fontFamily: 'var(--font)' }}>
+      <CompeteSidebar tab={tab} setTab={setTab} h2hSubTab={h2hSubTab} setH2hSubTab={setH2hSubTab} groupSubTab={groupSubTab} setGroupSubTab={setGroupSubTab} historySubTab={historySubTab} setHistorySubTab={setHistorySubTab} />
+      <div style={{ flex:1, padding: '16px 20px', paddingTop: 92, overflowY:'auto' }}>
         {tab === 'compete' && <CompeteHome setTab={setTab} />}
-        {tab === 'h2h' && <H2HTab />}
-        {tab === 'groups' && <GroupContest currentUserId={currentUserId} />}
+        {tab === 'h2h' && <H2HTab subTab={h2hSubTab} setSubTab={setH2hSubTab} />}
+        {tab === 'groups' && <GroupContest currentUserId={currentUserId} subTab={groupSubTab} setSubTab={setGroupSubTab} />}
         {tab === 'leaderboard' && <LeaderboardTab />}
-        {tab === 'history' && <MatchHistory />}
+        {tab === 'history' && <MatchHistory subTab={historySubTab} setSubTab={setHistorySubTab} />}
       </div>
     </div>
   );

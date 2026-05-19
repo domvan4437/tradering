@@ -52,8 +52,8 @@ function ContestCard({ c, onEnter, onSpectate }) {
   );
 }
 
-export default function GroupContest({ currentUserId }) {
-  const [subTab, setSubTab] = useState('my contests');
+export default function GroupContest({ currentUserId, subTab = 'my contests', setSubTab }) {
+  // subTab controlled by parent
   const [filterAsset, setFilterAsset] = useState('Any');
   const [entered, setEntered] = useState(null);
   const [spectating, setSpectating] = useState(null);
@@ -82,10 +82,7 @@ export default function GroupContest({ currentUserId }) {
       )}
 
       {/* Sub-tab bar */}
-      <div style={{ display:'flex', borderBottom:'1px solid var(--border)', background:'var(--surface)', overflowX:'auto' }}>
-        {TABS.map(t => <button key={t} onClick={() => setSubTab(t)} style={tabStyle(t)}>{t}</button>)}
-      </div>
-
+      
       {/* MY CONTESTS */}
       {subTab === 'my contests' && (
         <div style={{ padding:'20px' }}>

@@ -314,26 +314,13 @@ function MonetizationTab() {
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
 const SETTINGS_SECTIONS = ['Account', 'Appearance', 'Notifications', 'Privacy', 'Broker', 'Billing', 'Danger zone']
 
-function SettingsTab({ user }) {
-  const [section, setSection] = useState('Account')
-
+function SettingsContent({ section, user }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', minHeight: 400 }}>
-      <div style={{ borderRight: '0.5px solid var(--border)', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Settings</div>
-        {SETTINGS_SECTIONS.map(s => (
-          <button key={s} onClick={() => setSection(s)}
-            style={{ fontSize: 12, padding: '6px 8px', borderRadius: 5, background: section === s ? 'rgba(75,68,200,0.1)' : 'transparent', color: s === 'Danger zone' ? '#dc2626' : section === s ? '#3C3489' : 'var(--text-muted)', fontWeight: section === s ? 500 : 400, border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', width: '100%' }}>
-            {s}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ padding: '14px 20px' }}>
-        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>{section}</div>
+    <div style={{ maxWidth: 520 }}>
+      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', marginBottom: 16 }}>{section}</div>
 
         {section === 'Account' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 480 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Email</div>
                 <div style={{ display: 'flex', gap: 6 }}><input defaultValue={user?.email || ''} style={{ flex: 1, padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }} /><BtnS>Change</BtnS></div>
@@ -371,7 +358,7 @@ function SettingsTab({ user }) {
         )}
 
         {section === 'Appearance' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 480 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Theme</div>
               <select style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }}>
                 <option>System default</option><option>Light</option><option>Dark</option>
@@ -387,14 +374,14 @@ function SettingsTab({ user }) {
         )}
 
         {section === 'Notifications' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, maxWidth: 480 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {[
-              { label: 'New followers',         sub: 'When someone follows you' },
+              { label: 'New followers', sub: 'When someone follows you' },
               { label: 'Post likes & comments', sub: 'When someone engages with your posts' },
-              { label: 'Trade idea results',     sub: 'When your public trade ideas hit targets' },
-              { label: 'Group activity',         sub: 'New posts in your groups' },
-              { label: 'New subscribers',        sub: 'When someone subscribes to a paid product' },
-              { label: 'Platform updates',       sub: 'New features and announcements' },
+              { label: 'Trade idea results', sub: 'When your public trade ideas hit targets' },
+              { label: 'Group activity', sub: 'New posts in your groups' },
+              { label: 'New subscribers', sub: 'When someone subscribes to a paid product' },
+              { label: 'Platform updates', sub: 'New features and announcements' },
             ].map((n, i, a) => (
               <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
                 <div><div style={{ fontSize: 12 }}>{n.label}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{n.sub}</div></div>
@@ -405,12 +392,12 @@ function SettingsTab({ user }) {
         )}
 
         {section === 'Privacy' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, maxWidth: 480 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {[
               { label: 'Show profile on leaderboards', sub: 'Let others find you in rankings' },
-              { label: 'Show trade history publicly',  sub: 'Others can see your win rate and trade log' },
-              { label: 'Allow direct messages',        sub: 'From users you don\'t follow' },
-              { label: 'Show online status',           sub: 'Let others see when you\'re active' },
+              { label: 'Show trade history publicly', sub: 'Others can see your win rate and trade log' },
+              { label: 'Allow direct messages', sub: "From users you don't follow" },
+              { label: 'Show online status', sub: "Let others see when you're active" },
             ].map((n, i, a) => (
               <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
                 <div><div style={{ fontSize: 12 }}>{n.label}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{n.sub}</div></div>
@@ -421,15 +408,15 @@ function SettingsTab({ user }) {
         )}
 
         {section === 'Broker' && (
-          <div style={{ maxWidth: 480 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>Connect your brokerage account to automatically track and verify your trade history. Your verified performance is shown publicly on your profile.</div>
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>Connect your brokerage account to automatically track and verify your trade history.</div>
             <BtnP style={{ marginBottom: 10 }}>Connect broker</BtnP>
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Supports: Interactive Brokers, TD Ameritrade, TradeStation, MetaTrader 4/5, and more.</div>
           </div>
         )}
 
         {section === 'Billing' && (
-          <div style={{ maxWidth: 480 }}>
+          <div>
             <div style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 8, marginBottom: 14 }}>
               <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>Current plan: <span style={{ color: PURPLE }}>Free</span></div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Upgrade to Pro for advanced analytics, revenue share, and priority support.</div>
@@ -440,61 +427,148 @@ function SettingsTab({ user }) {
         )}
 
         {section === 'Danger zone' && (
-          <div style={{ maxWidth: 480 }}>
-            <div style={{ padding: '12px', background: 'rgba(220,38,38,0.05)', border: '0.5px solid rgba(220,38,38,0.3)', borderRadius: 8, marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#dc2626', marginBottom: 4 }}>Delete account</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Permanently delete your TradeRing account. This action cannot be undone. All your data, posts, groups, and trade history will be removed.</div>
-              <button style={{ padding: '7px 14px', background: 'transparent', color: '#dc2626', border: '0.5px solid #dc2626', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' }}>Delete my account</button>
-            </div>
+          <div style={{ padding: '12px', background: 'rgba(220,38,38,0.05)', border: '0.5px solid rgba(220,38,38,0.3)', borderRadius: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: '#dc2626', marginBottom: 4 }}>Delete account</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Permanently delete your TradeRing account. This cannot be undone.</div>
+            <button style={{ padding: '7px 14px', background: 'transparent', color: '#dc2626', border: '0.5px solid #dc2626', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' }}>Delete my account</button>
           </div>
         )}
-      </div>
     </div>
   )
 }
 
+function SettingsTab({ user }) { return null }
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+const SETTINGS_ICONS = {
+  'Account': 'ti-user', 'Appearance': 'ti-palette', 'Notifications': 'ti-bell',
+  'Privacy': 'ti-lock', 'Broker': 'ti-plug-connected', 'Billing': 'ti-credit-card',
+  'Danger zone': 'ti-trash'
+}
+
+const ACCOUNT_TABS = [
+  { key: 'overview',     label: 'Overview',              icon: 'ti-layout-dashboard' },
+  { key: 'analytics',    label: 'Analytics & Community', icon: 'ti-chart-bar' },
+  { key: 'monetization', label: 'Monetization',          icon: 'ti-currency-dollar' },
+  { key: 'settings',     label: 'Settings',              icon: 'ti-settings' },
+]
+
 export default function AccountTab({ user }) {
   const [activeTab, setActiveTab] = useState('overview')
-  const tabs = [
-    { key: 'overview',   label: 'Overview' },
-    { key: 'analytics',  label: 'Analytics & Community' },
-    { key: 'monetization',label: 'Monetization' },
-    { key: 'settings',   label: 'Settings' },
-  ]
+  const [settingsSection, setSettingsSection] = useState('Account')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarPinned, setSidebarPinned] = useState(false)
+  const hoverTimer = React.useRef(null)
+  const isOpen = sidebarOpen || sidebarPinned
+
+  function handleMouseEnter() {
+    clearTimeout(hoverTimer.current)
+    setSidebarOpen(true)
+  }
+  function handleMouseLeave() {
+    hoverTimer.current = setTimeout(() => { if (!sidebarPinned) setSidebarOpen(false) }, 180)
+  }
 
   return (
-    <div style={{ fontFamily: 'var(--font)', minHeight: 'calc(100vh - 82px)' }}>
-      {/* Header */}
-      <div style={{ padding: '12px 24px', borderBottom: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 36, height: 36, borderRadius: '50%', background: PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: '#fff', flexShrink: 0 }}>
-          {(user?.name || 'U')[0].toUpperCase()}
+    <div style={{ fontFamily: 'var(--font)', display: 'flex', minHeight: 'calc(100vh - 82px)', paddingTop: 82 }}>
+
+      {/* ── SIDEBAR ── */}
+      <div
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={{
+          width: isOpen ? 200 : 54,
+          minWidth: isOpen ? 200 : 54,
+          borderRight: '0.5px solid var(--border)',
+          background: 'var(--surface2)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          padding: '10px 6px',
+          transition: 'width 0.18s ease, min-width 0.18s ease',
+          overflow: 'hidden',
+          flexShrink: 0,
+          zIndex: 20,
+        }}>
+
+        {/* Hamburger */}
+        <div onClick={() => setSidebarPinned(p => !p)}
+          style={{ width: 42, height: 38, background: PURPLE, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, marginBottom: 8 }}>
+          <i className="ti ti-menu-2" style={{ fontSize: 20, color: '#fff' }} aria-hidden="true" />
         </div>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{user?.name || 'User'}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{user?.email || ''}</div>
-        </div>
-        <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 7px', borderRadius: 3, background: 'rgba(75,68,200,0.1)', color: '#3C3489', textTransform: 'uppercase', letterSpacing: '0.04em', marginLeft: 4 }}>Free plan</span>
-        <span style={{ flex: 1 }} />
-        <BtnP>Upgrade to Pro</BtnP>
+
+        {/* Main nav tabs */}
+        {ACCOUNT_TABS.map(t => {
+          const isActive = activeTab === t.key
+          return (
+            <React.Fragment key={t.key}>
+              <button onClick={() => setActiveTab(t.key)}
+                title={!isOpen ? t.label : undefined}
+                style={{
+                  display: 'flex', alignItems: 'center',
+                  gap: isOpen ? 8 : 0,
+                  padding: '8px',
+                  borderRadius: 8,
+                  background: isActive ? 'rgba(75,68,200,0.1)' : 'transparent',
+                  border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
+                  width: isOpen ? '100%' : 42,
+                  justifyContent: isOpen ? 'flex-start' : 'center',
+                  position: 'relative', flexShrink: 0,
+                }}>
+                {isActive && <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 22, background: PURPLE, borderRadius: '0 3px 3px 0' }} />}
+                <i className={`ti ${t.icon}`} style={{ fontSize: 19, color: isActive ? PURPLE : 'var(--text-muted)', flexShrink: 0 }} aria-hidden="true" />
+                {isOpen && <span style={{ fontSize: 12, color: isActive ? '#3C3489' : 'var(--text-muted)', fontWeight: isActive ? 500 : 400, whiteSpace: 'nowrap' }}>{t.label}</span>}
+              </button>
+
+              {/* Settings subtabs — shown inline when settings is active and sidebar open */}
+              {t.key === 'settings' && isActive && isOpen && (
+                <div style={{ width: '100%', paddingLeft: 8, display: 'flex', flexDirection: 'column', gap: 1, marginBottom: 4 }}>
+                  {SETTINGS_SECTIONS.map(sec => (
+                    <button key={sec} onClick={() => setSettingsSection(sec)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 7,
+                        padding: '6px 8px', borderRadius: 6,
+                        background: settingsSection === sec ? 'rgba(75,68,200,0.08)' : 'transparent',
+                        border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
+                        width: '100%', textAlign: 'left',
+                      }}>
+                      <i className={`ti ${SETTINGS_ICONS[sec] || 'ti-circle'}`}
+                        style={{ fontSize: 14, color: sec === 'Danger zone' ? '#dc2626' : settingsSection === sec ? PURPLE : 'var(--text-muted)', flexShrink: 0 }} aria-hidden="true" />
+                      <span style={{ fontSize: 11, color: sec === 'Danger zone' ? '#dc2626' : settingsSection === sec ? '#3C3489' : 'var(--text-muted)', fontWeight: settingsSection === sec ? 500 : 400, whiteSpace: 'nowrap' }}>
+                        {sec}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </React.Fragment>
+          )
+        })}
+
+        {/* User info — only when open */}
+        {isOpen && (
+          <div style={{ marginTop: 'auto', padding: '10px', background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 8, width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: '#fff', flexShrink: 0 }}>
+                {(user?.name || 'U')[0].toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)' }}>{user?.name || 'User'}</div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Free plan</div>
+              </div>
+            </div>
+            <BtnP style={{ width: '100%', fontSize: 10, padding: '6px' }}>Upgrade to Pro</BtnP>
+          </div>
+        )}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '0.5px solid var(--border)', paddingLeft: 24 }}>
-        {tabs.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
-            style={{ fontSize: 12, padding: '8px 14px', color: activeTab === t.key ? PURPLE : 'var(--text-muted)', borderBottom: `2px solid ${activeTab === t.key ? PURPLE : 'transparent'}`, background: 'none', border: 'none', borderBottom: `2px solid ${activeTab === t.key ? PURPLE : 'transparent'}`, cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div style={{ padding: activeTab === 'settings' ? 0 : '16px 24px' }}>
-        {activeTab === 'overview'      && <OverviewTab user={user} />}
-        {activeTab === 'analytics'     && <AnalyticsCommunityTab />}
-        {activeTab === 'monetization'  && <MonetizationTab />}
-        {activeTab === 'settings'      && <SettingsTab user={user} />}
+      {/* ── CONTENT ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: activeTab === 'settings' ? '16px 24px' : '16px 24px' }}>
+        {activeTab === 'overview'     && <OverviewTab user={user} />}
+        {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
+        {activeTab === 'monetization' && <MonetizationTab />}
+        {activeTab === 'settings'     && <SettingsContent section={settingsSection} user={user} />}
       </div>
     </div>
   )

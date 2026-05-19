@@ -810,63 +810,76 @@ export default function TradeRingJournal() {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         style={{
-          width: isOpen ? 188 : 50,
-          minWidth: isOpen ? 188 : 50,
+          width: isOpen ? 188 : 54,
+          minWidth: isOpen ? 188 : 54,
           borderRight: '0.5px solid var(--border)',
           background: 'var(--surface2)',
-          borderLeft: isOpen ? 'none' : '3px solid ' + '#4B44C8',
           display: 'flex',
           flexDirection: 'column',
-          gap: 2,
-          padding: isOpen ? '16px 10px' : '16px 7px',
-          transition: 'width 0.16s ease, min-width 0.16s ease, padding 0.16s ease',
+          alignItems: 'center',
+          gap: 4,
+          padding: '10px 6px',
+          transition: 'width 0.18s ease, min-width 0.18s ease',
           overflow: 'hidden',
           flexShrink: 0,
           zIndex: 20,
-          cursor: 'default',
         }}>
 
-        {isOpen && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, padding: '0 6px' }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Journal</span>
-            <button onClick={handleClick} title={sidebarPinned ? 'Unpin sidebar' : 'Pin sidebar'}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: sidebarPinned ? PURPLE : 'var(--text-muted)', padding: 2 }}>
-              {sidebarPinned ? '📌' : '📍'}
-            </button>
-          </div>
-        )}
+        {/* Hamburger — always visible */}
+        <div
+          onClick={handleClick}
+          style={{
+            width: 42, height: 38,
+            background: PURPLE,
+            borderRadius: 10,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            flexShrink: 0,
+            marginBottom: 8,
+          }}>
+          <i className="ti ti-menu-2" style={{ fontSize: 20, color: '#fff' }} aria-hidden="true" />
+        </div>
 
-        {!isOpen && (
-          <div style={{ height: 28, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(75,68,200,0.12)', border: '0.5px solid rgba(75,68,200,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="ti ti-layout-sidebar" style={{ fontSize: 14, color: '#4B44C8' }} />
-            </div>
-          </div>
-        )}
-
+        {/* Nav tabs */}
         {TABS.map(t => {
           const isActive = activeTab === t.key
           return (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
               title={!isOpen ? t.label : undefined}
               style={{
-                display: 'flex', alignItems: 'center', gap: isOpen ? 8 : 0,
-                padding: isOpen ? '8px 10px' : '8px',
-                borderRadius: 7,
-                background: isActive ? 'rgba(75,68,200,0.12)' : 'transparent',
+                display: 'flex', alignItems: 'center',
+                gap: isOpen ? 8 : 0,
+                padding: '8px',
+                borderRadius: 8,
+                background: isActive ? 'rgba(75,68,200,0.1)' : 'transparent',
                 border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
-                width: '100%', justifyContent: isOpen ? 'flex-start' : 'center',
-                transition: 'padding 0.16s ease',
+                minWidth: 42, width: isOpen ? '100%' : 42,
+                justifyContent: isOpen ? 'flex-start' : 'center',
+                position: 'relative',
+                flexShrink: 0,
               }}>
-              <i className={`ti ${t.icon}`} style={{ fontSize: 16, color: isActive ? PURPLE : 'var(--text-muted)', flexShrink: 0 }} aria-hidden="true" />
-              {isOpen && <span style={{ fontSize: 12, color: isActive ? '#3C3489' : 'var(--text-muted)', fontWeight: isActive ? 500 : 400, whiteSpace: 'nowrap', overflow: 'hidden' }}>{t.label}</span>}
+              {isActive && (
+                <div style={{
+                  position: 'absolute', left: 0,
+                  top: '50%', transform: 'translateY(-50%)',
+                  width: 3, height: 22,
+                  background: PURPLE,
+                  borderRadius: '0 3px 3px 0',
+                }} />
+              )}
+              <i className={`ti ${t.icon}`} style={{ fontSize: 19, color: isActive ? PURPLE : 'var(--text-muted)', flexShrink: 0 }} aria-hidden="true" />
+              {isOpen && (
+                <span style={{ fontSize: 12, color: isActive ? '#3C3489' : 'var(--text-muted)', fontWeight: isActive ? 500 : 400, whiteSpace: 'nowrap' }}>
+                  {t.label}
+                </span>
+              )}
             </button>
           )
         })}
 
-        {/* Stats mini panel */}
+        {/* Stats — only when open */}
         {isOpen && (
-          <div style={{ marginTop: 'auto', padding: '10px', background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 8 }}>
+          <div style={{ marginTop: 'auto', padding: '10px', background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 8, width: '100%' }}>
             <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 7 }}>Your stats</div>
             {[
               { l: 'Win rate', v: winRate !== null ? `${winRate}%` : '—', c: winRate !== null ? (winRate >= 60 ? 'var(--green)' : 'var(--red)') : undefined },

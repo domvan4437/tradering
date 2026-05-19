@@ -691,7 +691,7 @@ export default function App() {
           </div>
         ) : section==='tools2' ? (
           <div style={{padding:'20px 24px'}}>
-            {!tab && <ToolsLanding2 onSelect={t=>setTab(t)} />}
+            {!tab && (() => { setTimeout(() => setTab('Journal'), 0); return null; })()}
             {tab==='Journal'    && <TradeRingJournal />}
             {tab==='Trade Calc' && <><TabTooltip tab='Trade Calc' /><TradeCalcTab /></>}
             {tab==='Trade Plan Builder' && <><TabTooltip tab='Trade Plan Builder' /><TradePlanTab /></>}

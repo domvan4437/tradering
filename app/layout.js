@@ -12,7 +12,7 @@ export default async function RootLayout({ children }) {
   const session = await getServerSession(authOptions)
   return (
     <html lang="en">
-      <head><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+      <head><meta name="viewport" content="width=device-width, initial-scale=1" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" /></head>
       <body>
         <SessionProvider session={session}>{children}</SessionProvider>
       </body>

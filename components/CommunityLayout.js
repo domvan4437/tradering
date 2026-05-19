@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import FeedTab from './FeedTab';
 import DMTab from './DMTab';
@@ -483,6 +483,54 @@ function GroupsView({ currentUserId }) {
 }
 
 
+function CommSidebar({ tab, setTab, feedTab, setFeedTab }) {
+  const [open, setOpen] = useState(false)
+  const [pinned, setPinned] = useState(false)
+  const isOpen = open || pinned
+  const timer = useRef(null)
+  const FEED_SUBTABS = ['Discover','Following','Ideas','Screeners','Strategies','COT Signals']
+  const TABS = [
+    { key:'feed',   label:'Feed',     icon:'ti-home' },
+    { key:'groups', label:'Groups',   icon:'ti-users' },
+    { key:'dms',    label:'Messages', icon:'ti-message' },
+  ]
+  return (
+    <div
+      onMouseEnter={() => { clearTimeout(timer.current); setOpen(true) }}
+      onMouseLeave={() => { timer.current = setTimeout(() => { if(!pinned) setOpen(false) }, 180) }}
+      style={{ width:isOpen?188:54, minWidth:isOpen?188:54, background:'var(--surface2)', borderRight:'0.5px solid var(--border)', display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'10px 6px', paddingTop:92, transition:'width 0.18s ease, min-width 0.18s ease', overflow:'hidden', flexShrink:0, zIndex:20, position:'sticky', top:82, height:'calc(100vh - 82px)' }}>
+      <div onClick={() => setPinned(p=>!p)} style={{ width:42, height:38, background:'#4B44C8', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, marginBottom:8 }}>
+        <i className="ti ti-menu-2" style={{ fontSize:20, color:'#fff' }} aria-hidden="true" />
+      </div>
+      {TABS.map(t => {
+        const isActive = tab === t.key
+        return (
+          <React.Fragment key={t.key}>
+          <button onClick={(e)=>{e.stopPropagation();setTab(t.key);}}
+            style={{ display:'flex', alignItems:'center', gap:isOpen?8:0, padding:'8px', borderRadius:8, background:isActive?'rgba(75,68,200,0.1)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:isOpen?'100%':42, justifyContent:isOpen?'flex-start':'center', position:'relative', flexShrink:0 }}>
+            {isActive && <div style={{ position:'absolute', left:0, top:'50%', transform:'translateY(-50%)', width:3, height:22, background:'#4B44C8', borderRadius:'0 3px 3px 0' }} />}
+            <i className={`ti ${t.icon}`} style={{ fontSize:19, color:isActive?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
+            {isOpen && <span style={{ fontSize:12, color:isActive?'#3C3489':'var(--text-muted)', fontWeight:isActive?500:400, whiteSpace:'nowrap' }}>{t.label}</span>}
+          </button>
+          {/* Feed subtabs inline */}
+          {t.key === 'feed' && isActive && isOpen && (
+            <div style={{ width:'100%', paddingLeft:8, display:'flex', flexDirection:'column', gap:1, marginBottom:4 }}>
+              {FEED_SUBTABS.map(ft => (
+                <button key={ft} onClick={(e)=>{e.stopPropagation();setFeedTab(ft);}}
+                  style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 8px', borderRadius:5, background:feedTab===ft?'rgba(75,68,200,0.08)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:'100%', textAlign:'left' }}>
+                  <i className="ti ti-chevron-right" style={{ fontSize:11, color:feedTab===ft?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
+                  <span style={{ fontSize:11, color:feedTab===ft?'#3C3489':'var(--text-muted)', fontWeight:feedTab===ft?500:400, whiteSpace:'nowrap' }}>{ft}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          </React.Fragment>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function CommunityLayout({ currentUserId, externalTab, onTabChange }) {
   const TAB_MAP = { 'Feed':'feed', 'Groups':'groups', 'Messages':'dms', 'feed':'feed', 'groups':'groups', 'dms':'dms' };
   const [tab, setTabInternal] = useState('feed');
@@ -490,31 +538,11 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
   const setTab = (t) => { setTabInternal(t); if(onTabChange) onTabChange(t); };
   useEffect(() => { if(externalTab && TAB_MAP[externalTab]) setTabInternal(TAB_MAP[externalTab]); }, [externalTab]);
   return (
-    <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)' }}>
+    <div style={{ display:'flex', flexDirection:'row', fontFamily:'var(--font)' }}>
       {/* Purple top nav */}
-      <div style={{ background:PURPLE, padding:'0 20px', display:'flex', alignItems:'stretch', justifyContent:'space-between', flexShrink:0, position:'sticky', top:82, zIndex:299, pointerEvents:'all' }}>
-        <div style={{ display:'flex', gap:0 }}>
-          {[['feed','Feed'],['groups','Groups'],['dms','Messages']].map(([t,l]) => (
-            <button key={t} onClick={(e) => { e.stopPropagation(); setTab(t); }} style={{ padding:'11px 20px', background:'none', border:'none', borderBottom:tab===t?'2px solid #fff':'2px solid transparent', color:tab===t?'#fff':'rgba(255,255,255,0.6)', fontFamily:'var(--font)', fontSize:13, fontWeight:tab===t?600:400, cursor:'pointer', transition:'all 0.15s', marginBottom:-1 }}>{l}</button>
-          ))}
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:14, color:'rgba(255,255,255,0.7)' }}>
-          {tab === 'feed' && <UserSearch />}
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ cursor:'pointer', flexShrink:0 }}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        </div>
-      </div>
-      {/* Feed sub-tabs */}
-      {tab === 'feed' && (
-        <div style={{ background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0, display:'flex', alignItems:'stretch', overflowX:'auto', position:'sticky', top:120, zIndex:298 }}>
-          {[{key:'Discover',icon:'trending-up'},{key:'Following',icon:'users'},{key:'Ideas'},{key:'Screeners'},{key:'Strategies'},{key:'COT Signals'}].map(({key:ft,icon}) => (
-            <button key={ft} onClick={() => setFeedTab(ft)} style={{ padding:'10px 16px', background:'none', border:'none', borderBottom:feedTab===ft?'2px solid '+PURPLE:'2px solid transparent', color:feedTab===ft?PURPLE:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:feedTab===ft?600:400, cursor:'pointer', whiteSpace:'nowrap', transition:'all 0.15s', marginBottom:-1, display:'flex', alignItems:'center', gap:6 }}>
-              {icon==='trending-up' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
-              {icon==='users' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
-              {ft}
-            </button>
-          ))}
-        </div>
-      )}
+      <CommSidebar tab={tab} setTab={(t)=>setTab(t)} feedTab={feedTab} setFeedTab={setFeedTab} />
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
+
       {/* Tab content */}
       <div style={{ flex:1, display:'flex' }}>
         {tab === 'feed' && (
@@ -537,6 +565,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
             <DMTab />
           </div>
         )}
+      </div>
       </div>
     </div>
   );

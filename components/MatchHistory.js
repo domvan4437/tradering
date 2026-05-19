@@ -131,12 +131,7 @@ function MatchDetail({ match, onBack, onExportNote }) {
       </div>
 
       {/* Tabs */}
-      <div style={{ display:'flex', borderBottom:'1px solid var(--border)', marginBottom:16 }}>
-        {['overview','my trades','opponent','ai review'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding:'8px 14px', background:'none', border:'none', borderBottom: tab===t?'2px solid var(--accent)':'2px solid transparent', color: tab===t?'var(--accent)':'var(--text-muted)', fontFamily:'var(--font)', fontSize:11, fontWeight: tab===t?700:400, cursor:'pointer', textTransform:'capitalize', whiteSpace:'nowrap' }}>{t}</button>
-        ))}
-      </div>
-
+      
       {tab==='overview' && (
         <div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
