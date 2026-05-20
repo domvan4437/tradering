@@ -24,6 +24,7 @@ import { ForexOverviewTab, ForexCOTTab, ForexKeyLevelsTab } from './ForexSection
 import AICoachTab from './AICoachTab'
 import { JournalLanding } from './JournalLanding'
 import TradeRingJournal from './TradeRingJournal'
+import ToolsLayout from './ToolsLayout'
 import JournalReviewTab from './JournalReviewTab'
 import JournalTradeLogTab from './JournalTradeLogTab'
 import { ToolsLanding2, TOOLS_LIST } from './ToolsLanding2'
@@ -690,18 +691,9 @@ export default function App() {
             {tab==='Trade Log' && <><TabTooltip tab='Trade Log' /><JournalTradeLogTab /></>}
           </div>
         ) : section==='tools2' ? (
-          <div style={{padding:'20px 24px'}}>
-            {!tab && (() => { setTimeout(() => setTab('Journal'), 0); return null; })()}
-            {tab==='Journal'    && <TradeRingJournal />}
-            {tab==='Trade Calc' && <><TabTooltip tab='Trade Calc' /><TradeCalcTab /></>}
-            {tab==='Trade Plan Builder' && <><TabTooltip tab='Trade Plan Builder' /><TradePlanTab /></>}
-            {tab==='Strategy Backtest' && <><TabTooltip tab='Strategy Backtest' /><StrategyBacktestTab /></>}
-            {tab==='COT Alerts' && <><TabTooltip tab='COT Alerts' /><COTAlertsTab /></>}
-            {tab==='Screener' && <><TabTooltip tab='Screener' /><ScreenerBuilder user={userInfo} /></>}
-            {tab==='Import' && <><TabTooltip tab='Import' /><ImportTab /></>}
-          </div>
+          <ToolsLayout tab={tab} setTab={setTab} userInfo={userInfo} />
         ) : section==='account' ? (
-          <div style={{ marginTop: 82 }}><AccountTab user={userInfo} /></div>
+          <div><AccountTab user={userInfo} /></div>
         ) : (
           <>
             {/* Commodities tabs */}

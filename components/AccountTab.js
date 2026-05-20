@@ -470,7 +470,7 @@ export default function AccountTab({ user }) {
   }
 
   return (
-    <div style={{ fontFamily: 'var(--font)', display: 'flex', minHeight: 'calc(100vh - 82px)', paddingTop: 82 }}>
+    <div style={{ fontFamily: 'var(--font)', display: 'flex', minHeight: 'calc(100vh - 82px)' }}>
 
       {/* ── SIDEBAR ── */}
       <div
