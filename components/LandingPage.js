@@ -1,109 +1,76 @@
 'use client'
 import Link from 'next/link'
 
-const C = { bg: '#0a0a0a', surface: '#0d0d0d', border: '#1a1a1a', border2: '#222', gold: '#c8a84b', text: '#e8e0d0', muted: '#555', green: '#4caf82', greenBorder: '#1a3d2a', font: "'Courier New', monospace" }
-
-const FEATURES = [
-  { title: '9-Stage Screening', desc: 'Seasonal → macro → COT → open interest. Every stage backed by live data. Stops at first failure — no false signals.' },
-  { title: 'Live CFTC COT Data', desc: 'Real commercial long/short positions from the CFTC public API every week. COT Index shows where positioning sits in a 3-year range (0–100).' },
-  { title: 'Seasonal Analysis', desc: '15 years of monthly return history. Actual win rates per month, not opinions. Know exactly which months have an edge.' },
-  { title: 'Watchlist Scanner', desc: 'Screen 20 commodities at once. Ranked by signal strength. Know every Friday which setups are lining up.' },
-  { title: 'Weekly Email Alerts', desc: 'Every Friday after CFTC data releases, get your watchlist screened and emailed to you. Never miss a setup.' },
-  { title: 'Trade Journal', desc: 'Log every screening. Track WIN/LOSS. See your actual win rate over time. Export to CSV.' },
-]
-
-const COMMODITIES = ['Gold','Silver','Crude Oil','Natural Gas','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Copper','Platinum']
-
 export default function LandingPage() {
+  const features = [
+    { icon: 'ti-users', text: 'Connect with traders who share your edge' },
+    { icon: 'ti-trophy', text: 'Compete head-to-head in live challenges' },
+    { icon: 'ti-notebook', text: 'Journal trades and track your growth' },
+    { icon: 'ti-chart-bar', text: 'COT data, seasonal signals, and screeners' },
+    { icon: 'ti-robot', text: 'AI coaching that sharpens your edge' },
+  ]
+
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: C.font }}>
-      {/* Nav */}
-      <nav style={{ borderBottom: `1px solid ${C.border}`, padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 16, background: C.surface, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ width: 10, height: 10, background: C.gold, transform: 'rotate(45deg)', flexShrink: 0 }} />
-        <span style={{ fontSize: 11, letterSpacing: 4, color: C.gold }}>COMMODITY INTELLIGENCE SYSTEM</span>
-        <div style={{ flex: 1 }} />
-        <Link href="/pricing" style={{ fontSize: 11, color: C.muted, textDecoration: 'none', letterSpacing: 2 }}>PRICING</Link>
-        <Link href="/login" style={{ fontSize: 11, color: C.muted, textDecoration: 'none', letterSpacing: 2, marginLeft: 24 }}>SIGN IN</Link>
-        <Link href="/signup" style={{ background: C.gold, color: '#0a0a0a', fontSize: 11, letterSpacing: 2, padding: '8px 20px', textDecoration: 'none', marginLeft: 8 }}>START FREE</Link>
-      </nav>
+    <div style={{ minHeight: '100vh', display: 'flex', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* Left panel */}
+      <div style={{ width: '45%', background: 'linear-gradient(160deg,#4B44C8 0%,#3730a3 100%)', padding: '48px 52px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 48 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="ti ti-trending-up" style={{ fontSize: 16, color: '#fff' }} aria-hidden="true" />
+            </div>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>TradeRing</span>
+          </div>
 
-      {/* Hero */}
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '100px 24px 80px' }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 40 }}>
-          {['CFTC COT Data','Yahoo Finance Prices','15yr Seasonal','Real-time USDX'].map(s => (
-            <span key={s} style={{ fontSize: 10, color: C.green, border: `1px solid ${C.greenBorder}`, padding: '4px 12px', letterSpacing: 1 }}>⬤ {s}</span>
-          ))}
-        </div>
+          <div style={{ fontSize: 36, fontWeight: 700, color: '#fff', lineHeight: 1.2, marginBottom: 14 }}>
+            Trade smarter,<br />together.
+          </div>
+          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', marginBottom: 36, lineHeight: 1.6 }}>
+            The all-in-one platform for serious traders — community, competition, and data in one place.
+          </div>
 
-        <h1 style={{ fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 400, letterSpacing: '-2px', lineHeight: 1.05, margin: '0 0 24px' }}>
-          The only commodity<br />screener built on<br /><span style={{ color: C.gold }}>your framework.</span>
-        </h1>
-        <p style={{ fontSize: 18, color: C.muted, maxWidth: 520, lineHeight: 1.7, margin: '0 0 48px' }}>
-          9-stage analysis powered by live CFTC data, 15 years of seasonal history, and real-time market feeds. Not opinions — actual numbers.
-        </p>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <Link href="/signup" style={{ background: C.gold, color: '#0a0a0a', padding: '16px 40px', fontSize: 12, letterSpacing: 3, textDecoration: 'none', textTransform: 'uppercase' }}>
-            Start Free — 14 Days →
-          </Link>
-          <Link href="/pricing" style={{ background: 'transparent', color: C.muted, border: `1px solid ${C.border2}`, padding: '16px 32px', fontSize: 12, letterSpacing: 3, textDecoration: 'none', textTransform: 'uppercase' }}>
-            See Pricing
-          </Link>
-        </div>
-        <p style={{ color: C.muted, fontSize: 12, marginTop: 16 }}>No credit card required. Free forever for 3 screenings/day.</p>
-      </div>
-
-      {/* How it works */}
-      <div style={{ borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: '80px 24px', background: C.surface }}>
-        <div style={{ maxWidth: 960, margin: '0 auto' }}>
-          <p style={{ fontSize: 11, letterSpacing: 4, color: C.muted, marginBottom: 48, textTransform: 'uppercase' }}>The 9-Stage Framework</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 2 }}>
-            {['Seasonal Tendency','Major Market Analysis','Commodity Trending','Intermarket Analysis','COT Hedging Program','Correlation Analysis','Commodity Filter','Open Interest Filter','Top-Down Confirmation'].map((s, i) => (
-              <div key={s} style={{ padding: '16px 20px', background: C.bg, border: `1px solid ${C.border}` }}>
-                <span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 6, letterSpacing: 2 }}>STAGE {i + 1}</span>
-                <span style={{ fontSize: 13, color: C.text }}>{s}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {features.map((f, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className={`ti ${f.icon}`} style={{ fontSize: 14, color: '#fff' }} aria-hidden="true" />
+                </div>
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.88)' }}>{f.text}</span>
               </div>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Features */}
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '80px 24px' }}>
-        <p style={{ fontSize: 11, letterSpacing: 4, color: C.muted, marginBottom: 48, textTransform: 'uppercase' }}>What's Included</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
-          {FEATURES.map(f => (
-            <div key={f.title} style={{ borderTop: `1px solid ${C.border2}`, paddingTop: 20 }}>
-              <p style={{ fontSize: 15, color: C.gold, margin: '0 0 12px', fontWeight: 400 }}>{f.title}</p>
-              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, margin: 0 }}>{f.desc}</p>
-            </div>
-          ))}
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 48 }}>
+          © 2026 TradeRing · <Link href="/pricing" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Pricing</Link> · <Link href="#" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Privacy</Link> · <Link href="#" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Terms</Link>
         </div>
       </div>
 
-      {/* Commodities ticker */}
-      <div style={{ borderTop: `1px solid ${C.border}`, padding: '32px 24px', background: C.surface, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {COMMODITIES.map(c => (
-            <span key={c} style={{ fontSize: 11, color: C.muted, letterSpacing: 2, whiteSpace: 'nowrap' }}>{c}</span>
-          ))}
-        </div>
-      </div>
+      {/* Right panel */}
+      <div style={{ flex: 1, background: '#fafaf9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 52px' }}>
+        <div style={{ width: '100%', maxWidth: 400 }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#1a1a2e', marginBottom: 6 }}>Start for free</div>
+          <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 28 }}>Join thousands of traders already on TradeRing.</div>
 
-      {/* CTA */}
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '80px 24px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: 40, fontWeight: 400, margin: '0 0 16px' }}>Ready to screen smarter?</h2>
-        <p style={{ color: C.muted, fontSize: 15, margin: '0 0 40px' }}>Start your 14-day free trial. No credit card needed.</p>
-        <Link href="/signup" style={{ background: C.gold, color: '#0a0a0a', padding: '18px 48px', fontSize: 12, letterSpacing: 3, textDecoration: 'none', textTransform: 'uppercase' }}>
-          Start Free Trial →
-        </Link>
-      </div>
+          <Link href="/signup" style={{ display: 'block', width: '100%', padding: '12px', background: '#4B44C8', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'center', textDecoration: 'none', marginBottom: 12 }}>
+            Create free account
+          </Link>
 
-      {/* Footer */}
-      <div style={{ borderTop: `1px solid ${C.border}`, padding: '24px 32px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <span style={{ fontSize: 10, color: C.muted, letterSpacing: 2 }}>COMMODITY INTELLIGENCE SYSTEM</span>
-        <div style={{ display: 'flex', gap: 24 }}>
-          <Link href="/pricing" style={{ fontSize: 11, color: C.muted, textDecoration: 'none' }}>Pricing</Link>
-          <Link href="/login" style={{ fontSize: 11, color: C.muted, textDecoration: 'none' }}>Sign In</Link>
+          <Link href="/login" style={{ display: 'block', width: '100%', padding: '11px', background: 'transparent', color: '#4B44C8', border: '1px solid #4B44C8', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'center', textDecoration: 'none', marginBottom: 24 }}>
+            Sign in to your account
+          </Link>
+
+          <div style={{ height: 1, background: '#e5e7eb', marginBottom: 20 }} />
+
+          <Link href="/pricing" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '11px', background: 'transparent', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 13, cursor: 'pointer', textDecoration: 'none', marginBottom: 20 }}>
+            <i className="ti ti-tag" style={{ fontSize: 15 }} aria-hidden="true" />
+            View pricing plans
+          </Link>
+
+          <div style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>
+            No credit card required · Free forever on basic plan
+          </div>
         </div>
       </div>
     </div>
