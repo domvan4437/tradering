@@ -491,6 +491,19 @@ button, a, input, select {
   overflow: hidden;
   z-index: 199;
 }
+[data-theme="dark"] .tk-wrap {
+  background: #1a1d27;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+[data-theme="dark"] .tk-name {
+  color: rgba(255,255,255,0.7);
+}
+[data-theme="dark"] .tk-price {
+  color: rgba(255,255,255,0.9);
+}
+[data-theme="dark"] .tk-div {
+  color: rgba(255,255,255,0.15);
+}
 .tk-track {
   display: flex;
   align-items: center;

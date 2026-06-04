@@ -55,74 +55,457 @@ function BtnS({ children, onClick, style }) {
 }
 
 // ─── OVERVIEW ────────────────────────────────────────────────────────────────
+// ── Profile Tab ────────────────────────────────────────────────
 function OverviewTab({ user }) {
-  const stats = { followers: 0, winRate: null, trades: 0, revenue: 0, communityScore: null, profileViews: 0, postsThisWeek: 0, newFollowers: 0, tradeIdeas: 0 }
+  const [editing, setEditing] = React.useState(false)
+  const [saved, setSaved] = React.useState(false)
+  const [profile, setProfile] = React.useState(() => {
+    try {
+      const s = typeof window !== 'undefined' ? localStorage.getItem('tr_profile_v1') : null
+      return s ? JSON.parse(s) : {}
+    } catch { return {} }
+  })
+
+  const [form, setForm] = React.useState({
+    displayName: profile.displayName || user?.name || '',
+    username: profile.username || user?.email?.split('@')[0] || '',
+    tagline: profile.tagline || '',
+    bio: profile.bio || '',
+    country: profile.country || '',
+    city: profile.city || '',
+    tradingStyle: profile.tradingStyle || '',
+    experience: profile.experience || '',
+    assets: profile.assets || [],
+    openToMeetups: profile.openToMeetups || false,
+    openToMentoring: profile.openToMentoring || false,
+    twitter: profile.twitter || '',
+    youtube: profile.youtube || '',
+    website: profile.website || '',
+    instagram: profile.instagram || '',
+    publicWinRate: profile.publicWinRate !== false,
+    publicPnl: profile.publicPnl !== false,
+    publicTrades: profile.publicTrades !== false,
+    publicLocation: profile.publicLocation !== false,
+  })
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const toggleAsset = (a) => setForm(f => ({
+    ...f,
+    assets: f.assets.includes(a) ? f.assets.filter(x => x !== a) : [...f.assets, a]
+  }))
+
+  const save = () => {
+    try { localStorage.setItem('tr_profile_v1', JSON.stringify(form)) } catch {}
+    setProfile(form)
+    setEditing(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
+  const ASSETS_LIST = ['Gold','Silver','Crude Oil','Natural Gas','Wheat','Corn','Soybeans','EUR/USD','GBP/USD','AUD/USD','USD/JPY','ES Futures','NQ Futures','Bitcoin','Ethereum','Stocks']
+  const STYLES = ['Swing','Scalp','Position','Seasonal','Day trade']
+  const LEVELS = ['Beginner','Intermediate','Advanced','Professional']
+  const P = '#4B44C8'
+
+  const inpStyle = { width:'100%', padding:'8px 12px', borderRadius:8, border:'0.5px solid var(--border2,#d1d5db)', background:'var(--surface2,#f9fafb)', color:'var(--text,#111)', fontSize:13, fontFamily:'var(--font,system-ui)', outline:'none', boxSizing:'border-box' }
+  const labelStyle = { fontSize:11, fontWeight:500, color:'var(--text-muted,#6b7280)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:5, display:'block' }
+  const sectionStyle = { background:'var(--surface,#fff)', border:'0.5px solid var(--border,#e5e7eb)', borderRadius:12, padding:'18px 20px', marginBottom:14 }
+  const sectionTitle = { fontSize:12, fontWeight:600, color:'var(--text-muted,#9ca3af)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:14 }
+
+  // Journal stats
+  const trades = React.useMemo(() => {
+    try { const d = localStorage.getItem('tr_journal_v3_trades'); return d ? JSON.parse(d) : [] } catch { return [] }
+  }, [])
+  const winRate = trades.length ? Math.round(trades.filter(t => parseFloat(t.pnl) > 0).length / trades.length * 100) : null
+  const totalPnl = trades.reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0)
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
-        {[
-          { label: 'Followers',       value: stats.followers || '—',   color: undefined },
-          { label: 'Win rate',        value: stats.winRate !== null ? `${stats.winRate}%` : '—', color: stats.winRate ? '#16a34a' : undefined, sub: stats.trades ? `${stats.trades} trades` : 'No trades yet' },
-          { label: 'Revenue MTD',     value: `$${stats.revenue}`,      color: undefined },
-          { label: 'Community score', value: stats.communityScore || '—', color: PURPLE },
-        ].map(s => (
-          <Card2 key={s.label} style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 500, color: s.color || 'var(--text)', marginBottom: 3 }}>{s.value}</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
-            {s.sub && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{s.sub}</div>}
-          </Card2>
-        ))}
+    <div style={{ maxWidth: 740, margin: '0 auto', padding: '20px 20px 40px' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+        <div style={{ fontSize:18, fontWeight:600, color:'var(--text,#111)' }}>My Profile</div>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {saved && <span style={{ fontSize:12, color:'#059669' }}>✓ Saved</span>}
+          {editing ? (
+            <>
+              <button onClick={() => setEditing(false)} style={{ padding:'7px 16px', background:'transparent', color:'var(--text-muted,#6b7280)', border:'0.5px solid var(--border,#e5e7eb)', borderRadius:8, fontSize:13, cursor:'pointer', fontFamily:'var(--font,system-ui)' }}>Cancel</button>
+              <button onClick={save} style={{ padding:'7px 16px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font,system-ui)' }}>Save profile</button>
+            </>
+          ) : (
+            <button onClick={() => setEditing(true)} style={{ padding:'7px 16px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font,system-ui)' }}>Edit profile</button>
+          )}
+        </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Card>
-          <SH>Activity this week</SH>
+
+      {/* Avatar + name preview */}
+      <div style={{ ...sectionStyle, display:'flex', alignItems:'center', gap:16 }}>
+        <div style={{ width:64, height:64, borderRadius:'50%', background:`linear-gradient(135deg,${P},#7c3aed)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, fontWeight:700, color:'#fff', flexShrink:0 }}>
+          {(form.displayName || form.username || 'T')[0].toUpperCase()}
+        </div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:18, fontWeight:600, color:'var(--text,#111)', marginBottom:2 }}>{form.displayName || 'Your name'}</div>
+          <div style={{ fontSize:13, color:'var(--text-muted,#6b7280)', marginBottom:3 }}>@{form.username || 'username'}</div>
+          {form.tagline && <div style={{ fontSize:13, color:'var(--text-muted,#6b7280)', fontStyle:'italic' }}>{form.tagline}</div>}
+          <div style={{ display:'flex', gap:8, marginTop:6, flexWrap:'wrap' }}>
+            {form.tradingStyle && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:10, background:'rgba(75,68,200,0.1)', color:P }}>{form.tradingStyle}</span>}
+            {form.experience && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:10, background:'var(--surface2,#f3f4f6)', color:'var(--text-muted,#6b7280)' }}>{form.experience}</span>}
+            {form.city && form.publicLocation && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:10, background:'var(--surface2,#f3f4f6)', color:'var(--text-muted,#6b7280)' }}>📍 {form.city}</span>}
+            {form.openToMeetups && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:10, background:'rgba(5,150,105,0.1)', color:'#059669' }}>Open to meetups</span>}
+            {form.openToMentoring && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:10, background:'rgba(217,119,6,0.1)', color:'#d97706' }}>Open to mentoring</span>}
+          </div>
+        </div>
+        {/* Track record stats */}
+        <div style={{ display:'flex', gap:12, flexShrink:0 }}>
+          {form.publicWinRate && winRate !== null && (
+            <div style={{ textAlign:'center' }}>
+              <div style={{ fontSize:18, fontWeight:600, color:'#16a34a' }}>{winRate}%</div>
+              <div style={{ fontSize:10, color:'var(--text-muted,#9ca3af)', textTransform:'uppercase' }}>Win rate</div>
+            </div>
+          )}
+          {form.publicTrades && trades.length > 0 && (
+            <div style={{ textAlign:'center' }}>
+              <div style={{ fontSize:18, fontWeight:600, color:'var(--text,#111)' }}>{trades.length}</div>
+              <div style={{ fontSize:10, color:'var(--text-muted,#9ca3af)', textTransform:'uppercase' }}>Trades</div>
+            </div>
+          )}
+          {form.publicPnl && trades.length > 0 && (
+            <div style={{ textAlign:'center' }}>
+              <div style={{ fontSize:18, fontWeight:600, color: totalPnl >= 0 ? '#16a34a' : '#dc2626' }}>{totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(0)}</div>
+              <div style={{ fontSize:10, color:'var(--text-muted,#9ca3af)', textTransform:'uppercase' }}>Net P&L</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!editing && <div style={{ fontSize:11, color:'var(--text-muted,#9ca3af)', textAlign:'center', marginTop:-8, marginBottom:6 }}>Click <strong style={{color:'#4B44C8'}}>Edit profile</strong> to make changes</div>}
+      {/* Identity */}
+      <div style={sectionStyle}>
+        <div style={sectionTitle}>Identity</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div>
+            <label style={labelStyle}>Display name</label>
+            <input style={inpStyle} value={form.displayName} onChange={e=>set('displayName',e.target.value)} disabled={!editing} placeholder="Your full name or alias" />
+          </div>
+          <div>
+            <label style={labelStyle}>Username</label>
+            <input style={inpStyle} value={form.username} onChange={e=>set('username',e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,''))} disabled={!editing} placeholder="yourhandle" />
+          </div>
+          <div style={{ gridColumn:'1/-1' }}>
+            <label style={labelStyle}>Tagline</label>
+            <input style={inpStyle} value={form.tagline} onChange={e=>set('tagline',e.target.value)} disabled={!editing} placeholder="e.g. COT-based commodity trader · 4 years" />
+          </div>
+          <div style={{ gridColumn:'1/-1' }}>
+            <label style={labelStyle}>Bio</label>
+            <textarea style={{ ...inpStyle, height:80, resize:'vertical' }} value={form.bio} onChange={e=>set('bio',e.target.value)} disabled={!editing} placeholder="Tell other traders about yourself, your approach, and what you're looking for..." />
+          </div>
+        </div>
+      </div>
+
+      {/* Location & style */}
+      <div style={sectionStyle}>
+        <div style={sectionTitle}>Trading background</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+          <div>
+            <label style={labelStyle}>Country</label>
+            <select style={inpStyle} value={form.country} onChange={e=>set('country',e.target.value)} disabled={!editing}>
+              <option value="">Select country</option>
+              <option key="Afghanistan" value="Afghanistan">🇦🇫 Afghanistan</option>
+                <option key="Albania" value="Albania">🇦🇱 Albania</option>
+                <option key="Algeria" value="Algeria">🇩🇿 Algeria</option>
+                <option key="Andorra" value="Andorra">🇦🇩 Andorra</option>
+                <option key="Angola" value="Angola">🇦🇴 Angola</option>
+                <option key="Antigua and Barbuda" value="Antigua and Barbuda">🇦🇬 Antigua and Barbuda</option>
+                <option key="Argentina" value="Argentina">🇦🇷 Argentina</option>
+                <option key="Armenia" value="Armenia">🇦🇲 Armenia</option>
+                <option key="Australia" value="Australia">🇦🇺 Australia</option>
+                <option key="Austria" value="Austria">🇦🇹 Austria</option>
+                <option key="Azerbaijan" value="Azerbaijan">🇦🇿 Azerbaijan</option>
+                <option key="Bahamas" value="Bahamas">🇧🇸 Bahamas</option>
+                <option key="Bahrain" value="Bahrain">🇧🇭 Bahrain</option>
+                <option key="Bangladesh" value="Bangladesh">🇧🇩 Bangladesh</option>
+                <option key="Barbados" value="Barbados">🇧🇧 Barbados</option>
+                <option key="Belarus" value="Belarus">🇧🇾 Belarus</option>
+                <option key="Belgium" value="Belgium">🇧🇪 Belgium</option>
+                <option key="Belize" value="Belize">🇧🇿 Belize</option>
+                <option key="Benin" value="Benin">🇧🇯 Benin</option>
+                <option key="Bhutan" value="Bhutan">🇧🇹 Bhutan</option>
+                <option key="Bolivia" value="Bolivia">🇧🇴 Bolivia</option>
+                <option key="Bosnia and Herzegovina" value="Bosnia and Herzegovina">🇧🇦 Bosnia and Herzegovina</option>
+                <option key="Botswana" value="Botswana">🇧🇼 Botswana</option>
+                <option key="Brazil" value="Brazil">🇧🇷 Brazil</option>
+                <option key="Brunei" value="Brunei">🇧🇳 Brunei</option>
+                <option key="Bulgaria" value="Bulgaria">🇧🇬 Bulgaria</option>
+                <option key="Burkina Faso" value="Burkina Faso">🇧🇫 Burkina Faso</option>
+                <option key="Burundi" value="Burundi">🇧🇮 Burundi</option>
+                <option key="Cabo Verde" value="Cabo Verde">🇨🇻 Cabo Verde</option>
+                <option key="Cambodia" value="Cambodia">🇰🇭 Cambodia</option>
+                <option key="Cameroon" value="Cameroon">🇨🇲 Cameroon</option>
+                <option key="Canada" value="Canada">🇨🇦 Canada</option>
+                <option key="Central African Republic" value="Central African Republic">🇨🇫 Central African Republic</option>
+                <option key="Chad" value="Chad">🇹🇩 Chad</option>
+                <option key="Chile" value="Chile">🇨🇱 Chile</option>
+                <option key="China" value="China">🇨🇳 China</option>
+                <option key="Colombia" value="Colombia">🇨🇴 Colombia</option>
+                <option key="Comoros" value="Comoros">🇰🇲 Comoros</option>
+                <option key="Congo" value="Congo">🇨🇬 Congo</option>
+                <option key="Costa Rica" value="Costa Rica">🇨🇷 Costa Rica</option>
+                <option key="Croatia" value="Croatia">🇭🇷 Croatia</option>
+                <option key="Cuba" value="Cuba">🇨🇺 Cuba</option>
+                <option key="Cyprus" value="Cyprus">🇨🇾 Cyprus</option>
+                <option key="Czech Republic" value="Czech Republic">🇨🇿 Czech Republic</option>
+                <option key="Denmark" value="Denmark">🇩🇰 Denmark</option>
+                <option key="Djibouti" value="Djibouti">🇩🇯 Djibouti</option>
+                <option key="Dominica" value="Dominica">🇩🇲 Dominica</option>
+                <option key="Dominican Republic" value="Dominican Republic">🇩🇴 Dominican Republic</option>
+                <option key="Ecuador" value="Ecuador">🇪🇨 Ecuador</option>
+                <option key="Egypt" value="Egypt">🇪🇬 Egypt</option>
+                <option key="El Salvador" value="El Salvador">🇸🇻 El Salvador</option>
+                <option key="Equatorial Guinea" value="Equatorial Guinea">🇬🇶 Equatorial Guinea</option>
+                <option key="Eritrea" value="Eritrea">🇪🇷 Eritrea</option>
+                <option key="Estonia" value="Estonia">🇪🇪 Estonia</option>
+                <option key="Eswatini" value="Eswatini">🇸🇿 Eswatini</option>
+                <option key="Ethiopia" value="Ethiopia">🇪🇹 Ethiopia</option>
+                <option key="Fiji" value="Fiji">🇫🇯 Fiji</option>
+                <option key="Finland" value="Finland">🇫🇮 Finland</option>
+                <option key="France" value="France">🇫🇷 France</option>
+                <option key="Gabon" value="Gabon">🇬🇦 Gabon</option>
+                <option key="Gambia" value="Gambia">🇬🇲 Gambia</option>
+                <option key="Georgia" value="Georgia">🇬🇪 Georgia</option>
+                <option key="Germany" value="Germany">🇩🇪 Germany</option>
+                <option key="Ghana" value="Ghana">🇬🇭 Ghana</option>
+                <option key="Greece" value="Greece">🇬🇷 Greece</option>
+                <option key="Grenada" value="Grenada">🇬🇩 Grenada</option>
+                <option key="Guatemala" value="Guatemala">🇬🇹 Guatemala</option>
+                <option key="Guinea" value="Guinea">🇬🇳 Guinea</option>
+                <option key="Guinea-Bissau" value="Guinea-Bissau">🇬🇼 Guinea-Bissau</option>
+                <option key="Guyana" value="Guyana">🇬🇾 Guyana</option>
+                <option key="Haiti" value="Haiti">🇭🇹 Haiti</option>
+                <option key="Honduras" value="Honduras">🇭🇳 Honduras</option>
+                <option key="Hong Kong" value="Hong Kong">🇭🇰 Hong Kong</option>
+                <option key="Hungary" value="Hungary">🇭🇺 Hungary</option>
+                <option key="Iceland" value="Iceland">🇮🇸 Iceland</option>
+                <option key="India" value="India">🇮🇳 India</option>
+                <option key="Indonesia" value="Indonesia">🇮🇩 Indonesia</option>
+                <option key="Iran" value="Iran">🇮🇷 Iran</option>
+                <option key="Iraq" value="Iraq">🇮🇶 Iraq</option>
+                <option key="Ireland" value="Ireland">🇮🇪 Ireland</option>
+                <option key="Israel" value="Israel">🇮🇱 Israel</option>
+                <option key="Italy" value="Italy">🇮🇹 Italy</option>
+                <option key="Jamaica" value="Jamaica">🇯🇲 Jamaica</option>
+                <option key="Japan" value="Japan">🇯🇵 Japan</option>
+                <option key="Jordan" value="Jordan">🇯🇴 Jordan</option>
+                <option key="Kazakhstan" value="Kazakhstan">🇰🇿 Kazakhstan</option>
+                <option key="Kenya" value="Kenya">🇰🇪 Kenya</option>
+                <option key="Kiribati" value="Kiribati">🇰🇮 Kiribati</option>
+                <option key="Kuwait" value="Kuwait">🇰🇼 Kuwait</option>
+                <option key="Kyrgyzstan" value="Kyrgyzstan">🇰🇬 Kyrgyzstan</option>
+                <option key="Laos" value="Laos">🇱🇦 Laos</option>
+                <option key="Latvia" value="Latvia">🇱🇻 Latvia</option>
+                <option key="Lebanon" value="Lebanon">🇱🇧 Lebanon</option>
+                <option key="Lesotho" value="Lesotho">🇱🇸 Lesotho</option>
+                <option key="Liberia" value="Liberia">🇱🇷 Liberia</option>
+                <option key="Libya" value="Libya">🇱🇾 Libya</option>
+                <option key="Liechtenstein" value="Liechtenstein">🇱🇮 Liechtenstein</option>
+                <option key="Lithuania" value="Lithuania">🇱🇹 Lithuania</option>
+                <option key="Luxembourg" value="Luxembourg">🇱🇺 Luxembourg</option>
+                <option key="Macau" value="Macau">🇲🇴 Macau</option>
+                <option key="Madagascar" value="Madagascar">🇲🇬 Madagascar</option>
+                <option key="Malawi" value="Malawi">🇲🇼 Malawi</option>
+                <option key="Malaysia" value="Malaysia">🇲🇾 Malaysia</option>
+                <option key="Maldives" value="Maldives">🇲🇻 Maldives</option>
+                <option key="Mali" value="Mali">🇲🇱 Mali</option>
+                <option key="Malta" value="Malta">🇲🇹 Malta</option>
+                <option key="Marshall Islands" value="Marshall Islands">🇲🇭 Marshall Islands</option>
+                <option key="Mauritania" value="Mauritania">🇲🇷 Mauritania</option>
+                <option key="Mauritius" value="Mauritius">🇲🇺 Mauritius</option>
+                <option key="Mexico" value="Mexico">🇲🇽 Mexico</option>
+                <option key="Micronesia" value="Micronesia">🇫🇲 Micronesia</option>
+                <option key="Moldova" value="Moldova">🇲🇩 Moldova</option>
+                <option key="Monaco" value="Monaco">🇲🇨 Monaco</option>
+                <option key="Mongolia" value="Mongolia">🇲🇳 Mongolia</option>
+                <option key="Montenegro" value="Montenegro">🇲🇪 Montenegro</option>
+                <option key="Morocco" value="Morocco">🇲🇦 Morocco</option>
+                <option key="Mozambique" value="Mozambique">🇲🇿 Mozambique</option>
+                <option key="Myanmar" value="Myanmar">🇲🇲 Myanmar</option>
+                <option key="Namibia" value="Namibia">🇳🇦 Namibia</option>
+                <option key="Nauru" value="Nauru">🇳🇷 Nauru</option>
+                <option key="Nepal" value="Nepal">🇳🇵 Nepal</option>
+                <option key="Netherlands" value="Netherlands">🇳🇱 Netherlands</option>
+                <option key="New Zealand" value="New Zealand">🇳🇿 New Zealand</option>
+                <option key="Nicaragua" value="Nicaragua">🇳🇮 Nicaragua</option>
+                <option key="Niger" value="Niger">🇳🇪 Niger</option>
+                <option key="Nigeria" value="Nigeria">🇳🇬 Nigeria</option>
+                <option key="North Korea" value="North Korea">🇰🇵 North Korea</option>
+                <option key="North Macedonia" value="North Macedonia">🇲🇰 North Macedonia</option>
+                <option key="Norway" value="Norway">🇳🇴 Norway</option>
+                <option key="Oman" value="Oman">🇴🇲 Oman</option>
+                <option key="Pakistan" value="Pakistan">🇵🇰 Pakistan</option>
+                <option key="Palau" value="Palau">🇵🇼 Palau</option>
+                <option key="Panama" value="Panama">🇵🇦 Panama</option>
+                <option key="Papua New Guinea" value="Papua New Guinea">🇵🇬 Papua New Guinea</option>
+                <option key="Paraguay" value="Paraguay">🇵🇾 Paraguay</option>
+                <option key="Peru" value="Peru">🇵🇪 Peru</option>
+                <option key="Philippines" value="Philippines">🇵🇭 Philippines</option>
+                <option key="Poland" value="Poland">🇵🇱 Poland</option>
+                <option key="Portugal" value="Portugal">🇵🇹 Portugal</option>
+                <option key="Puerto Rico" value="Puerto Rico">🇵🇷 Puerto Rico</option>
+                <option key="Qatar" value="Qatar">🇶🇦 Qatar</option>
+                <option key="Romania" value="Romania">🇷🇴 Romania</option>
+                <option key="Russia" value="Russia">🇷🇺 Russia</option>
+                <option key="Rwanda" value="Rwanda">🇷🇼 Rwanda</option>
+                <option key="Saint Kitts and Nevis" value="Saint Kitts and Nevis">🇰🇳 Saint Kitts and Nevis</option>
+                <option key="Saint Lucia" value="Saint Lucia">🇱🇨 Saint Lucia</option>
+                <option key="Saint Vincent" value="Saint Vincent">🇻🇨 Saint Vincent</option>
+                <option key="Samoa" value="Samoa">🇼🇸 Samoa</option>
+                <option key="San Marino" value="San Marino">🇸🇲 San Marino</option>
+                <option key="Sao Tome and Principe" value="Sao Tome and Principe">🇸🇹 Sao Tome and Principe</option>
+                <option key="Saudi Arabia" value="Saudi Arabia">🇸🇦 Saudi Arabia</option>
+                <option key="Senegal" value="Senegal">🇸🇳 Senegal</option>
+                <option key="Serbia" value="Serbia">🇷🇸 Serbia</option>
+                <option key="Seychelles" value="Seychelles">🇸🇨 Seychelles</option>
+                <option key="Sierra Leone" value="Sierra Leone">🇸🇱 Sierra Leone</option>
+                <option key="Singapore" value="Singapore">🇸🇬 Singapore</option>
+                <option key="Slovakia" value="Slovakia">🇸🇰 Slovakia</option>
+                <option key="Slovenia" value="Slovenia">🇸🇮 Slovenia</option>
+                <option key="Solomon Islands" value="Solomon Islands">🇸🇧 Solomon Islands</option>
+                <option key="Somalia" value="Somalia">🇸🇴 Somalia</option>
+                <option key="South Africa" value="South Africa">🇿🇦 South Africa</option>
+                <option key="South Sudan" value="South Sudan">🇸🇸 South Sudan</option>
+                <option key="Spain" value="Spain">🇪🇸 Spain</option>
+                <option key="Sri Lanka" value="Sri Lanka">🇱🇰 Sri Lanka</option>
+                <option key="Sudan" value="Sudan">🇸🇩 Sudan</option>
+                <option key="Suriname" value="Suriname">🇸🇷 Suriname</option>
+                <option key="Sweden" value="Sweden">🇸🇪 Sweden</option>
+                <option key="Switzerland" value="Switzerland">🇨🇭 Switzerland</option>
+                <option key="Syria" value="Syria">🇸🇾 Syria</option>
+                <option key="Taiwan" value="Taiwan">🇹🇼 Taiwan</option>
+                <option key="Tajikistan" value="Tajikistan">🇹🇯 Tajikistan</option>
+                <option key="Tanzania" value="Tanzania">🇹🇿 Tanzania</option>
+                <option key="Thailand" value="Thailand">🇹🇭 Thailand</option>
+                <option key="Timor-Leste" value="Timor-Leste">🇹🇱 Timor-Leste</option>
+                <option key="Togo" value="Togo">🇹🇬 Togo</option>
+                <option key="Tonga" value="Tonga">🇹🇴 Tonga</option>
+                <option key="Trinidad and Tobago" value="Trinidad and Tobago">🇹🇹 Trinidad and Tobago</option>
+                <option key="Tunisia" value="Tunisia">🇹🇳 Tunisia</option>
+                <option key="Turkey" value="Turkey">🇹🇷 Turkey</option>
+                <option key="Turkmenistan" value="Turkmenistan">🇹🇲 Turkmenistan</option>
+                <option key="Tuvalu" value="Tuvalu">🇹🇻 Tuvalu</option>
+                <option key="Uganda" value="Uganda">🇺🇬 Uganda</option>
+                <option key="Ukraine" value="Ukraine">🇺🇦 Ukraine</option>
+                <option key="United Arab Emirates" value="United Arab Emirates">🇦🇪 United Arab Emirates</option>
+                <option key="United Kingdom" value="United Kingdom">🇬🇧 United Kingdom</option>
+                <option key="United States" value="United States">🇺🇸 United States</option>
+                <option key="Uruguay" value="Uruguay">🇺🇾 Uruguay</option>
+                <option key="Uzbekistan" value="Uzbekistan">🇺🇿 Uzbekistan</option>
+                <option key="Vanuatu" value="Vanuatu">🇻🇺 Vanuatu</option>
+                <option key="Venezuela" value="Venezuela">🇻🇪 Venezuela</option>
+                <option key="Vietnam" value="Vietnam">🇻🇳 Vietnam</option>
+                <option key="Yemen" value="Yemen">🇾🇪 Yemen</option>
+                <option key="Zambia" value="Zambia">🇿🇲 Zambia</option>
+                <option key="Zimbabwe" value="Zimbabwe">🇿🇼 Zimbabwe</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>City (opt-in)</label>
+            <input style={inpStyle} value={form.city} onChange={e=>set('city',e.target.value)} disabled={!editing} placeholder="St. Louis, MO" />
+          </div>
+          <div>
+            <label style={labelStyle}>Trading style</label>
+            <select style={inpStyle} value={form.tradingStyle} onChange={e=>set('tradingStyle',e.target.value)} disabled={!editing}>
+              <option value="">Select style</option>
+              {STYLES.map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Experience level</label>
+            <select style={inpStyle} value={form.experience} onChange={e=>set('experience',e.target.value)} disabled={!editing}>
+              <option value="">Select level</option>
+              {LEVELS.map(l=><option key={l}>{l}</option>)}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style={labelStyle}>Assets traded</label>
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            {ASSETS_LIST.map(a => (
+              <button key={a} onClick={() => editing && toggleAsset(a)}
+                style={{ padding:'4px 10px', borderRadius:20, border:'none', fontSize:11, fontWeight:500, cursor: editing ? 'pointer' : 'default',
+                  background: form.assets.includes(a) ? 'rgba(75,68,200,0.12)' : 'var(--surface2,#f3f4f6)',
+                  color: form.assets.includes(a) ? P : 'var(--text-muted,#6b7280)',
+                  fontFamily:'var(--font,system-ui)' }}>
+                {a}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Social preferences */}
+      <div style={sectionStyle}>
+        <div style={sectionTitle}>Community preferences</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {[
-            { label: 'Posts published',   value: stats.postsThisWeek },
-            { label: 'Profile views',     value: stats.profileViews },
-            { label: 'New followers',     value: `+${stats.newFollowers}`, color: '#16a34a' },
-            { label: 'Trade ideas shared',value: stats.tradeIdeas },
-          ].map((r, i, a) => (
-            <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none', fontSize: 12 }}>
-              <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
-              <span style={{ fontWeight: 500, color: r.color || 'var(--text)' }}>{r.value}</span>
+            { key:'openToMeetups', label:'Open to local meetups', desc:'Show up in the Local Traders discovery tab and let nearby traders know you\'re open to meeting up.' },
+            { key:'openToMentoring', label:'Open to mentoring', desc:'Let other traders know you\'re willing to mentor or be mentored.' },
+          ].map(item => (
+            <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:500, color:'var(--text,#111)', marginBottom:2 }}>{item.label}</div>
+                <div style={{ fontSize:11, color:'var(--text-muted,#6b7280)', lineHeight:1.4 }}>{item.desc}</div>
+              </div>
+              <div onClick={() => editing && set(item.key, !form[item.key])}
+                style={{ width:40, height:22, borderRadius:11, background: form[item.key] ? P : 'var(--border,#d1d5db)', cursor: editing ? 'pointer' : 'default', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+                <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: form[item.key] ? 21 : 3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }} />
+              </div>
             </div>
           ))}
-        </Card>
-        <Card>
-          <SH>Quick actions</SH>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            <BtnP style={{ width: '100%' }}>+ New post</BtnP>
-            <BtnS style={{ width: '100%' }}>Create a group</BtnS>
-            <BtnS style={{ width: '100%' }}>Add trade idea</BtnS>
-            <BtnS style={{ width: '100%' }}>View public profile</BtnS>
-          </div>
-        </Card>
-      </div>
-      <Card>
-        <SH>Your reputation</SH>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
-          <RepBar label="Trade accuracy" value={stats.winRate ? `${stats.winRate}%` : '—'} pct={stats.winRate || 0} color="#16a34a" note="Share trade ideas to build this score" />
-          <RepBar label="Community score" value={stats.communityScore ? `${stats.communityScore}/100` : '—'} pct={stats.communityScore || 0} color={PURPLE} note="Follower count, engagement rate, time on platform" />
-          <RepBar label="Content quality" value="—" pct={0} color={PURPLE} note="Upvotes, saves, and shares your posts receive" />
         </div>
-      </Card>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Card>
-          <SH>Community</SH>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>Create free or paid groups, run courses, and build your audience. No follower threshold required.</div>
-          <BtnP style={{ width: '100%' }}>Create your first group</BtnP>
-        </Card>
-        <Card>
-          <SH>Broker connection</SH>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>Connect your broker to automatically verify trade history and build your track record.</div>
-          <BtnS style={{ width: '100%' }}>Connect broker</BtnS>
-        </Card>
       </div>
+
+      {/* Links */}
+      <div style={sectionStyle}>
+        <div style={sectionTitle}>Links & contact</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          {[
+            { key:'twitter', label:'Twitter / X', placeholder:'@yourhandle' },
+            { key:'instagram', label:'Instagram', placeholder:'@yourhandle' },
+            { key:'youtube', label:'YouTube', placeholder:'youtube.com/@yourchannel' },
+            { key:'website', label:'Website', placeholder:'yourwebsite.com' },
+          ].map(l => (
+            <div key={l.key}>
+              <label style={labelStyle}>{l.label}</label>
+              <input style={inpStyle} value={form[l.key]} onChange={e=>set(l.key,e.target.value)} disabled={!editing} placeholder={l.placeholder} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Visibility */}
+      <div style={sectionStyle}>
+        <div style={sectionTitle}>Privacy & visibility</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {[
+            { key:'publicWinRate', label:'Show win rate publicly' },
+            { key:'publicPnl', label:'Show net P&L publicly' },
+            { key:'publicTrades', label:'Show trade count publicly' },
+            { key:'publicLocation', label:'Show city in Local Traders tab' },
+          ].map(item => (
+            <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div style={{ fontSize:13, color:'var(--text,#111)' }}>{item.label}</div>
+              <div onClick={() => editing && set(item.key, !form[item.key])}
+                style={{ width:40, height:22, borderRadius:11, background: form[item.key] ? P : 'var(--border,#d1d5db)', cursor: editing ? 'pointer' : 'default', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+                <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: form[item.key] ? 21 : 3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   )
 }
 
-// ─── ANALYTICS + COMMUNITY ────────────────────────────────────────────────────
 function AnalyticsCommunityTab() {
   const followerData = [30, 44, 38, 55, 62, 72, 100]
   const reachData = [20, 35, 48, 42, 60, 55, 88]
@@ -231,6 +614,72 @@ function AnalyticsCommunityTab() {
   )
 }
 
+// ─── BROKER TAB ───────────────────────────────────────────────
+function BrokerTab() {
+  const [connected, setConnected] = React.useState(null)
+  const brokers = [
+    { name: 'Interactive Brokers', desc: 'Stocks, futures, forex, options' },
+    { name: 'TD Ameritrade',       desc: 'Stocks, ETFs, options, futures' },
+    { name: 'TradeStation',        desc: 'Futures, stocks, options' },
+    { name: 'Tradovate',           desc: 'Futures and options on futures' },
+    { name: 'OANDA',               desc: 'Forex and CFDs' },
+    { name: 'Alpaca',              desc: 'Stocks and crypto' },
+  ]
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <Card>
+        <SH>Connected broker</SH>
+        {connected ? (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', borderRadius:8, background:'rgba(22,163,74,0.08)', border:'0.5px solid rgba(22,163,74,0.2)' }}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:500, color:'var(--text)', marginBottom:2 }}>{connected}</div>
+              <div style={{ fontSize:11, color:'#16a34a' }}>✓ Connected · Read-only access</div>
+            </div>
+            <BtnS style={{ fontSize:11 }} onClick={() => setConnected(null)}>Disconnect</BtnS>
+          </div>
+        ) : (
+          <div style={{ padding:'10px 12px', borderRadius:8, background:'rgba(220,38,38,0.05)', border:'0.5px solid rgba(220,38,38,0.15)', fontSize:12, color:'#dc2626', marginBottom:4 }}>
+            No broker connected. Connect one to auto-import trades and verify your track record.
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <SH>Available brokers</SH>
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {brokers.map(b => (
+            <div key={b.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', borderRadius:8, border:'0.5px solid var(--border)', background:'var(--surface2)' }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:500, color:'var(--text)', marginBottom:1 }}>{b.name}</div>
+                <div style={{ fontSize:11, color:'var(--text-muted)' }}>{b.desc}</div>
+              </div>
+              <BtnP style={{ fontSize:11, padding:'5px 14px' }} onClick={() => setConnected(b.name)}>Connect</BtnP>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
+        <SH>What broker sync does</SH>
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {[
+            { icon:'ti-download', text:'Auto-imports all your trades directly from your broker' },
+            { icon:'ti-shield-check', text:'Verifies your track record with a trusted badge on your profile' },
+            { icon:'ti-map-pin', text:'Featured in the Local Traders tab as a verified trader' },
+            { icon:'ti-building', text:'Discoverable by prop firms looking for funded trader candidates' },
+            { icon:'ti-lock', text:'Read-only access only — we can never place or modify trades' },
+          ].map((item, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, fontSize:12, color:'var(--text-muted)' }}>
+              <i className={`ti ${item.icon}`} style={{ fontSize:14, color:'#4B44C8', marginTop:1, flexShrink:0 }} aria-hidden="true" />
+              {item.text}
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  )
+}
+
 // ─── MONETIZATION ─────────────────────────────────────────────────────────────
 function MonetizationTab() {
   return (
@@ -306,6 +755,31 @@ function MonetizationTab() {
       <Card>
         <SH>Payout history</SH>
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No payouts yet. Earnings are paid out on the 1st of each month once you've connected a payout method and reached the $25 minimum threshold.</div>
+      </Card>
+
+      <Card>
+        <SH>Connect broker</SH>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+          Connect your broker to automatically import trades, verify your track record, and unlock the verified trader badge. Verified traders are featured in the Local Traders tab and can be discovered by prop firms.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+          {[
+            { name: 'Interactive Brokers', status: 'Available' },
+            { name: 'TD Ameritrade', status: 'Available' },
+            { name: 'TradeStation', status: 'Available' },
+            { name: 'Tradovate', status: 'Available' },
+            { name: 'OANDA', status: 'Available' },
+            { name: 'Alpaca', status: 'Available' },
+          ].map(b => (
+            <div key={b.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', fontSize:12 }}>
+              <span style={{ fontWeight:500, color:'var(--text)' }}>{b.name}</span>
+              <BtnS style={{ fontSize:10, padding:'3px 10px' }}>Connect</BtnS>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderRadius: 6, background: 'rgba(75,68,200,0.06)', border: '0.5px solid rgba(75,68,200,0.15)' }}>
+          🔒 TradeRing uses read-only access. We can never place or modify trades on your behalf.
+        </div>
       </Card>
     </div>
   )
@@ -447,9 +921,10 @@ const SETTINGS_ICONS = {
 }
 
 const ACCOUNT_TABS = [
-  { key: 'overview',     label: 'Overview',              icon: 'ti-layout-dashboard' },
+  { key: 'overview',     label: 'Profile',               icon: 'ti-user' },
   { key: 'analytics',    label: 'Analytics & Community', icon: 'ti-chart-bar' },
   { key: 'monetization', label: 'Monetization',          icon: 'ti-currency-dollar' },
+  { key: 'broker',       label: 'Connect Broker',        icon: 'ti-building-bank' },
   { key: 'settings',     label: 'Settings',              icon: 'ti-settings' },
 ]
 
@@ -568,6 +1043,7 @@ export default function AccountTab({ user }) {
         {activeTab === 'overview'     && <OverviewTab user={user} />}
         {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
         {activeTab === 'monetization' && <MonetizationTab />}
+        {activeTab === 'broker' && <BrokerTab />}
         {activeTab === 'settings'     && <SettingsContent section={settingsSection} user={user} />}
       </div>
     </div>

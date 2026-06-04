@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import FeedTab from './FeedTab';
 import DMTab from './DMTab';
+import LocalTradersTab from './LocalTradersTab';
 
 const PURPLE = '#4f46e5';
 
@@ -554,6 +555,7 @@ function CommSidebar({ tab, setTab, feedTab, setFeedTab }) {
     { key:'feed',   label:'Feed',     icon:'ti-home' },
     { key:'groups', label:'Groups',   icon:'ti-users' },
     { key:'dms',    label:'Messages', icon:'ti-message' },
+    { key:'local',  label:'Local Traders', icon:'ti-map-pin' },
   ]
   return (
     <div
@@ -727,7 +729,7 @@ function BrowseGroupsPanel({ onJoin }) {
 }
 
 export default function CommunityLayout({ currentUserId, externalTab, onTabChange }) {
-  const TAB_MAP = { 'Feed':'feed', 'Groups':'groups', 'Messages':'dms', 'feed':'feed', 'groups':'groups', 'dms':'dms' };
+  const TAB_MAP = { 'Feed':'feed', 'Groups':'groups', 'Messages':'dms', 'Local Traders':'local', 'feed':'feed', 'groups':'groups', 'dms':'dms', 'local':'local' };
   const [tab, setTabInternal] = useState('feed');
   const [feedTab, setFeedTab] = useState('Discover');
   const setTab = (t) => { setTabInternal(t); if(onTabChange) onTabChange(t); };
@@ -758,6 +760,11 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
         {tab === 'dms' && (
           <div style={{ flex:1, overflow:'hidden' }}>
             <DMTab />
+          </div>
+        )}
+        {tab === 'local' && (
+          <div style={{ flex:1, overflow:'hidden' }}>
+            <LocalTradersTab />
           </div>
         )}
       </div>
