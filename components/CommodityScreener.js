@@ -633,9 +633,9 @@ export default function App() {
               <button onClick={()=>setShowAccount(s=>!s)}
                 style={{ background:'rgba(255,255,255,0.15)', color:'#fff', border:'1px solid rgba(255,255,255,0.3)', padding:'4px 10px', fontSize:12, fontWeight:500, borderRadius:3, cursor:'pointer', fontFamily:'var(--font)', display:'flex', alignItems:'center', gap:6 }}>
                 <span style={{ width:20, height:20, borderRadius:'50%', background:'var(--accent)', color:'#fff', fontSize:9, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  {(session?.user?.email?.charAt(0)||'U').toUpperCase()}
+                  {(userInfo?.name?.charAt(0)||session?.user?.name?.charAt(0)||session?.user?.email?.charAt(0)||'U').toUpperCase()}
                 </span>
-                {session?.user?.email?.split('@')[0]||'Account'} ▾
+                {userInfo?.name||session?.user?.name||session?.user?.email?.split('@')[0]||'Account'} ▾
               </button>
               {showAccount && (
                 <div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'1px solid var(--border)', minWidth:200, zIndex:999, borderRadius:'var(--radius)', boxShadow:'var(--shadow-lg)' }}>
