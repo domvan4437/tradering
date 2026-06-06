@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 async function resetPassword() {
   const email = 'dominicvansaghi@yahoo.com';
-  const newPassword = 'TradeRing2026!';
+  const newPassword = 'TradeZar2026!';
   
   const hash = await bcrypt.hash(newPassword, 12);
   
@@ -15,7 +15,7 @@ async function resetPassword() {
   });
   
   console.log('Password reset for:', user.email);
-  console.log('New password: TradeRing2026!');
+  console.log('New password: TradeZar2026!');
   await prisma.$disconnect();
 }
 

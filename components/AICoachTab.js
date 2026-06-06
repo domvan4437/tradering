@@ -20,7 +20,7 @@ function saveChats(chats) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); } catch {}
 }
 function newChat() {
-  return { id: Date.now(), title: 'New Chat', createdAt: new Date().toISOString(), messages: [{ id:1, role:'assistant', content:'Hi! I am TradeRing AI. Ask me anything, or use a quick action above to get started.', time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }] };
+  return { id: Date.now(), title: 'New Chat', createdAt: new Date().toISOString(), messages: [{ id:1, role:'assistant', content:'Hi! I am TradeZar AI. Ask me anything, or use a quick action above to get started.', time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }] };
 }
 
 function RateLimitMsg({ m }) {
@@ -219,7 +219,7 @@ export default function AICoachTab() {
           <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex', padding:'4px', borderRadius:6 }}>
             <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg>
           </button>
-          <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:PURPLE, flex:1 }}>TradeRing AI</span>
+          <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:PURPLE, flex:1 }}>TradeZar AI</span>
           <button onClick={createNewChat} style={{ padding:'5px 12px', borderRadius:20, border:'1px solid '+PURPLE, backgroundColor:'transparent', color:PURPLE, fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer' }}>+ New Chat</button>
         </div>
 

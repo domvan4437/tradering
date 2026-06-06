@@ -21,9 +21,9 @@ async function main() {
     const check2 = await client.query('SELECT id, email FROM users WHERE email = $1', ['dominicvansaghi@yahoo.com']);
     console.log('Users table:', check2.rows);
   } else {
-    const hash = await bcrypt.hash('TradeRing2026!', 12);
+    const hash = await bcrypt.hash('TradeZar2026!', 12);
     await client.query('UPDATE "User" SET password = $1 WHERE email = $2', [hash, 'dominicvansaghi@yahoo.com']);
-    console.log('Password updated! Login with: TradeRing2026!');
+    console.log('Password updated! Login with: TradeZar2026!');
   }
 
   await client.end();

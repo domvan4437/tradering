@@ -1,78 +1,42 @@
 import { getSession } from '../../../../lib/auth'
-import { prisma } from '../../../../lib/prisma'
+
+const _URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const _KEY = process.env.SUPABASE_SERVICE_KEY
+const db = {
+  get: (t, q='') => fetch(`${_URL}/rest/v1/${t}${q}`, { headers: { apikey: _KEY, Authorization: `Bearer ${_KEY}` } }).then(r => r.json()),
+  post: (t, b) => fetch(`${_URL}/rest/v1/${t}`, { method:'POST', headers: { apikey: _KEY, Authorization: `Bearer ${_KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' }, body: JSON.stringify(b) }).then(r => r.json()),
+  patch: (t, q, b) => fetch(`${_URL}/rest/v1/${t}${q}`, { method:'PATCH', headers: { apikey: _KEY, Authorization: `Bearer ${_KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' }, body: JSON.stringify(b) }).then(r => r.json()),
+  del: (t, q) => fetch(`${_URL}/rest/v1/${t}${q}`, { method:'DELETE', headers: { apikey: _KEY, Authorization: `Bearer ${_KEY}` } }).then(r => r.status),
+}
 
 export async function GET(request) {
-  const session = await getSession()
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const { searchParams } = new URL(request.url)
-  const withUserId = searchParams.get('userId')
-
-  if (withUserId) {
-    const messages = await prisma.directMessage.findMany({
-      where: { OR: [
-        { fromUserId: session.user.id, toUserId: withUserId },
-        { fromUserId: withUserId, toUserId: session.user.id }
-      ]},
-      orderBy: { createdAt: 'asc' },
-      include: { fromUser: { select: { id: true, name: true, username: true } } }
-    })
-    // Mark as read
-    await prisma.directMessage.updateMany({
-      where: { fromUserId: withUserId, toUserId: session.user.id, read: false },
-      data: { read: true }
-    })
-    return Response.json({ messages })
-  }
-
-  // Conversations list
-  const [sent, received] = await Promise.all([
-    prisma.directMessage.findMany({
-      where: { fromUserId: session.user.id },
-      distinct: ['toUserId'], orderBy: { createdAt: 'desc' },
-      include: { toUser: { select: { id: true, name: true, username: true } } }
-    }),
-    prisma.directMessage.findMany({
-      where: { toUserId: session.user.id },
-      distinct: ['fromUserId'], orderBy: { createdAt: 'desc' },
-      include: { fromUser: { select: { id: true, name: true, username: true } } }
-    })
-  ])
-
-  const convMap = {}
-  sent.forEach(m => { convMap[m.toUserId] = { user: m.toUser, lastMessage: m, unread: 0 } })
-  received.forEach(m => { if (!convMap[m.fromUserId]) convMap[m.fromUserId] = { user: m.fromUser, lastMessage: m, unread: 0 } })
-
-  const unreadByUser = await prisma.directMessage.groupBy({
-    by: ['fromUserId'],
-    where: { toUserId: session.user.id, read: false },
-    _count: true
-  })
-  unreadByUser.forEach(u => { if (convMap[u.fromUserId]) convMap[u.fromUserId].unread = u._count })
-
-  const unreadTotal = await prisma.directMessage.count({ where: { toUserId: session.user.id, read: false } })
-  return Response.json({ conversations: Object.values(convMap), unreadTotal })
+  try {
+    const session = await getSession()
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const { searchParams } = new URL(request.url)
+    const withUserId = searchParams.get('with')
+    if (!withUserId) {
+      const convos = await db.get('DirectMessage', `?or=(senderId.eq.${session.user.id},receiverId.eq.${session.user.id})&order=createdAt.desc&limit=100`)
+      return Response.json({ messages: convos || [] })
+    }
+    const messages = await db.get('DirectMessage', `?or=(and(senderId.eq.${session.user.id},receiverId.eq.${withUserId}),and(senderId.eq.${withUserId},receiverId.eq.${session.user.id}))&order=createdAt.asc&limit=100`)
+    return Response.json({ messages: messages || [] })
+  } catch(e) { return Response.json({ error: e.message }, { status: 500 }) }
 }
 
 export async function POST(request) {
-  const session = await getSession()
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { toUserId, content, imageData } = await request.json()
-  if (!content?.trim() && !imageData) return Response.json({ error: 'Message or image required' }, { status: 400 })
-  if (!toUserId) return Response.json({ error: 'Recipient required' }, { status: 400 })
-
-  // Store base64 image inline (for MVP — in production use S3/Cloudinary)
-  // We store the raw data URL in imageUrl field
-  const imageUrl = imageData || null
-
-  const message = await prisma.directMessage.create({
-    data: {
-      fromUserId: session.user.id,
-      toUserId,
-      content: content || '',
-      imageUrl,
-    },
-    include: { fromUser: { select: { id: true, name: true, username: true } } }
-  })
-  return Response.json({ message })
+  try {
+    const session = await getSession()
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const { receiverId, content } = await request.json()
+    if (!content?.trim() || !receiverId) return Response.json({ error: 'Missing fields' }, { status: 400 })
+    const msg = await db.post('DirectMessage', {
+      senderId: session.user.id,
+      receiverId,
+      content: content.trim(),
+      read: false,
+      createdAt: new Date().toISOString(),
+    })
+    return Response.json({ message: Array.isArray(msg) ? msg[0] : msg })
+  } catch(e) { return Response.json({ error: e.message }, { status: 500 }) }
 }

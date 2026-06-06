@@ -43,7 +43,7 @@ export default function LoginPage() {
           <div style={{ width:32, height:32, borderRadius:10, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
           </div>
-          <span style={{ fontSize:18, fontWeight:700, color:'#fff', letterSpacing:'-0.3px' }}>TradeRing</span>
+          <span style={{ fontSize:18, fontWeight:700, color:'#fff', letterSpacing:'-0.3px' }}>TradeZar</span>
         </div>
         <div>
           <div style={{ fontSize:36, fontWeight:700, color:'#fff', lineHeight:1.25, marginBottom:14, letterSpacing:'-0.5px' }}>Trade smarter,<br />together.</div>
@@ -58,7 +58,7 @@ export default function LoginPage() {
           </div>
           
         </div>
-        <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)' }}>© 2026 TradeRing · All rights reserved</div>
+        <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)' }}>© 2026 TradeZar · All rights reserved</div>
       </div>
       <div style={{ flex:1, background:'#fafaf9', display:'flex', alignItems:'center', justifyContent:'center', padding:'48px 40px' }}>
         <div style={{ width:'100%', maxWidth:400 }}>

@@ -321,7 +321,7 @@ export default function CreatorDashboard({ currentUserId }) {
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {[
                 { label:'Your share', pct:95, color:C.green },
-                { label:'TradeRing', pct:5,  color:C.accent },
+                { label:'TradeZar', pct:5,  color:C.accent },
               ].map(item=>(
                 <div key={item.label}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
@@ -429,7 +429,7 @@ export default function CreatorDashboard({ currentUserId }) {
           <div style={{ background:C.goldBg, border:`1px solid ${C.gold}30`, borderRadius:C.radiusLg, padding:'14px 18px', marginBottom:16 }}>
             <div style={{ fontSize:13, fontWeight:600, color:C.gold, marginBottom:4 }}>Tournament Hosting Revenue</div>
             <div style={{ fontSize:12, color:C.muted, lineHeight:1.6 }}>
-              As a Trader subscriber, you earn <strong style={{ color:C.text }}>10% of every prize pool</strong> from tournaments you host. TradeRing takes 5%, and the remaining 85% goes to your competitors. The more traders enter your tournaments, the more you earn.
+              As a Trader subscriber, you earn <strong style={{ color:C.text }}>10% of every prize pool</strong> from tournaments you host. TradeZar takes 5%, and the remaining 85% goes to your competitors. The more traders enter your tournaments, the more you earn.
             </div>
           </div>
           {tournaments.length===0 ? (

@@ -321,7 +321,7 @@ export default function BrokerIntegrationTab() {
       <div style={{ background: C.accent + '08', border: `1px solid ${C.accent}30`, borderRadius: 'var(--radius)', padding: '12px 18px', marginBottom: 24, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <span style={{ fontSize: 16, flexShrink: 0 }}>🔒</span>
         <p style={{ fontSize: 13, color: C.muted, margin: 0, lineHeight: 1.6 }}>
-          <strong style={{ color: C.text }}>Read-only access only.</strong> TradeRing cannot place, modify, or cancel any orders in your broker account. We only read your trade history. API keys are stored encrypted and never shared.
+          <strong style={{ color: C.text }}>Read-only access only.</strong> TradeZar cannot place, modify, or cancel any orders in your broker account. We only read your trade history. API keys are stored encrypted and never shared.
         </p>
       </div>
 

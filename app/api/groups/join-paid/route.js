@@ -28,7 +28,7 @@ export async function POST(request) {
     currency: 'usd',
     unit_amount: Math.round(group.monthlyPrice * 100),
     recurring: { interval: 'month' },
-    product_data: { name: `${group.name} — TradeRing Group` }
+    product_data: { name: `${group.name} — TradeZar Group` }
   })
 
   const checkoutSession = await stripe.checkout.sessions.create({

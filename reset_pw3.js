@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const email = 'dominicvansaghi@yahoo.com';
-  const newPass = 'TradeRing2026!';
+  const newPass = 'TradeZar2026!';
   
   // First check if user exists
   const user = await prisma.user.findFirst({
@@ -33,7 +33,7 @@ async function main() {
   
   console.log('Password reset successfully!');
   console.log('Email:', email);
-  console.log('Password: TradeRing2026!');
+  console.log('Password: TradeZar2026!');
 }
 
 main()

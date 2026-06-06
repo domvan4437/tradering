@@ -1,6 +1,6 @@
 
 /**
- * TradeRing Design System — Hybrid (B + D)
+ * TradeZar Design System — Hybrid (B + D)
  * Light bg, indigo accent, gradient heroes, minimal tables
  */
 

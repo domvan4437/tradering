@@ -106,7 +106,7 @@ export default function ProfileTab({ user }) {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, paddingBottom: 16, borderBottom: '0.5px solid var(--border)' }}>
               <Avatar name={profile.displayName || user?.name || 'U'} size={72} />
               <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', textAlign: 'center' }}>{profile.displayName || user?.name || 'Your name'}</div>
-              {profile.slug && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>tradering.com/p/{profile.slug}</div>}
+              {profile.slug && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>tradezar.com/p/{profile.slug}</div>}
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
                 {stats.trades >= 50 ? (
                   <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 7px', borderRadius: 3, background: 'rgba(75,68,200,0.12)', color: '#3C3489', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Verified track record</span>
@@ -174,7 +174,7 @@ export default function ProfileTab({ user }) {
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Profile URL</div>
                   <div style={{ display: 'flex', alignItems: 'center', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden' }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '7px 0 7px 10px', whiteSpace: 'nowrap' }}>tradering.com/p/</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '7px 0 7px 10px', whiteSpace: 'nowrap' }}>tradezar.com/p/</span>
                     <input value={profile.slug} onChange={e => setProfile(p => ({ ...p, slug: e.target.value }))}
                       placeholder="your-name" style={{ flex: 1, padding: '7px 10px 7px 0', border: 'none', background: 'transparent', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }} />
                   </div>

@@ -51,7 +51,7 @@ export default function NavBar({ activeSection, onSelect, user, hoveredSection, 
         <span style={{
           fontFamily:'var(--font)', fontSize:15, fontWeight:800,
           color:'#ffffff', letterSpacing:'-0.3px',
-        }}>TradeRing</span>
+        }}>TradeZar</span>
       </div>
 
       {/* Nav items */}

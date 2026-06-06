@@ -167,7 +167,7 @@ export function PricingPage({ currentPlan = 'free', onClose }) {
             { q: 'Is there a free trial?', a: 'No — instead, our free plan works forever with no time limit. Try everything included in free for as long as you need.' },
             { q: 'Can I switch plans?', a: 'Yes, upgrade or downgrade anytime. Upgrades take effect immediately. Downgrades take effect at your next billing date.' },
             { q: 'What payment methods are accepted?', a: 'All major credit and debit cards (Visa, Mastercard, Amex) via Stripe. Apple Pay and Google Pay also supported.' },
-            { q: 'Is TradeRing financial advice?', a: 'No. TradeRing is an analytical and educational tool. Nothing on this platform constitutes financial advice. Always consult a licensed advisor.' },
+            { q: 'Is TradeZar financial advice?', a: 'No. TradeZar is an analytical and educational tool. Nothing on this platform constitutes financial advice. Always consult a licensed advisor.' },
           ].map((faq, i) => (
             <div key={i}>
               <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 6 }}>{faq.q}</div>
@@ -186,7 +186,7 @@ export function UpgradeModal({ onClose, currentPlan, feature }) {
       <div style={{ background: C.bg, borderRadius: 'var(--radius)', maxWidth: 1040, margin: '0 auto', padding: '32px' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
           <div>
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: C.text, margin: '0 0 6px' }}>Upgrade TradeRing</h2>
+            <h2 style={{ fontSize: 24, fontWeight: 700, color: C.text, margin: '0 0 6px' }}>Upgrade TradeZar</h2>
             {feature && <p style={{ fontSize: 14, color: C.muted, margin: 0 }}>
               <span style={{ color: C.accent, fontWeight: 600 }}>{feature}</span> is available on Pro and Trader plans.
             </p>}

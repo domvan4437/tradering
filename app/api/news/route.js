@@ -53,7 +53,7 @@ function parseRSS(xml, source) {
 async function fetchFeed(url, label) {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TradeRing/1.0)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TradeZar/1.0)' },
       signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) return []

@@ -1,102 +1,56 @@
+import { getSession } from '../../../lib/auth'
 
-import { prisma } from '../../../lib/prisma';
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const KEY = process.env.SUPABASE_SERVICE_KEY
+const db = {
+  get: (t, q='') => fetch(`${URL}/rest/v1/${t}${q}`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }).then(r => r.json()),
+}
 
-const ASSET_CLASSES = ['overall', 'commodities', 'forex', 'stocks', 'crypto'];
+export async function GET(request) {
+  try {
+    const session = await getSession()
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-const ASSET_MAP = {
-  commodities: ['GC=F','SI=F','CL=F','NG=F','ZW=F','ZC=F','ZS=F','HG=F','CT=F','KC=F'],
-  forex:       ['EURUSD=X','GBPUSD=X','USDJPY=X','AUDUSD=X','USDCAD=X','NZDUSD=X'],
-  stocks:      ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','JPM'],
-  crypto:      ['BTC-USD','ETH-USD','SOL-USD','BNB-USD','XRP-USD','ADA-USD'],
-};
+    const { searchParams } = new URL(request.url)
+    const period = searchParams.get('period') || 'month'
 
-export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const assetClass = searchParams.get('assetClass') || 'overall';
-  const period = searchParams.get('period') || 'monthly';
-  const limit = parseInt(searchParams.get('limit') || '50');
+    // Get all users
+    const users = await db.get('User', `?select=id,name,email&limit=100`)
+    
+    // Get trades for each user in time period
+    const now = new Date()
+    const periodStart = period === 'week' ? new Date(now - 7*86400000) :
+                        period === 'month' ? new Date(now - 30*86400000) :
+                        new Date(now - 365*86400000)
 
-  // Get all public users with consistency scores
-  const users = await prisma.user.findMany({
-    where: {
-      profileVisibility: 'public',
-      consistency: { isNot: null },
-    },
-    include: {
-      consistency: true,
-    },
-    take: 200,
-  });
+    const leaderboard = await Promise.all(users.map(async u => {
+      const trades = await db.get('Trade', `?userId=eq.${u.id}&select=pnl,createdAt`)
+      const periodTrades = trades.filter(t => new Date(t.createdAt) >= periodStart)
+      const totalPnl = periodTrades.reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0)
+      const wins = periodTrades.filter(t => parseFloat(t.pnl) > 0).length
+      const winRate = periodTrades.length ? Math.round(wins / periodTrades.length * 100) : 0
+      
+      // H2H record
+      const wins_h2h = await db.get('H2HMatch', `?winnerId=eq.${u.id}&status=eq.completed&select=id`)
+      const matches = await db.get('H2HMatch', `?or=(challengerId.eq.${u.id},opponentId.eq.${u.id})&status=eq.completed&select=id`)
+      
+      return {
+        id: u.id,
+        name: u.name || u.email?.split('@')[0] || 'Trader',
+        pnl: totalPnl,
+        trades: periodTrades.length,
+        winRate,
+        h2wWins: wins_h2h.length || 0,
+        h2hMatches: matches.length || 0,
+        isMe: u.id === session.user.id,
+      }
+    }))
 
-  // For asset-class filtered leaderboards, get trade calls per user
-  let rankedUsers = users;
+    leaderboard.sort((a, b) => b.pnl - a.pnl)
+    leaderboard.forEach((e, i) => { e.rank = i + 1 })
 
-  if (assetClass !== 'overall') {
-    const assetSymbols = ASSET_MAP[assetClass] || [];
-
-    // Get trade stats per user filtered by asset class
-    const userIds = users.map(u => u.id);
-    const calls = await prisma.tradeCall.findMany({
-      where: {
-        userId: { in: userIds },
-        commodity: { in: assetSymbols },
-        validationStatus: 'valid',
-        result: { in: ['win', 'loss'] },
-      },
-      select: { userId: true, result: true, riskReward: true, pnlPoints: true },
-    });
-
-    // Group by user
-    const userStats = {};
-    for (const call of calls) {
-      if (!userStats[call.userId]) userStats[call.userId] = { wins: 0, total: 0, rrSum: 0, rrCount: 0, points: 0 };
-      userStats[call.userId].total++;
-      userStats[call.userId].points += call.pnlPoints || 0;
-      if (call.result === 'win') userStats[call.userId].wins++;
-      if (call.riskReward) { userStats[call.userId].rrSum += call.riskReward; userStats[call.userId].rrCount++; }
-    }
-
-    // Only include users with at least 10 trades in this asset class
-    rankedUsers = users
-      .filter(u => userStats[u.id] && userStats[u.id].total >= 10)
-      .map(u => {
-        const s = userStats[u.id];
-        return {
-          ...u,
-          assetStats: {
-            totalTrades: s.total,
-            winRate: s.wins / s.total,
-            avgRR: s.rrCount > 0 ? s.rrSum / s.rrCount : 0,
-            points: s.points,
-          },
-        };
-      });
+    return Response.json({ leaderboard: leaderboard.filter(e => e.trades > 0 || e.isMe) })
+  } catch(e) {
+    return Response.json({ error: e.message }, { status: 500 })
   }
-
-  // Sort by points / win rate / consistency
-  rankedUsers.sort((a, b) => {
-    const aScore = assetClass !== 'overall'
-      ? (a.assetStats?.points || 0)
-      : (a.consistency?.consistencyScore || 0);
-    const bScore = assetClass !== 'overall'
-      ? (b.assetStats?.points || 0)
-      : (b.consistency?.consistencyScore || 0);
-    return bScore - aScore;
-  });
-
-  const leaderboard = rankedUsers.slice(0, limit).map((u, idx) => ({
-    rank: idx + 1,
-    userId: u.id,
-    displayName: u.displayName || u.name || u.email?.split('@')[0],
-    profileSlug: u.profileSlug,
-    tradingStyle: u.tradingStyle,
-    verifiedBadge: u.verifiedBadge,
-    consistencyScore: u.consistency?.consistencyScore,
-    winRate: assetClass !== 'overall' ? u.assetStats?.winRate : u.consistency?.winRate,
-    avgRR: assetClass !== 'overall' ? u.assetStats?.avgRR : u.consistency?.avgRR,
-    totalTrades: assetClass !== 'overall' ? u.assetStats?.totalTrades : u.consistency?.totalTrades,
-    points: assetClass !== 'overall' ? u.assetStats?.points : u.consistency?.consistencyScore,
-  }));
-
-  return Response.json({ leaderboard, assetClass, period, total: leaderboard.length });
 }

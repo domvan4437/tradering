@@ -24,7 +24,7 @@ function PostCard({ post, currentUserId, onLike, onDelete }) {
   const dirColor = post.direction==='LONG'?C.green:post.direction==='SHORT'?C.red:C.muted
   const timeAgo = (d) => { const diff=(Date.now()-new Date(d))/1000; if(diff<60)return'Just now'; if(diff<3600)return`${Math.floor(diff/60)}m`; if(diff<86400)return`${Math.floor(diff/3600)}h`; return`${Math.floor(diff/86400)}d` }
   const shareUrl = typeof window!=='undefined'?`${window.location.origin}/post/${post.id}`:''
-  const shareText = `${post.user?.name||'Trader'} on TradeRing: ${post.content.slice(0,100)}...`
+  const shareText = `${post.user?.name||'Trader'} on TradeZar: ${post.content.slice(0,100)}...`
 
   return (
     <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:'var(--radius)', padding:'16px 18px', transition:'border-color 0.15s' }}>

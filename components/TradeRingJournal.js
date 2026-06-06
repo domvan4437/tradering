@@ -772,7 +772,7 @@ const TABS = [
 ]
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
-export default function TradeRingJournal() {
+export default function TradeZarJournal() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [trades, setTrades] = useState(() => load(STORAGE_KEY + '_trades', []))
   const [journals, setJournals] = useState(() => load(STORAGE_KEY + '_journals', []))

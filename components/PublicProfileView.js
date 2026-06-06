@@ -144,7 +144,7 @@ export default function PublicProfileView({ slug }) {
               {profile.verifiedBadge && <span style={{ fontSize:11, fontWeight:700, color:PURPLE, background:'rgba(79,70,229,0.1)', padding:'2px 10px', borderRadius:20, border:'1px solid rgba(79,70,229,0.25)' }}>{'\u2713 Verified'}</span>}
               {profile.tradingStyle && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface2)', padding:'2px 10px', borderRadius:20, border:'1px solid var(--border)', textTransform:'capitalize' }}>{profile.tradingStyle}</span>}
             </div>
-            {profile.profileSlug && <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:6 }}>{'tradering.com/p/'+profile.profileSlug}</div>}
+            {profile.profileSlug && <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:6 }}>{'tradezar.com/p/'+profile.profileSlug}</div>}
             {profile.bio && <p style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', lineHeight:1.7, margin:'0 0 10px', maxWidth:560 }}>{profile.bio}</p>}
           </div>
           {assets.length > 0 && (

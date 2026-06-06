@@ -10,15 +10,15 @@ const STEPS = [
 
 const TIERS = [
   { name:'Verified Creator', badge:'✓', color:'var(--accent)', bg:'var(--accent-bg)', border:'var(--accent-border)',
-    perks:['Verified badge on your profile and all posts','Create paid private groups (you set the price)','TradeRing takes 10% — you keep 90%','Featured in Who to Follow recommendations'],
+    perks:['Verified badge on your profile and all posts','Create paid private groups (you set the price)','TradeZar takes 10% — you keep 90%','Featured in Who to Follow recommendations'],
     note:'Performance display is opt-in. You choose what to show.' },
   { name:'Elite Creator', badge:'★', color:'#d97706', bg:'rgba(217,119,6,0.08)', border:'rgba(217,119,6,0.25)',
-    perks:['Everything in Verified Creator','Gold star badge — top 5% performers only','Reduced platform fee — TradeRing takes 5%','Monthly featured spotlight to all users'],
+    perks:['Everything in Verified Creator','Gold star badge — top 5% performers only','Reduced platform fee — TradeZar takes 5%','Monthly featured spotlight to all users'],
     note:'Requires 60%+ win rate over 100+ trades, sustained 12 months.' },
 ];
 
 const EARN = [
-  { title:'Paid Private Groups', desc:'Create a members-only group. Set your monthly price. TradeRing handles billing, you focus on content.', bg:'var(--accent-bg)' },
+  { title:'Paid Private Groups', desc:'Create a members-only group. Set your monthly price. TradeZar handles billing, you focus on content.', bg:'var(--accent-bg)' },
   { title:'Premium Posts',       desc:'Gate individual analysis posts behind a one-time fee. Followers pay per piece of content.',             bg:'rgba(16,185,129,0.08)' },
   { title:'Trade Alerts',        desc:'Subscribers get notified instantly when you post a new trade call. Real-time, verified.',               bg:'rgba(217,119,6,0.08)' },
 ];
@@ -57,7 +57,7 @@ function Earnings({ price }) {
   const fee  = (p*0.1).toFixed(2);
   return (
     <span style={{ fontSize:12, color:'var(--text-muted)' }}>
-      You earn <strong style={{ color:'var(--green)' }}>${earn}/member/month</strong> · TradeRing keeps ${fee}
+      You earn <strong style={{ color:'var(--green)' }}>${earn}/member/month</strong> · TradeZar keeps ${fee}
     </span>
   );
 }
@@ -138,7 +138,7 @@ export default function CreatorStudioTab({ user }) {
             </div>
           </div>
           <div style={{ background:'var(--accent-bg)', border:'1px solid var(--accent-border)', borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--accent)', marginBottom:8 }}>What Verified Creator means on TradeRing</div>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--accent)', marginBottom:8 }}>What Verified Creator means on TradeZar</div>
             <div style={{ fontSize:13, color:'var(--text-secondary)', lineHeight:1.7 }}>
               The badge confirms your trades are real — connected to your brokerage. It does not require a specific win rate. Any trader who connects their broker and meets activity thresholds can become verified. Performance display is your choice.
             </div>

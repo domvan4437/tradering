@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 
 async function main() {
-  const password = 'TradeRing2026!';
+  const password = 'TradeZar2026!';
   const hash = await bcrypt.hash(password, 12);
   console.log('New hash:', hash);
   

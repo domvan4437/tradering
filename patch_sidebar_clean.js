@@ -1,5 +1,5 @@
 const fs = require('fs')
-const PATH = 'components/TradeRingJournal.js'
+const PATH = 'components/TradeZarJournal.js'
 let s = fs.readFileSync(PATH, 'utf8')
 
 // Find the sidebar div content start (after the style closing }}>)

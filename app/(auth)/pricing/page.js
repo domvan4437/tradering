@@ -64,7 +64,7 @@ export default function PricingPage() {
             <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <i className="ti ti-trending-up" style={{ fontSize: 16, color: '#fff' }} aria-hidden="true" />
             </div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>TradeRing</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>TradeZar</span>
           </Link>
 
           <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', lineHeight: 1.25, marginBottom: 12 }}>
@@ -86,12 +86,12 @@ export default function PricingPage() {
 
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
             Questions about pricing?<br />
-            <a href="mailto:support@tradering.com" style={{ color: 'rgba(255,255,255,0.85)', textDecoration: 'none' }}>Contact our team →</a>
+            <a href="mailto:support@tradezar.com" style={{ color: 'rgba(255,255,255,0.85)', textDecoration: 'none' }}>Contact our team →</a>
           </div>
         </div>
 
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 32 }}>
-          © 2026 TradeRing · <Link href="#" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Privacy</Link> · <Link href="#" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Terms</Link>
+          © 2026 TradeZar · <Link href="#" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Privacy</Link> · <Link href="#" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Terms</Link>
         </div>
       </div>
 

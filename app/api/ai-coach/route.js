@@ -126,7 +126,7 @@ export async function POST(request) {
     userData = { note: 'Trading data unavailable — providing general coaching.' }
   }
 
-  const systemPrompt = `You are an expert AI trading coach for TradeRing, a professional trading platform. You have deep knowledge of:
+  const systemPrompt = `You are an expert AI trading coach for TradeZar, a professional trading platform. You have deep knowledge of:
 - Futures, forex, commodities, stocks, and crypto markets
 - COT (Commitment of Traders) reports and how to interpret them
 - Technical analysis, position sizing, risk management

@@ -1,5 +1,5 @@
 const fs = require('fs')
-const PATH = 'components/TradeRingJournal.js'
+const PATH = 'components/TradeZarJournal.js'
 let s = fs.readFileSync(PATH, 'utf8')
 
 // 1. Replace the collapsed sidebar indicator block (the purple button at top)

@@ -758,7 +758,7 @@ export default function ImportTab() {
         <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--accent)', marginBottom:6 }}>Tools</div>
         <h2 style={{ fontSize:24, fontWeight:700, color:'var(--text)', margin:'0 0 4px' }}>Import Your Data</h2>
         <p style={{ fontSize:13, color:'var(--text-muted)', margin:0, lineHeight:1.6 }}>
-          Bring your notes, research, and watchlists from any platform into TradeRing in seconds. Your data stays yours.
+          Bring your notes, research, and watchlists from any platform into TradeZar in seconds. Your data stays yours.
         </p>
       </div>
 

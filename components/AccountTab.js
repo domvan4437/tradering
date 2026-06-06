@@ -591,7 +591,7 @@ function AnalyticsCommunityTab() {
               </div>
             </div>
           ))}
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>Based on your followers' activity on TradeRing</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>Based on your followers' activity on TradeZar</div>
         </Card>
         <Card>
           <SH>Group & community stats</SH>
@@ -778,7 +778,7 @@ function MonetizationTab() {
           ))}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderRadius: 6, background: 'rgba(75,68,200,0.06)', border: '0.5px solid rgba(75,68,200,0.15)' }}>
-          🔒 TradeRing uses read-only access. We can never place or modify trades on your behalf.
+          🔒 TradeZar uses read-only access. We can never place or modify trades on your behalf.
         </div>
       </Card>
     </div>
@@ -903,7 +903,7 @@ function SettingsContent({ section, user }) {
         {section === 'Danger zone' && (
           <div style={{ padding: '12px', background: 'rgba(220,38,38,0.05)', border: '0.5px solid rgba(220,38,38,0.3)', borderRadius: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: '#dc2626', marginBottom: 4 }}>Delete account</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Permanently delete your TradeRing account. This cannot be undone.</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Permanently delete your TradeZar account. This cannot be undone.</div>
             <button style={{ padding: '7px 14px', background: 'transparent', color: '#dc2626', border: '0.5px solid #dc2626', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' }}>Delete my account</button>
           </div>
         )}

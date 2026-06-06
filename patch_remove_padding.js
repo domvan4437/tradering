@@ -2,7 +2,7 @@ const fs = require('fs')
 
 const files = [
   'components/AccountTab.js',
-  'components/TradeRingJournal.js',
+  'components/TradeZarJournal.js',
 ]
 
 files.forEach(f => {

@@ -9,14 +9,14 @@ let cs = fs.readFileSync('components/CommodityScreener.js', 'utf8')
 // Add ToolsLayout import if not present
 if (!cs.includes("import ToolsLayout from './ToolsLayout'")) {
   cs = cs.replace(
-    "import TradeRingJournal from './TradeRingJournal'",
-    "import TradeRingJournal from './TradeRingJournal'\nimport ToolsLayout from './ToolsLayout'"
+    "import TradeZarJournal from './TradeZarJournal'",
+    "import TradeZarJournal from './TradeZarJournal'\nimport ToolsLayout from './ToolsLayout'"
   )
   console.log('✓ ToolsLayout imported')
 }
 
 // Replace the tools section
-const OLD = `section==='tools2' ? (\r\n          <div style={{padding:'20px 24px'}}>\r\n            {!tab && (() => { setTimeout(() => setTab('Journal'), 0); return null; })()}\r\n            {tab==='Journal'    && <TradeRingJournal />}\r\n            {tab==='Trade Calc' && <><TabTooltip tab='Trade Calc' /><TradeCalcTab /></>}\r\n            {tab==='Trade Plan Builder' && <><TabTooltip tab='Trade Plan Builder' /><TradePlanTab /></>}\r\n            {tab==='Strategy Backtest' && <><TabTooltip tab='Strategy Backtest' /><StrategyBacktestTab /></>}\r\n            {tab==='COT Alerts' && <><TabTooltip tab='COT Alerts' /><COTAlertsTab /></>}\r\n            {tab==='Screener' && <><TabTooltip tab='Screener' /><ScreenerBuilder user={userInfo} /></>}\r\n            {tab==='Import' && <><TabTooltip tab='Import' /><ImportTab /></>}\r\n          </div>\r\n        )`
+const OLD = `section==='tools2' ? (\r\n          <div style={{padding:'20px 24px'}}>\r\n            {!tab && (() => { setTimeout(() => setTab('Journal'), 0); return null; })()}\r\n            {tab==='Journal'    && <TradeZarJournal />}\r\n            {tab==='Trade Calc' && <><TabTooltip tab='Trade Calc' /><TradeCalcTab /></>}\r\n            {tab==='Trade Plan Builder' && <><TabTooltip tab='Trade Plan Builder' /><TradePlanTab /></>}\r\n            {tab==='Strategy Backtest' && <><TabTooltip tab='Strategy Backtest' /><StrategyBacktestTab /></>}\r\n            {tab==='COT Alerts' && <><TabTooltip tab='COT Alerts' /><COTAlertsTab /></>}\r\n            {tab==='Screener' && <><TabTooltip tab='Screener' /><ScreenerBuilder user={userInfo} /></>}\r\n            {tab==='Import' && <><TabTooltip tab='Import' /><ImportTab /></>}\r\n          </div>\r\n        )`
 
 const NEW = `section==='tools2' ? (\r\n          <ToolsLayout tab={tab} setTab={setTab} userInfo={userInfo} />\r\n        )`
 

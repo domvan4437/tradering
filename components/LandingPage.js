@@ -20,7 +20,7 @@ export default function LandingPage() {
             <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <i className="ti ti-trending-up" style={{ fontSize: 16, color: '#fff' }} aria-hidden="true" />
             </div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>TradeRing</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>TradeZar</span>
           </div>
 
           <div style={{ fontSize: 36, fontWeight: 700, color: '#fff', lineHeight: 1.2, marginBottom: 14 }}>
@@ -43,7 +43,7 @@ export default function LandingPage() {
         </div>
 
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 48 }}>
-          © 2026 TradeRing · <Link href="/pricing" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Pricing</Link> · <Link href="#" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Privacy</Link> · <Link href="#" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Terms</Link>
+          © 2026 TradeZar · <Link href="/pricing" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Pricing</Link> · <Link href="#" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Privacy</Link> · <Link href="#" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Terms</Link>
         </div>
       </div>
 
@@ -51,7 +51,7 @@ export default function LandingPage() {
       <div style={{ flex: 1, background: '#fafaf9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 52px' }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: '#1a1a2e', marginBottom: 6 }}>Start for free</div>
-          <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 28 }}>Join thousands of traders already on TradeRing.</div>
+          <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 28 }}>Join thousands of traders already on TradeZar.</div>
 
           <Link href="/signup" style={{ display: 'block', width: '100%', padding: '12px', background: '#4B44C8', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'center', textDecoration: 'none', marginBottom: 12 }}>
             Create free account

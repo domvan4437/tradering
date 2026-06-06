@@ -6,7 +6,7 @@ import CryptoTab from './CryptoTab'
 import ProfileTab from './ProfileTab'
 import AccountTab from './AccountTab'
 import GlobalLeaderboard from './GlobalLeaderboard'
-// ── TradeRing DS import
+// ── TradeZar DS import
 import { LiveDot } from './DS';
 import { useTheme } from './ThemeProvider'
 import React, { useState, useEffect, useMemo } from 'react'
@@ -86,7 +86,7 @@ const STAGES = [
 
 const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil','Natural Gas','Gasoline','Heating Oil','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Lean Hogs','Rice','Oats','Lumber']
 const SECTION_TABS = {
-  community:   ['Feed','Groups','Messages','Local Traders'],
+  community:   ['Feed','Groups','Messages'],
   compete:     ['Home','H2H','Group Contests','Leaderboard','History'],
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','News'],
   charts:      ['Workspace'],
@@ -496,7 +496,7 @@ export default function App() {
             <div style={{ width:20, height:20, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.85)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <div style={{ width:7, height:7, background:'var(--accent)', borderRadius:'50%' }} />
             </div>
-            <span style={{ fontSize:15, fontWeight:700, color:'#ffffff', letterSpacing:'-0.4px' }}>TradeRing</span>
+            <span style={{ fontSize:15, fontWeight:700, color:'#ffffff', letterSpacing:'-0.4px' }}>TradeZar</span>
           </div>
 
           {/* Nav links with hover dropdowns */}

@@ -136,7 +136,7 @@ export default function SettingsTab({ user }) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'tradering_export_' + new Date().toISOString().slice(0,10) + '.json';
+    a.download = 'tradezar_export_' + new Date().toISOString().slice(0,10) + '.json';
     a.click();
   };
 
@@ -157,7 +157,7 @@ export default function SettingsTab({ user }) {
       <div style={{ marginBottom:24 }}>
         <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--accent)', marginBottom:6 }}>Account</div>
         <h2 style={{ fontSize:24, fontWeight:700, color:'var(--text)', margin:'0 0 4px' }}>Settings</h2>
-        <p style={{ fontSize:12, color:'var(--text-muted)', margin:0 }}>Customize your TradeRing experience.</p>
+        <p style={{ fontSize:12, color:'var(--text-muted)', margin:0 }}>Customize your TradeZar experience.</p>
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:20, alignItems:'start' }}>
@@ -271,7 +271,7 @@ export default function SettingsTab({ user }) {
           {/* ── NOTIFICATIONS ── */}
           {activeSection === 'notifications' && (
             <div>
-              <Section title="Email Notifications" desc="Manage what TradeRing sends to your email">
+              <Section title="Email Notifications" desc="Manage what TradeZar sends to your email">
                 {[
                   { key:'weeklyDigest',    label:'Weekly Performance Digest',   desc:'Your weekly trade summary every Monday morning'       },
                   { key:'cotAlerts',       label:'COT Alert Triggers',          desc:'Email when a COT alert you set is triggered'          },
@@ -318,7 +318,7 @@ export default function SettingsTab({ user }) {
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {[
                     { icon:'✅', text:'Your trade data is never sold to third parties' },
-                    { icon:'✅', text:'Broker credentials are processed by Plaid — TradeRing never stores them' },
+                    { icon:'✅', text:'Broker credentials are processed by Plaid — TradeZar never stores them' },
                     { icon:'✅', text:'You can export or delete all your data at any time' },
                     { icon:'✅', text:'All data is encrypted at rest and in transit' },
                   ].map((item,i) => (
@@ -335,7 +335,7 @@ export default function SettingsTab({ user }) {
           {/* ── SUBSCRIPTION ── */}
           {activeSection === 'subscription' && (
             <div>
-              <Section title="Current Plan" desc="Your active TradeRing subscription">
+              <Section title="Current Plan" desc="Your active TradeZar subscription">
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px', background:'var(--surface2)', borderRadius:10, border:'1px solid var(--border)', marginBottom:16 }}>
                   <div>
                     <div style={{ fontFamily:'var(--font)', fontSize:16, fontWeight:700, color:'var(--text)', marginBottom:3, textTransform:'capitalize' }}>
@@ -385,7 +385,7 @@ export default function SettingsTab({ user }) {
           {/* ── DATA & EXPORT ── */}
           {activeSection === 'data' && (
             <div>
-              <Section title="Export Your Data" desc="Download everything you've created on TradeRing">
+              <Section title="Export Your Data" desc="Download everything you've created on TradeZar">
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   <div style={{ padding:'14px 16px', background:'var(--surface2)', borderRadius:10, border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                     <div>

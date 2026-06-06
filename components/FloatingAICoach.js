@@ -30,7 +30,7 @@ function Dots() {
 export default function FloatingAICoach() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role:'assistant', content:'Hi! I am your TradeRing AI Coach. Ask me anything about trading, your strategy, risk management, or market analysis.' }
+    { role:'assistant', content:'Hi! I am your TradeZar AI Coach. Ask me anything about trading, your strategy, risk management, or market analysis.' }
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -120,7 +120,7 @@ export default function FloatingAICoach() {
                 Always available
               </div>
             </div>
-            <button onClick={() => setMessages([{ role:'assistant', content:'Hi! I am your TradeRing AI Coach. Ask me anything about trading, your strategy, risk management, or market analysis.' }])}
+            <button onClick={() => setMessages([{ role:'assistant', content:'Hi! I am your TradeZar AI Coach. Ask me anything about trading, your strategy, risk management, or market analysis.' }])}
               style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:11, fontFamily:'var(--font)' }}>
               Clear
             </button>

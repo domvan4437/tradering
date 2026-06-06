@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 
 export async function GET() {
   try {
-    const hash = await bcrypt.hash('TradeRing2026!', 12)
+    const hash = await bcrypt.hash('TradeZar2026!', 12)
     
     const response = await fetch(
       'https://mdddbfrtqnpyathtgvbv.supabase.co/rest/v1/User?email=eq.dominicvansaghi@yahoo.com',

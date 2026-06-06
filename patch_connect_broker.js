@@ -38,7 +38,7 @@ const NEW = `      <Card>
           ))}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderRadius: 6, background: 'rgba(75,68,200,0.06)', border: '0.5px solid rgba(75,68,200,0.15)' }}>
-          🔒 TradeRing uses read-only access. We can never place or modify trades on your behalf.
+          🔒 TradeZar uses read-only access. We can never place or modify trades on your behalf.
         </div>
       </Card>
     </div>

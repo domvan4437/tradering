@@ -1,57 +1,52 @@
 import { getSession } from '../../../../lib/auth'
-import { prisma } from '../../../../lib/prisma'
+
+const _URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const _KEY = process.env.SUPABASE_SERVICE_KEY
+const db = {
+  get: (t, q='') => fetch(`${_URL}/rest/v1/${t}${q}`, { headers: { apikey: _KEY, Authorization: `Bearer ${_KEY}` } }).then(r => r.json()),
+  post: (t, b) => fetch(`${_URL}/rest/v1/${t}`, { method:'POST', headers: { apikey: _KEY, Authorization: `Bearer ${_KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' }, body: JSON.stringify(b) }).then(r => r.json()),
+  patch: (t, q, b) => fetch(`${_URL}/rest/v1/${t}${q}`, { method:'PATCH', headers: { apikey: _KEY, Authorization: `Bearer ${_KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' }, body: JSON.stringify(b) }).then(r => r.json()),
+  del: (t, q) => fetch(`${_URL}/rest/v1/${t}${q}`, { method:'DELETE', headers: { apikey: _KEY, Authorization: `Bearer ${_KEY}` } }).then(r => r.status),
+}
 
 export async function GET(request) {
-  const session = await getSession()
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const { searchParams } = new URL(request.url)
-  const filter = searchParams.get('filter') || 'all'
-  const asset = searchParams.get('asset')
-  const cursor = searchParams.get('cursor')
-
-  const where = { isPublic: true, groupId: null }
-  if (asset) where.assetTag = asset
-  if (filter === 'following') {
-    const follows = await prisma.userFollow.findMany({ where: { followerId: session.user.id }, select: { followingId: true } })
-    where.userId = { in: follows.map(f => f.followingId) }
-  }
-
-  const posts = await prisma.socialPost.findMany({
-    where, take: 20,
-    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: { createdAt: 'desc' },
-    include: {
-      user: { select: { id: true, name: true, username: true } },
-      _count: { select: { comments: true, postLikes: true } },
-      postLikes: { where: { userId: session.user.id }, select: { id: true } }
-    }
-  })
-
-  const formatted = posts.map(p => ({
-    ...p, likedByMe: p.postLikes.length > 0,
-    likesCount: p._count.postLikes, commentsCount: p._count.comments,
-    postLikes: undefined, _count: undefined
-  }))
-
-  return Response.json({ posts: formatted, nextCursor: posts.length === 20 ? posts[posts.length-1].id : null })
+  try {
+    const session = await getSession()
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    const q = userId ? `?userId=eq.${userId}&order=createdAt.desc&limit=50` : `?order=createdAt.desc&limit=50`
+    const posts = await db.get('CommunityPost', q)
+    return Response.json({ posts: posts || [] })
+  } catch(e) { return Response.json({ error: e.message }, { status: 500 }) }
 }
 
 export async function POST(request) {
-  const session = await getSession()
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const { content, assetTag, direction, imageUrl } = await request.json()
-  if (!content?.trim()) return Response.json({ error: 'Content required' }, { status: 400 })
-  const post = await prisma.socialPost.create({
-    data: { userId: session.user.id, content, assetTag, direction, imageUrl },
-    include: { user: { select: { id: true, name: true, username: true } } }
-  })
-  return Response.json({ post })
+  try {
+    const session = await getSession()
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const { content, type, asset, tags } = await request.json()
+    if (!content?.trim()) return Response.json({ error: 'Content required' }, { status: 400 })
+    const post = await db.post('CommunityPost', {
+      userId: session.user.id,
+      content: content.trim(),
+      type: type || 'general',
+      asset: asset || null,
+      tags: tags || [],
+      likes: 0,
+      reposts: 0,
+      createdAt: new Date().toISOString(),
+    })
+    return Response.json({ post: Array.isArray(post) ? post[0] : post })
+  } catch(e) { return Response.json({ error: e.message }, { status: 500 }) }
 }
 
 export async function DELETE(request) {
-  const session = await getSession()
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await request.json()
-  await prisma.socialPost.delete({ where: { id, userId: session.user.id } })
-  return Response.json({ deleted: true })
+  try {
+    const session = await getSession()
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const { postId } = await request.json()
+    await db.del('CommunityPost', `?id=eq.${postId}&userId=eq.${session.user.id}`)
+    return Response.json({ success: true })
+  } catch(e) { return Response.json({ error: e.message }, { status: 500 }) }
 }

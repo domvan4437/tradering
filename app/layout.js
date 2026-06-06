@@ -4,8 +4,8 @@ import SessionProvider from '../components/SessionProvider'
 import './globals.css'
 
 export const metadata = {
-  title: 'TradeRing',
-  description: 'TradeRing — Your all-in-one trading hub for commodities, futures, forex, and stocks.',
+  title: 'TradeZar',
+  description: 'TradeZar — Your all-in-one trading hub for commodities, futures, forex, and stocks.',
 }
 
 export default async function RootLayout({ children }) {

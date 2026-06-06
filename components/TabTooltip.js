@@ -23,9 +23,9 @@ const TOOLTIPS = {
   'Review': { icon:'🔄', title:'Weekly review', desc:"Run structured weekly reviews of your trading. Identify what worked, what didn't, and where to focus next week.", pills:['Weekly check-in','Win/loss review','Identify patterns','Set intentions'] },
   'Trade Log': { icon:'📊', title:'Trade log', desc:'Every trade you take, logged automatically. Filter by asset, date, strategy, or outcome to find your edge.', pills:['Auto-logging','Filter & sort','P&L tracking','Find your edge'] },
   'Import': { icon:'📥', title:'Import trades', desc:'Import your trade history from any broker in seconds. Get instant performance analytics without manual entry.', pills:['Broker import','CSV support','Instant analytics','All brokers'] },
-  'Broker': { icon:'🏦', title:'Broker integration', desc:'Connect your broker account to sync trades automatically and see real-time P&L inside TradeRing.', pills:['Auto-sync','Real-time P&L','All major brokers','Secure connection'] },
+  'Broker': { icon:'🏦', title:'Broker integration', desc:'Connect your broker account to sync trades automatically and see real-time P&L inside TradeZar.', pills:['Auto-sync','Real-time P&L','All major brokers','Secure connection'] },
   'My Profile': { icon:'⭐', title:'Your trading profile', desc:'Your public trading profile. Showcase your win rate, top trades, and content. The more you share, the more your following grows.', pills:['Public profile','Win rate display','Top trades','Grow following'] },
-  'Settings': { icon:'⚙️', title:'Settings', desc:'Customize your TradeRing experience — notifications, display preferences, privacy settings, and subscription management.', pills:['Notifications','Privacy','Display','Subscription'] },
+  'Settings': { icon:'⚙️', title:'Settings', desc:'Customize your TradeZar experience — notifications, display preferences, privacy settings, and subscription management.', pills:['Notifications','Privacy','Display','Subscription'] },
   'Workspace': { icon:'🖥️', title:'Chart workspace', desc:'Your personal charting workspace. Analyze markets with a full suite of tools and save your chart layouts.', pills:['Custom layouts','Drawing tools','Save workspaces','Multi-chart'] },
 }
 

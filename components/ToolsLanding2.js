@@ -11,7 +11,7 @@ const TOOLS = [
     icon: 'ti-notebook',
     color: PURPLE,
     badge: 'Core',
-    desc: 'Track every trade with psychology tagging, write daily pre-market plans, run 50+ performance reports, and build your verified public track record — the foundation of your TradeRing profile.',
+    desc: 'Track every trade with psychology tagging, write daily pre-market plans, run 50+ performance reports, and build your verified public track record — the foundation of your TradeZar profile.',
     features: [
       'Log trades with emotion tags, R-multiple, and rule adherence',
       'Daily pre-market plan + end-of-day discipline review',

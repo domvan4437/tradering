@@ -78,7 +78,7 @@ const STATIC_NEWS = [
   { tag: 'Stocks',      headline: 'Nvidia beats earnings estimates, guidance raised for Q3',               source: 'CNBC',      time: '2h'  },
   { tag: 'Crypto',      headline: 'Bitcoin holds $68k support as ETF inflows hit weekly high',             source: 'CoinDesk',  time: '3h'  },
   { tag: 'Macro',       headline: 'US jobless claims rise slightly, labor market remains tight',            source: 'AP',        time: '3h'  },
-  { tag: 'COT',         headline: 'Silver COT positioning at 18-month extreme — watch for reversal',       source: 'TradeRing', time: '4h'  },
+  { tag: 'COT',         headline: 'Silver COT positioning at 18-month extreme — watch for reversal',       source: 'TradeZar', time: '4h'  },
   { tag: 'Grains',      headline: 'Corn planting progress ahead of schedule, bearish for prices',          source: 'USDA',      time: '5h'  },
   { tag: 'Forex',       headline: 'Japanese yen hits fresh lows as BOJ holds ultra-loose policy',          source: 'Reuters',   time: '5h'  },
   { tag: 'Energy',      headline: 'Crude oil inventories draw larger than expected — bullish signal',      source: 'EIA',       time: '6h'  },

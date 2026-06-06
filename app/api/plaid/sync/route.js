@@ -1,71 +1,86 @@
 import { getSession } from '../../../../lib/auth'
-import { prisma } from '../../../../lib/prisma'
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid'
 
-const plaidConfig = new Configuration({
-  basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
-  baseOptions: {
-    headers: {
-      'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-      'PLAID-SECRET': process.env.PLAID_SECRET,
-    },
-  },
-})
-const plaidClient = new PlaidApi(plaidConfig)
+const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPA_KEY = process.env.SUPABASE_SERVICE_KEY
 
-export async function POST(request) {
+const plaidClient = new PlaidApi(new Configuration({
+  basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
+  baseOptions: { headers: {
+    'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
+    'PLAID-SECRET': process.env.PLAID_SECRET,
+  }},
+}))
+
+export async function POST() {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { connectionId } = await request.json()
+    // Get all connections for this user
+    const connections = await fetch(`${SUPA_URL}/rest/v1/BrokerConnection?userId=eq.${session.user.id}&status=eq.connected&select=*`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    }).then(r => r.json())
 
-    const connection = await prisma.brokerConnection.findUnique({
-      where: { id: connectionId, userId: session.user.id }
-    })
-    if (!connection) return Response.json({ error: 'Connection not found' }, { status: 404 })
-
-    const endDate = new Date().toISOString().slice(0,10)
-    const startDate = new Date(Date.now() - 90*24*60*60*1000).toISOString().slice(0,10)
-
-    let synced = 0
-    try {
-      const invRes = await plaidClient.investmentsTransactionsGet({
-        access_token: connection.accessToken,
-        start_date: startDate,
-        end_date: endDate,
-      })
-
-      for (const txn of invRes.data.investment_transactions || []) {
-        await prisma.brokerTrade.upsert({
-          where: { connectionId_brokerTradeId: { connectionId: connection.id, brokerTradeId: txn.investment_transaction_id } },
-          update: {},
-          create: {
-            connectionId: connection.id,
-            userId: session.user.id,
-            brokerTradeId: txn.investment_transaction_id,
-            asset: txn.security?.ticker_symbol || txn.name || 'Unknown',
-            symbol: txn.security?.ticker_symbol || 'UNK',
-            direction: txn.quantity > 0 ? 'LONG' : 'SHORT',
-            entryPrice: Math.abs(txn.price || 0),
-            quantity: Math.abs(txn.quantity || 1),
-            contractSize: 1,
-            realizedPnL: null,
-            status: 'closed',
-            openedAt: new Date(txn.date),
-            closedAt: new Date(txn.date),
+    let totalSynced = 0
+    for (const conn of connections || []) {
+      const endDate = new Date().toISOString().slice(0,10)
+      const startDate = new Date(Date.now() - 90*24*60*60*1000).toISOString().slice(0,10)
+      try {
+        const invRes = await plaidClient.investmentsTransactionsGet({
+          access_token: conn.accessToken, start_date: startDate, end_date: endDate,
+        })
+        const txns = invRes.data.investment_transactions || []
+        for (const txn of txns) {
+          const existing = await fetch(`${SUPA_URL}/rest/v1/BrokerTrade?connectionId=eq.${conn.id}&brokerTradeId=eq.${txn.investment_transaction_id}&select=id`, {
+            headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+          }).then(r => r.json())
+          if (!existing || existing.length === 0) {
+            await fetch(`${SUPA_URL}/rest/v1/BrokerTrade`, {
+              method: 'POST',
+              headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                connectionId: conn.id, userId: session.user.id,
+                brokerTradeId: txn.investment_transaction_id,
+                asset: txn.security?.ticker_symbol || txn.name || 'Unknown',
+                symbol: txn.security?.ticker_symbol || 'UNK',
+                direction: txn.quantity > 0 ? 'LONG' : 'SHORT',
+                entryPrice: Math.abs(txn.price || 0),
+                quantity: Math.abs(txn.quantity || 1),
+                contractSize: 1, status: 'closed',
+                openedAt: new Date(txn.date).toISOString(),
+                closedAt: new Date(txn.date).toISOString(),
+                createdAt: new Date().toISOString(),
+              })
+            })
+            totalSynced++
           }
-        }).catch(() => {})
-        synced++
-      }
-    } catch {}
+        }
+        // Update lastSynced
+        await fetch(`${SUPA_URL}/rest/v1/BrokerConnection?id=eq.${conn.id}`, {
+          method: 'PATCH',
+          headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lastSynced: new Date().toISOString() })
+        })
+      } catch(e) { console.error('Sync error for conn', conn.id, e.message) }
+    }
+    return Response.json({ success: true, synced: totalSynced })
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500 })
+  }
+}
 
-    await prisma.brokerConnection.update({
-      where: { id: connectionId },
-      data: { lastSynced: new Date(), status: 'connected' }
-    })
-
-    return Response.json({ synced })
+export async function GET() {
+  try {
+    const session = await getSession()
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const connections = await fetch(`${SUPA_URL}/rest/v1/BrokerConnection?userId=eq.${session.user.id}&select=id,label,broker,status,lastSynced`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    }).then(r => r.json())
+    const trades = await fetch(`${SUPA_URL}/rest/v1/BrokerTrade?userId=eq.${session.user.id}&select=*&order=openedAt.desc&limit=100`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    }).then(r => r.json())
+    return Response.json({ connections: connections || [], trades: trades || [] })
   } catch(e) {
     return Response.json({ error: e.message }, { status: 500 })
   }

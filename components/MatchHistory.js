@@ -198,10 +198,11 @@ function MatchDetail({ match, onBack, onExportNote }) {
   );
 }
 
-export default function MatchHistory({ onExportNote }) {
+export default function MatchHistory({ onExportNote, subTab, setSubTab }) {
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('all');
-  const [historyTab, setHistoryTab] = useState('h2h');
+  const historyTab = subTab || 'h2h';
+  const setHistoryTab = (t) => { if (setSubTab) setSubTab(t); };
 
   const matches = MOCK_MATCHES.filter(m => filter==='all' || m.result===filter);
 

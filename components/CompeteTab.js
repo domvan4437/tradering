@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import LeagueSystem from './LeagueSystem';
 import ChallengeMarketplace from './ChallengeMarketplace';
 import GroupContest from './GroupContest';
@@ -81,28 +81,78 @@ function H2HTab({ subTab = 'browse', setSubTab }) {
   // subTab controlled by parent
   const [accepted, setAccepted] = useState(null);
 
-  const MY_MATCHES = [
-    { id:1, opponent:'fxswing99', asset:'Gold (GC=F)', duration:'1 Week', stake:'$50', myPnl:'+8.4%', oppPnl:'-2.1%', timeLeft:'3d 4h', status:'winning' },
-    { id:2, opponent:'cotbasic', asset:'EUR/USD', duration:'3 Days', stake:'$25', myPnl:'+1.2%', oppPnl:'+3.8%', timeLeft:'12h', status:'losing' },
-  ];
+  const [loading, setLoading] = useState(false);
+  const [MY_MATCHES, setMyMatches] = useState([]);
+  const [INVITES, setInvites] = useState([]);
+  const [OPEN, setOpen] = useState([]);
+  const LIVE = [];
 
-  const INVITES = [
-    { id:1, from:'seasonalace', league:'gold', asset:'Commodities', duration:'1 Week', stake:'$100', message:'COT setups only. Grains and metals. Best P&L wins.', received:'2h ago' },
-    { id:2, from:'cotmaster2', league:'gold', asset:'Any', duration:'2 Weeks', stake:'$50', message:'Open asset class challenge.', received:'5h ago' },
-  ];
+  function getTimeLeft(end) {
+    const diff = new Date(end) - new Date();
+    if (diff <= 0) return 'Ended';
+    const d = Math.floor(diff/86400000), h = Math.floor((diff%86400000)/3600000);
+    return d > 0 ? d+'d '+h+'h' : h+'h';
+  }
+  function timeAgo(dt) {
+    const diff = Date.now() - new Date(dt);
+    const m2 = Math.floor(diff/60000), h2 = Math.floor(diff/3600000), d2 = Math.floor(diff/86400000);
+    return d2 > 0 ? d2+'d ago' : h2 > 0 ? h2+'h ago' : m2+'m ago';
+  }
 
-  const OPEN = [
-    { id:1, poster:'seasonalace', league:'gold', asset:'Commodities', duration:'1 Week', stake:'$50', desc:'COT-based setups only. Grains and metals. Best P&L after 7 days wins.', posted:'2h ago', accepts:0, max:1, winRate:76, wins:38 },
-    { id:2, poster:'fxswing99', league:'silver', asset:'Forex', duration:'3 Days', stake:'$25', desc:'Major pairs only. No scalping — minimum 4hr hold time per trade.', posted:'4h ago', accepts:0, max:1, winRate:67, wins:16 },
-    { id:3, poster:'cotmaster2', league:'gold', asset:'Any', duration:'2 Weeks', stake:'$100', desc:'Open asset class. Verified broker account required. Top P&L% wins.', posted:'6h ago', accepts:1, max:3, winRate:71, wins:35 },
-    { id:4, poster:'edgefinder', league:'platinum', asset:'Futures', duration:'1 Month', stake:'$250', desc:'Equity index futures only. ES, NQ, YM. Monthly P&L competition.', posted:'1d ago', accepts:0, max:1, winRate:74, wins:58 },
-    { id:5, poster:'newtrader22', league:'iron', asset:'Forex', duration:'1 Day', stake:'$5', desc:'Quick 1-day EUR/USD challenge. First trade within 2hrs of market open.', posted:'30m ago', accepts:0, max:1, winRate:40, wins:2 },
-  ];
+  const loadData = useCallback(() => {
+    setLoading(true);
+    fetch('/api/challenges').then(r=>r.json()).then(d=>{
+      if (!d.error) {
+        setMyMatches((d.myMatches||[]).map(m=>({
+          id:m.id, matchId:m.id,
+          opponent: m.opponentName||'Waiting...',
+          asset: (m.assetClasses||['Any']).join(', '),
+          duration:'—',
+          stake: m.buyIn>0?'$'+m.buyIn:'For fun',
+          myPnl: (parseFloat(m.myPnl||0)>=0?'+':'')+'$'+parseFloat(m.myPnl||0).toFixed(2),
+          oppPnl:'+$0.00',
+          timeLeft: m.endDate?getTimeLeft(m.endDate):'—',
+          status: parseFloat(m.myPnl||0)>=0?'winning':'losing',
+        })));
+        setInvites((d.invites||[]).map(i=>({
+          id:i.id, matchId:i.id,
+          from:i.challengerName||'Trader',
+          league:'silver',
+          asset:(i.assetClasses||['Any']).join(', '),
+          duration:'—',
+          stake:i.buyIn>0?'$'+i.buyIn:'For fun',
+          message:i.description||'Open challenge',
+          received:i.createdAt?timeAgo(i.createdAt):'',
+        })));
+        setOpen((d.open||[]).map(c=>({
+          id:c.id, tournamentId:c.id,
+          poster:c.creatorName||'Trader',
+          league:'silver',
+          asset:(c.assetClasses||['Any']).join(', '),
+          duration:'—',
+          stake:c.buyIn>0?'$'+c.buyIn:'For fun',
+          desc:c.description||'Open challenge',
+          posted:c.createdAt?timeAgo(c.createdAt):'',
+          accepts:0, max:1, winRate:0, wins:0,
+        })));
+      }
+    }).catch(()=>{}).finally(()=>setLoading(false));
+  }, []);
 
-  const LIVE = [
-    { id:1, t1:'seasonalace', t1pnl:'+8.4%', t2:'fxswing99', t2pnl:'-2.1%', asset:'Gold', stake:'$50', spectators:14, startedAgo:'2h 14m' },
-    { id:2, t1:'cotmaster2', t1pnl:'+5.1%', t2:'edgefinder', t2pnl:'+2.3%', asset:'EUR/USD', stake:'$100', spectators:8, startedAgo:'4h 32m' },
-  ];
+  useEffect(()=>{ loadData(); }, [loadData]);
+
+  const acceptChallenge = async (matchId) => {
+    await fetch('/api/challenges',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({matchId,action:'accept'})});
+    loadData();
+  };
+  const declineChallenge = async (matchId) => {
+    await fetch('/api/challenges',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({matchId,action:'decline'})});
+    loadData();
+  };
+  const postChallenge = async (form) => {
+    await fetch('/api/challenges',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset:form.asset,duration:form.duration,stake:form.stake,stakeType:'real',description:form.desc})});
+    loadData();
+  };
 
   const LC = { iron:'#6b7280', bronze:'#b45309', silver:'#9ca3af', gold:'#d97706', platinum:'#0891b2', diamond:'#4f46e5', master:'#7c3aed' };
   const lc = (l) => LC[l]||'#6b7280';
@@ -220,8 +270,8 @@ function H2HTab({ subTab = 'browse', setSubTab }) {
                 </div>
                 <div style={{ background:'var(--surface2)', borderRadius:8, padding:'8px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', marginBottom:10 }}>{inv.message}</div>
                 <div style={{ display:'flex', gap:8 }}>
-                  <button style={{ flex:1, padding:'9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>Decline</button>
-                  <button onClick={() => setAccepted(inv)} style={{ flex:2, padding:'9px', borderRadius:8, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer' }}>Accept →</button>
+                  <button onClick={()=>declineChallenge(inv.matchId||inv.id)} style={{ flex:1, padding:'9px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>Decline</button>
+                  <button onClick={()=>{setAccepted(inv);acceptChallenge(inv.matchId||inv.id);}} style={{ flex:2, padding:'9px', borderRadius:8, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:700, cursor:'pointer' }}>Accept →</button>
                 </div>
               </div>
             ))
@@ -276,7 +326,7 @@ function H2HTab({ subTab = 'browse', setSubTab }) {
           </div>
           <div style={{ marginBottom:14 }}><label style={labelStyle}>Rules & Description</label><textarea value={form.desc} onChange={e=>setF('desc',e.target.value)} placeholder="Asset restrictions, hold time requirements, COT setup rules..." rows={4} style={{...inputStyle,resize:'none'}} /></div>
           <div style={{ background:'var(--surface2)', borderRadius:10, padding:'10px 14px', marginBottom:16, fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>⚠️ Matched with Silver league traders (±1). Entry stakes held in escrow.</div>
-          <button onClick={() => form.desc.trim() && (setAccepted({from:'posted',duration:form.duration,stake:form.stake}),setSubTab('my matches'))} disabled={!form.desc.trim()} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:form.desc.trim()?'var(--accent)':'var(--surface3)', color:form.desc.trim()?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:form.desc.trim()?'pointer':'default' }}>Post Challenge</button>
+          <button onClick={()=>{ if(!form.desc.trim()) return; postChallenge(form).then(()=>setSubTab('my matches')); }} disabled={!form.desc.trim()} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:form.desc.trim()?'var(--accent)':'var(--surface3)', color:form.desc.trim()?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:form.desc.trim()?'pointer':'default' }}>Post Challenge</button>
         </div>
       )}
     </div>
@@ -896,7 +946,7 @@ function CompeteSidebar({ tab, setTab, h2hSubTab, setH2hSubTab, groupSubTab, set
           )}
           {t.key === 'history' && isActive && isOpen && (
             <div style={{ width:'100%', paddingLeft:8, display:'flex', flexDirection:'column', gap:1, marginBottom:4 }}>
-              {['overview','my trades','opponent','ai review'].map(ft => (
+              {['h2h','group'].map(ft => (
                 <button key={ft} onClick={() => setHistorySubTab(ft)}
                   style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 8px', borderRadius:5, background:historySubTab===ft?'rgba(75,68,200,0.08)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:'100%', textAlign:'left' }}>
                   <i className="ti ti-chevron-right" style={{ fontSize:11, color:historySubTab===ft?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
@@ -918,7 +968,7 @@ export default function CompeteTab({ currentUserId, externalTab }) {
   const [tab, setTab] = useState('compete');
   const [h2hSubTab, setH2hSubTab] = useState('browse');
   const [groupSubTab, setGroupSubTab] = useState('my contests');
-  const [historySubTab, setHistorySubTab] = useState('overview');
+  const [historySubTab, setHistorySubTab] = useState('h2h');
   useEffect(() => { if (externalTab && TAB_MAP[externalTab]) setTab(TAB_MAP[externalTab]); }, [externalTab]);
 
   const navTabs = [
