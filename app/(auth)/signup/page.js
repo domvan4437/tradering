@@ -1,82 +1,111 @@
 'use client'
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-const C = { bg: '#0a0a0a', surface: '#0d0d0d', border2: '#222', gold: '#c8a84b', text: '#e8e0d0', muted: '#555', red: '#e05a4e', green: '#4caf82', font: "'Courier New', monospace" }
-
 export default function SignupPage() {
   const router = useRouter()
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return }
-    setLoading(true)
-    setError('')
-
-    const res = await fetch('/api/user/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    const data = await res.json()
-
-    if (!res.ok) { setError(data.error || 'Signup failed.'); setLoading(false); return }
-
-    await signIn('credentials', { email: form.email, password: form.password, redirect: false })
-    router.push('/app')
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
+    setLoading(true); setError('')
+    try {
+      const res = await fetch('/api/user/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email: email.toLowerCase(), password }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Signup failed. Please try again.'); setLoading(false); return }
+      const { signIn } = await import('next-auth/react')
+      await signIn('credentials', { email: email.toLowerCase(), password, callbackUrl: '/app' })
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setLoading(false)
+    }
   }
 
-  const inputStyle = { width: '100%', background: C.surface, border: `1px solid ${C.border2}`, padding: '12px 14px', fontSize: 14, color: C.text, outline: 'none', fontFamily: C.font, boxSizing: 'border-box' }
+  const features = [
+    { icon: 'ti-users', text: 'Connect with traders who share your edge' },
+    { icon: 'ti-trophy', text: 'Compete head-to-head in live challenges' },
+    { icon: 'ti-notebook', text: 'Journal trades and track your growth' },
+    { icon: 'ti-chart-bar', text: 'COT data, seasonal signals, and screeners' },
+    { icon: 'ti-robot', text: 'AI coaching that sharpens your edge' },
+  ]
+
+  const inp = { width:'100%', padding:'10px 14px', borderRadius:10, border:'1px solid #e2e0f0', background:'#fff', fontSize:14, color:'#1a1a2e', outline:'none', boxSizing:'border-box', fontFamily:'Inter,system-ui,sans-serif' }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 420 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 48 }}>
-          <div style={{ width: 10, height: 10, background: C.gold, transform: 'rotate(45deg)' }} />
-          <span style={{ fontSize: 11, letterSpacing: 4, color: C.gold }}>CIS</span>
-        </div>
-
-        <div style={{ background: '#080d09', border: '1px solid #1a3d2a', padding: '12px 16px', marginBottom: 32 }}>
-          <p style={{ color: C.green, fontSize: 12, margin: 0, letterSpacing: 1 }}>✓ 14-DAY FREE TRIAL · NO CREDIT CARD REQUIRED</p>
-        </div>
-
-        <h1 style={{ fontSize: 32, fontWeight: 400, color: C.text, margin: '0 0 8px' }}>Create account</h1>
-        <p style={{ color: C.muted, fontSize: 13, margin: '0 0 40px' }}>Get full access for 14 days, free.</p>
-
-        <form onSubmit={handleSubmit}>
-          {[
-            { key: 'name', label: 'NAME (optional)', type: 'text' },
-            { key: 'email', label: 'EMAIL', type: 'email' },
-            { key: 'password', label: 'PASSWORD (8+ characters)', type: 'password' },
-          ].map(({ key, label, type }) => (
-            <div key={key} style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 10, letterSpacing: 3, color: C.muted, marginBottom: 8 }}>{label}</label>
-              <input type={type} value={form[key]} onChange={e => set(key, e.target.value)}
-                required={key !== 'name'} style={inputStyle} />
+    <div style={{ minHeight:'100vh', display:'flex', fontFamily:'Inter,system-ui,sans-serif' }}>
+      {/* Left panel */}
+      <div style={{ width:'45%', background:'linear-gradient(160deg,#4B44C8 0%,#3730a3 100%)', padding:'48px 52px', display:'flex', flexDirection:'column', justifyContent:'space-between', flexShrink:0 }}>
+        <div>
+          <Link href="/" style={{ display:'flex', alignItems:'center', gap:10, marginBottom:48, textDecoration:'none' }}>
+            <div style={{ width:32, height:32, borderRadius:10, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <i className="ti ti-trending-up" style={{ fontSize:16, color:'#fff' }} aria-hidden="true" />
             </div>
-          ))}
+            <span style={{ fontSize:18, fontWeight:700, color:'#fff' }}>TradeZar</span>
+          </Link>
+          <div style={{ fontSize:32, fontWeight:700, color:'#fff', lineHeight:1.25, marginBottom:14 }}>Join TradeZar.<br/>Trade smarter,<br/>together.</div>
+          <div style={{ fontSize:14, color:'rgba(255,255,255,0.75)', marginBottom:32, lineHeight:1.6 }}>The all-in-one platform for serious traders.</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            {features.map((f, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ width:30, height:30, borderRadius:8, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <i className={`ti ${f.icon}`} style={{ fontSize:14, color:'#fff' }} aria-hidden="true" />
+                </div>
+                <span style={{ fontSize:13, color:'rgba(255,255,255,0.88)' }}>{f.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)' }}>© 2026 TradeZar · <Link href="/pricing" style={{ color:'rgba(255,255,255,0.5)', textDecoration:'none' }}>Pricing</Link> · <Link href="#" style={{ color:'rgba(255,255,255,0.5)', textDecoration:'none' }}>Privacy</Link></div>
+      </div>
 
-          {error && <p style={{ color: C.red, fontSize: 13, marginBottom: 16 }}>{error}</p>}
+      {/* Right panel */}
+      <div style={{ flex:1, background:'#fafaf9', display:'flex', alignItems:'center', justifyContent:'center', padding:'48px 52px' }}>
+        <div style={{ width:'100%', maxWidth:400 }}>
+          <div style={{ fontSize:28, fontWeight:700, color:'#1a1a2e', marginBottom:6 }}>Create your account</div>
+          <div style={{ fontSize:14, color:'#6b7280', marginBottom:28 }}>Free forever on the basic plan. No credit card required.</div>
 
-          <button type="submit" disabled={loading} style={{ width: '100%', background: loading ? '#222' : C.gold, color: loading ? C.muted : '#0a0a0a', border: 'none', padding: '14px', fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: C.font, marginBottom: 12 }}>
-            {loading ? 'Creating account...' : 'Start Free Trial →'}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div>
+              <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:5 }}>Full name</label>
+              <input style={inp} placeholder="Your name" value={name} onChange={e=>setName(e.target.value)} autoComplete="name" />
+            </div>
+            <div>
+              <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:5 }}>Email address</label>
+              <input style={inp} type="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email" />
+            </div>
+            <div>
+              <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:5 }}>Password (8+ characters)</label>
+              <input style={inp} type="password" placeholder="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="new-password" />
+            </div>
 
-        <p style={{ color: C.muted, fontSize: 12, textAlign: 'center', lineHeight: 1.6 }}>
-          After your trial, continue free (3 screenings/day) or upgrade to Pro ($29/mo) for unlimited access.
-        </p>
-        <p style={{ color: C.muted, fontSize: 13, marginTop: 24, textAlign: 'center' }}>
-          Already have an account?{' '}
-          <Link href="/login" style={{ color: C.gold, textDecoration: 'none' }}>Sign in</Link>
-        </p>
+            {error && <div style={{ fontSize:13, color:'#dc2626', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'8px 12px' }}>{error}</div>}
+
+            <button type="submit" disabled={loading} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background: loading ? '#9ca3af' : '#4B44C8', color:'#fff', fontSize:14, fontWeight:600, cursor: loading ? 'default' : 'pointer', fontFamily:'Inter,system-ui,sans-serif' }}>
+              {loading ? 'Creating account...' : 'Create free account →'}
+            </button>
+          </form>
+
+          <div style={{ textAlign:'center', marginTop:16, fontSize:13, color:'#6b7280' }}>
+            Already have an account? <Link href="/login" style={{ color:'#4B44C8', fontWeight:500, textDecoration:'none' }}>Sign in</Link>
+          </div>
+
+          <div style={{ height:1, background:'#e5e7eb', margin:'20px 0' }} />
+
+          <Link href="/pricing" style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:13, color:'#6b7280', textDecoration:'none' }}>
+            <i className="ti ti-tag" style={{ fontSize:14 }} aria-hidden="true" />
+            View pricing plans
+          </Link>
+        </div>
       </div>
     </div>
   )
