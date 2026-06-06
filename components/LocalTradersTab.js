@@ -3,13 +3,7 @@ import React, { useState } from 'react'
 
 const PURPLE = '#4B44C8'
 
-const MOCK_TRADERS = [
-  { id:1, n:'goldtrader', full:'Marcus T.', flag:'🇺🇸', city:'St. Louis, MO', state:'MO', dist:'3 mi', assets:['Gold','Silver','Crude Oil'], style:'Swing', bio:'COT-based commodity trader. 4 years experience. Open to local meetups and accountability groups.', wr:'68%', trades:247, color:'#4B44C8', verified:true, meetup:true, mapX:220, mapY:155 },
-  { id:2, n:'cotmaster', full:'James R.', flag:'🇺🇸', city:'Chesterfield, MO', state:'MO', dist:'14 mi', assets:['ES','NQ','Wheat'], style:'Position', bio:'Index futures and grain markets. Former floor trader. Looking to connect with serious traders in the St. Louis area.', wr:'72%', trades:183, color:'#d97706', verified:true, meetup:true, mapX:310, mapY:130 },
-  { id:3, n:'fxswing99', full:'Sarah K.', flag:'🇬🇧', city:'Clayton, MO', state:'MO', dist:'7 mi', assets:['EUR/USD','GBP/USD','AUD/USD'], style:'Swing', bio:'Forex swing trader focused on COT and higher timeframe levels. Happy to connect locally.', wr:'61%', trades:312, color:'#059669', verified:false, meetup:false, mapX:265, mapY:175 },
-  { id:4, n:'esscalper', full:'Derek M.', flag:'🇺🇸', city:'Belleville, IL', state:'IL', dist:'18 mi', assets:['ES','NQ'], style:'Scalp', bio:'Intraday ES/NQ scalper. Pre-market planning every day. Looking for accountability partner.', wr:'54%', trades:891, color:'#dc2626', verified:false, meetup:true, mapX:290, mapY:210 },
-  { id:5, n:'graintrader', full:'Tom W.', flag:'🇨🇦', city:'O\'Fallon, MO', state:'MO', dist:'22 mi', assets:['Wheat','Corn','Soybeans'], style:'Seasonal', bio:'Grain trader using 15-year seasonal tendencies. Would love to meet other commodity traders nearby.', wr:'66%', trades:128, color:'#7c3aed', verified:true, meetup:true, mapX:180, mapY:140 },
-]
+const MOCK_TRADERS = []
 
 function TraderCard({ trader, onClose }) {
   return (

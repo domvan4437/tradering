@@ -595,15 +595,7 @@ function CommSidebar({ tab, setTab, feedTab, setFeedTab }) {
 }
 
 
-const BROWSE_GROUPS_DATA = [
-  { name:'BTC Club', cat:'Crypto', country:'🌍 Global', members:48, access:'Open', bio:'Bitcoin analysis, on-chain data, and macro cycle research. Weekly COT positioning and bias reports shared every Sunday.', tags:['#Bitcoin','#COT','#OnChain'], color:'#4B44C8', founder:'satoshi99', coLeader:'blocktrader', winRate:'67%', avgRR:'2.1', featured:true },
-  { name:'COT Masters', cat:'Futures', country:'🇺🇸 US / Global', members:124, access:'Open', bio:'Deep-dive COT report analysis for commodities and energies. Seasonal setups, weekly signals, and live trade breakdowns.', tags:['#COT','#Futures','#Seasonal'], color:'#059669', founder:'cotmaster', coLeader:'graincowboy', winRate:'71%', avgRR:'2.8', featured:true },
-  { name:'FX Swing Club', cat:'Forex', country:'🇬🇧 UK / EU', members:87, access:'Invite', bio:'Higher timeframe forex analysis focused on key levels, COT extremes, and clean swing structures on major pairs.', tags:['#Forex','#Swing','#HTF'], color:'#d97706', founder:'fxswing99', coLeader:'eurusdking', winRate:'58%', avgRR:'1.9', featured:false },
-  { name:'Gold Traders', cat:'Trading', country:'🇺🇸 US', members:203, access:'Open', bio:'Gold futures and spot trading. COT-based swing trades, seasonal tendencies, and macro correlations with the dollar.', tags:['#Gold','#COT','#Swing'], color:'#dc2626', founder:'goldtrader', coLeader:'silverbull', winRate:'62%', avgRR:'2.3', featured:false },
-  { name:'ES/NQ Scalpers', cat:'Futures', country:'🇺🇸 US', members:66, access:'Invite', bio:'Index futures intraday setups. Pre-market planning, key levels, and scalp setups on ES and NQ futures.', tags:['#Futures','#Scalping','#ES'], color:'#7c3aed', founder:'indexking', coLeader:'nqscalp', winRate:'54%', avgRR:'1.4', featured:false },
-  { name:'Seasonal Traders', cat:'Trading', country:'🌍 Global', members:39, access:'Open', bio:'Agricultural and energy seasonal patterns. 15-year tendency studies and precise timing windows for entries.', tags:['#Seasonal','#Grains','#Energy'], color:'#0891b2', founder:'seasonalpro', coLeader:null, winRate:'69%', avgRR:'3.1', featured:false },
-  { name:'Crypto Alts Hub', cat:'Crypto', country:'🌏 Asia / Global', members:156, access:'Closed', bio:'Altcoin research, technical analysis, and on-chain metrics. Applications are reviewed every Monday.', tags:['#Crypto','#Alts','#OnChain'], color:'#ec4899', founder:'altmaster', coLeader:'defiking', winRate:'48%', avgRR:'2.6', featured:false },
-]
+const BROWSE_GROUPS_DATA = []
 
 const ACCESS_COLOR = { Open:'#059669', Invite:'#d97706', Closed:'#dc2626' }
 const ACCESS_BG = { Open:'rgba(5,150,105,0.1)', Invite:'rgba(217,119,6,0.1)', Closed:'rgba(220,38,38,0.08)' }

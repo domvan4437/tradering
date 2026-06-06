@@ -1,13 +1,7 @@
 'use client';
 import { useState } from 'react';
 
-const MOCK_CONTESTS = [
-  { id:1, name:'May Commodities Cup', host:'cotmaster', asset:'Commodities', duration:'1 Month', endsIn:'18d 4h', entryFee:'$50', prizePool:'$4,200', prizeStructure:'Top 3 Split', prizes:['$2,100','$1,260','$840'], maxGroups:15, groupsEntered:9, minTrades:10, public:true, started:true,
-    standings:[{name:'COT Masters',pnl:'+12.4%',trades:24,rank:1},{name:'Grain Alliance',pnl:'+8.1%',trades:18,rank:2},{name:'Metal Bulls',pnl:'+5.7%',trades:31,rank:3,isYou:true},{name:'Your Group',pnl:'+3.2%',trades:12,rank:4},{name:'Forex Kings',pnl:'+1.8%',trades:9,rank:5}] },
-  { id:2, name:'Forex Weekly Sprint', host:'fxswing99', asset:'Forex', duration:'1 Week', endsIn:'3d 2h', entryFee:'$25', prizePool:'$800', prizeStructure:'Winner Take All', prizes:['$800'], maxGroups:8, groupsEntered:4, minTrades:5, public:true, started:true,
-    standings:[{name:'FX Masters',pnl:'+9.2%',trades:14,rank:1},{name:'Euro Bulls',pnl:'+4.8%',trades:11,rank:2},{name:'Cable Gang',pnl:'+2.1%',trades:8,rank:3},{name:'DXY Shorts',pnl:'-1.2%',trades:6,rank:4}] },
-  { id:3, name:'COT Futures Open', host:'edgefinder', asset:'Futures', duration:'2 Weeks', endsIn:'Starts in 2d', entryFee:'$100', prizePool:'$2,000', prizeStructure:'Top 2 Split', prizes:['$1,400','$600'], maxGroups:10, groupsEntered:3, minTrades:8, public:true, started:false, standings:[] },
-];
+const MOCK_CONTESTS = [];
 
 const MY_CONTESTS = [
   { id:1, name:'May Commodities Cup', group:'Metal Bulls', rank:3, pnl:'+5.7%', trades:31, prize:'$840', daysLeft:18, pct:35, status:'active' },

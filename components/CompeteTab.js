@@ -282,6 +282,7 @@ function H2HTab({ subTab = 'browse', setSubTab }) {
       {subTab==='spectate' && (
         <div style={{ padding:'20px' }}>
           <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Live H2H matches</div>
+          {LIVE.length === 0 && <div style={{ textAlign:'center', padding:'60px' }}><div style={{ fontSize:36, marginBottom:12 }}>👁</div><div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:600, color:'var(--text)' }}>No live matches</div><div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', marginTop:8 }}>Active H2H matches will appear here</div></div>}
           {LIVE.map(m => (
             <div key={m.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px', marginBottom:10, cursor:'pointer', transition:'border-color 0.15s' }}
               onMouseEnter={e => e.currentTarget.style.borderColor='var(--accent)'}
