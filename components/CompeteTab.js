@@ -86,73 +86,22 @@ function H2HTab({ subTab = 'browse', setSubTab }) {
   const [INVITES, setInvites] = useState([]);
   const [OPEN, setOpen] = useState([]);
   const LIVE = [];
-
-  function getTimeLeft(end) {
-    const diff = new Date(end) - new Date();
-    if (diff <= 0) return 'Ended';
-    const d = Math.floor(diff/86400000), h = Math.floor((diff%86400000)/3600000);
-    return d > 0 ? d+'d '+h+'h' : h+'h';
-  }
-  function timeAgo(dt) {
-    const diff = Date.now() - new Date(dt);
-    const m2 = Math.floor(diff/60000), h2 = Math.floor(diff/3600000), d2 = Math.floor(diff/86400000);
-    return d2 > 0 ? d2+'d ago' : h2 > 0 ? h2+'h ago' : m2+'m ago';
-  }
-
+  function getTimeLeft(end) { const diff=new Date(end)-new Date(); if(diff<=0)return 'Ended'; const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000); return d>0?d+'d '+h+'h':h+'h'; }
+  function timeAgo(dt) { const diff=Date.now()-new Date(dt); const m2=Math.floor(diff/60000),h2=Math.floor(diff/3600000),d2=Math.floor(diff/86400000); return d2>0?d2+'d ago':h2>0?h2+'h ago':m2+'m ago'; }
   const loadData = useCallback(() => {
     setLoading(true);
     fetch('/api/challenges').then(r=>r.json()).then(d=>{
       if (!d.error) {
-        setMyMatches((d.myMatches||[]).map(m=>({
-          id:m.id, matchId:m.id,
-          opponent: m.opponentName||'Waiting...',
-          asset: (m.assetClasses||['Any']).join(', '),
-          duration:'—',
-          stake: m.buyIn>0?'$'+m.buyIn:'For fun',
-          myPnl: (parseFloat(m.myPnl||0)>=0?'+':'')+'$'+parseFloat(m.myPnl||0).toFixed(2),
-          oppPnl:'+$0.00',
-          timeLeft: m.endDate?getTimeLeft(m.endDate):'—',
-          status: parseFloat(m.myPnl||0)>=0?'winning':'losing',
-        })));
-        setInvites((d.invites||[]).map(i=>({
-          id:i.id, matchId:i.id,
-          from:i.challengerName||'Trader',
-          league:'silver',
-          asset:(i.assetClasses||['Any']).join(', '),
-          duration:'—',
-          stake:i.buyIn>0?'$'+i.buyIn:'For fun',
-          message:i.description||'Open challenge',
-          received:i.createdAt?timeAgo(i.createdAt):'',
-        })));
-        setOpen((d.open||[]).map(c=>({
-          id:c.id, tournamentId:c.id,
-          poster:c.creatorName||'Trader',
-          league:'silver',
-          asset:(c.assetClasses||['Any']).join(', '),
-          duration:'—',
-          stake:c.buyIn>0?'$'+c.buyIn:'For fun',
-          desc:c.description||'Open challenge',
-          posted:c.createdAt?timeAgo(c.createdAt):'',
-          accepts:0, max:1, winRate:0, wins:0,
-        })));
+        setMyMatches((d.myMatches||[]).map(m=>({ id:m.id, matchId:m.id, opponent:m.opponentName||'Waiting...', asset:(m.assetClasses||['Any']).join(', '), duration:'--', stake:m.buyIn>0?'USD '+m.buyIn:'For fun', myPnl:(parseFloat(m.myPnl||0)>=0?'+':'')+parseFloat(m.myPnl||0).toFixed(2), oppPnl:'+0.00', timeLeft:m.endDate?getTimeLeft(m.endDate):'--', status:parseFloat(m.myPnl||0)>=0?'winning':'losing' })));
+        setInvites((d.invites||[]).map(i=>({ id:i.id, matchId:i.id, from:i.challengerName||'Trader', league:'silver', asset:(i.assetClasses||['Any']).join(', '), duration:'--', stake:i.buyIn>0?'USD '+i.buyIn:'For fun', message:i.description||'Open challenge', received:i.createdAt?timeAgo(i.createdAt):'' })));
+        setOpen((d.open||[]).map(c=>({ id:c.id, tournamentId:c.id, poster:c.creatorName||'Trader', league:'silver', asset:(c.assetClasses||['Any']).join(', '), duration:'--', stake:c.buyIn>0?'USD '+c.buyIn:'For fun', desc:c.description||'Open challenge', posted:c.createdAt?timeAgo(c.createdAt):'', accepts:0, max:1, winRate:0, wins:0 })));
       }
     }).catch(()=>{}).finally(()=>setLoading(false));
   }, []);
-
   useEffect(()=>{ loadData(); }, [loadData]);
-
-  const acceptChallenge = async (matchId) => {
-    await fetch('/api/challenges',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({matchId,action:'accept'})});
-    loadData();
-  };
-  const declineChallenge = async (matchId) => {
-    await fetch('/api/challenges',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({matchId,action:'decline'})});
-    loadData();
-  };
-  const postChallenge = async (form) => {
-    await fetch('/api/challenges',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset:form.asset,duration:form.duration,stake:form.stake,stakeType:'real',description:form.desc})});
-    loadData();
-  };
+  const acceptChallenge = async (matchId) => { await fetch('/api/challenges',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({matchId,action:'accept'})}); loadData(); };
+  const declineChallenge = async (matchId) => { await fetch('/api/challenges',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({matchId,action:'decline'})}); loadData(); };
+  const postChallenge = async (form) => { await fetch('/api/challenges',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset:form.asset,duration:form.duration,stake:form.stake,stakeType:'real',description:form.desc})}); loadData(); };
 
   const LC = { iron:'#6b7280', bronze:'#b45309', silver:'#9ca3af', gold:'#d97706', platinum:'#0891b2', diamond:'#4f46e5', master:'#7c3aed' };
   const lc = (l) => LC[l]||'#6b7280';
@@ -282,7 +231,6 @@ function H2HTab({ subTab = 'browse', setSubTab }) {
       {subTab==='spectate' && (
         <div style={{ padding:'20px' }}>
           <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Live H2H matches</div>
-          {LIVE.length === 0 && <div style={{ textAlign:'center', padding:'60px' }}><div style={{ fontSize:36, marginBottom:12 }}>👁</div><div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:600, color:'var(--text)' }}>No live matches</div><div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', marginTop:8 }}>Active H2H matches will appear here</div></div>}
           {LIVE.map(m => (
             <div key={m.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px', marginBottom:10, cursor:'pointer', transition:'border-color 0.15s' }}
               onMouseEnter={e => e.currentTarget.style.borderColor='var(--accent)'}
@@ -338,20 +286,12 @@ function GroupBattleTab() {
   const teamA = {
     name: 'Team Alpha', color: 'var(--accent)', bg: 'var(--accent-bg)', border: 'var(--accent-border)',
     pct: '+12.4%', yours: true,
-    members: [
-      { letter: 'D', grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)', name: 'you', pct: '+8.4%', up: true },
-      { letter: 'S', grad: 'linear-gradient(135deg,#16a34a,#15803d)', name: 'seasonaltrader', pct: '+3.2%', up: true },
-      { letter: 'G', grad: 'linear-gradient(135deg,#d97706,#b45309)', name: 'graintrader99', pct: '+0.8%', up: true },
-    ],
+    members: [],
   };
   const teamB = {
     name: 'Team Bravo', color: '#ef4444', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.2)',
     pct: '+9.8%', yours: false,
-    members: [
-      { letter: 'C', grad: 'linear-gradient(135deg,#0891b2,#0e7490)', name: 'cotmaster', pct: '+6.1%', up: true },
-      { letter: 'E', grad: 'linear-gradient(135deg,#ef4444,#dc2626)', name: 'energydesk', pct: '+2.9%', up: true },
-      { letter: 'F', grad: 'linear-gradient(135deg,#7c3aed,#a855f7)', name: 'fxpro_trader', pct: '+0.8%', up: true },
-    ],
+    members: [],
   };
 
   const TeamPanel = ({ team }) => (
@@ -409,12 +349,7 @@ function GroupBattleTab() {
 // ── BRACKET ──────────────────────────────────────────────────
 
 function BracketTab() {
-  const left = [
-    { name: 'seasonaltrader', pct: '+14.2%', won: true, you: false },
-    { name: 'graintrader99', pct: '+6.1%', won: false, you: false },
-    { name: 'you', pct: '+8.4%', won: true, you: true },
-    { name: 'fxpro_trader', pct: '+4.8%', won: false, you: false },
-  ];
+  const left = [];
   const semis = [
     { name: 'seasonaltrader', pct: '+14.2%', you: false },
     { name: 'you', pct: '+8.4%', you: true },
@@ -496,13 +431,7 @@ function ContestTab() {
     { place: '3rd', amount: '$27', pct: '15%', color: '#cd7f32', bg: 'rgba(205,127,50,0.08)', border: 'rgba(205,127,50,0.2)' },
     { place: '4th', amount: '$9',  pct: '5%',  color: 'var(--accent)', bg: 'var(--accent-bg)', border: 'var(--accent-border)' },
   ];
-  const leaderboard = [
-    { rank: 1, name: 'seasonaltrader', verified: true, pct: '+14.2%', prize: '$90', prizeColor: '#d97706', highlight: false, you: false },
-    { rank: 2, name: 'cotmaster',      verified: true, pct: '+11.8%', prize: '$54', prizeColor: '#9ca3af', highlight: false, you: false },
-    { rank: 3, name: 'you',            verified: false,pct: '+8.4%',  prize: '$27', prizeColor: '#7c3aed', highlight: true,  you: true  },
-    { rank: 4, name: 'energydesk',     verified: false,pct: '+5.2%',  prize: '—',   prizeColor: 'var(--text-dim)', highlight: false, you: false },
-    { rank: 5, name: 'fxpro_trader',   verified: false,pct: '+3.1%',  prize: '—',   prizeColor: 'var(--text-dim)', highlight: false, you: false },
-  ];
+  const leaderboard = [];
   const rankColors = ['#d97706','#9ca3af','#cd7f32','var(--text-muted)','var(--text-muted)'];
 
   return (
@@ -568,23 +497,18 @@ function LeaderboardTab() {
   const MARKETS = ['All','Forex','Commodities','Futures','Stocks','Crypto'];
   const BRACKETS = ['All','Micro','Standard','Pro','Institutional'];
 
-  const DATA = {
-    '1W': [
-      { rank:1, name:'edgefinder',   pnl:'+31.2%', dollar:'+$8,400', trades:2, style:'Position', market:'Futures',     broker:'IBKR',   verified:true,  streak:'+', change:0,  winRate:'74%', maxDD:'-3.2%', h2h:'12-3' },
-      { rank:2, name:'seasonalace',  pnl:'+18.7%', dollar:'+$4,200', trades:4, style:'Swing',    market:'Commodities', broker:'TD',     verified:true,  streak:'+', change:1,  winRate:'76%', maxDD:'-4.1%', h2h:'38-12' },
-      { rank:3, name:'cotmaster2',   pnl:'+14.3%', dollar:'+$2,860', trades:6, style:'Swing',    market:'Any',         broker:'IBKR',   verified:true,  streak:'+', change:-1, winRate:'71%', maxDD:'-5.8%', h2h:'35-14' },
-      { rank:4, name:'alpharesearch',pnl:'+11.8%', dollar:'+$5,900', trades:3, style:'Macro',    market:'Forex',       broker:'Oanda',  verified:true,  streak:'+', change:2,  winRate:'68%', maxDD:'-6.2%', h2h:'22-10' },
-      { rank:5, name:'fxswing99',    pnl:'+9.4%',  dollar:'+$940',   trades:8, style:'Swing',    market:'Forex',       broker:'Forex',  verified:true,  streak:' ', change:-1, winRate:'67%', maxDD:'-7.4%', h2h:'16-8' },
-      { rank:6, name:'graintrader99',pnl:'+8.1%',  dollar:'+$1,215', trades:5, style:'Position', market:'Commodities', broker:'ADM',    verified:true,  streak:'+', change:0,  winRate:'59%', maxDD:'-8.1%', h2h:'18-12' },
-      { rank:7, name:'you',          pnl:'+6.3%',  dollar:'+$630',   trades:3, style:'Swing',    market:'Commodities', broker:'IBKR',   verified:true,  streak:'+', change:3,  winRate:'68%', maxDD:'-4.8%', h2h:'7-3' },
-      { rank:8, name:'pittrader44',  pnl:'+5.9%',  dollar:'+$2,950', trades:11,style:'Day',      market:'Futures',     broker:'NinjaT', verified:false, streak:' ', change:-2, winRate:'52%', maxDD:'-12.3%', h2h:'4-6' },
-      { rank:9, name:'rookie_fx',    pnl:'+4.2%',  dollar:'+$210',   trades:14,style:'Day',      market:'Forex',       broker:'Forex',  verified:false, streak:' ', change:1,  winRate:'43%', maxDD:'-15.1%', h2h:'2-4' },
-      { rank:10,name:'cotbasic',     pnl:'+3.8%',  dollar:'+$380',   trades:7, style:'Swing',    market:'Commodities', broker:'IBKR',   verified:true,  streak:' ', change:-1, winRate:'55%', maxDD:'-9.2%', h2h:'5-5' },
-    ],
-  };
+  const [rows, setRows] = useState([]);
+  const [lbLoading, setLbLoading] = useState(true);
+  useEffect(() => {
+    const pm = {'1W':'week','1M':'month','3M':'month','1Y':'year','All Time':'year'};
+    setLbLoading(true);
+    fetch('/api/leaderboard?period='+(pm[period]||'month')).then(r=>r.json()).then(d=>{
+      if (!d.error) setRows((d.leaderboard||[]).map((e,idx)=>({ rank:e.rank||idx+1, name:e.name, isYou:e.isMe||false, pnl:(e.pnl>=0?'+':'')+Number(e.pnl||0).toFixed(1)+'%', dollar:Number(Math.abs(e.pnl||0)).toFixed(0), trades:e.trades||0, style:'--', market:'Mixed', broker:'--', verified:false, streak:' ', change:0, winRate:(e.winRate||0)+'%', maxDD:'--', h2h:(e.h2wWins||0)+'-'+((e.h2hMatches||0)-(e.h2wWins||0)) })));
+    }).catch(()=>{}).finally(()=>setLbLoading(false));
+  }, [period, market]);
+;
 
-  const rows = DATA['1W'] || DATA['1W'];
-  const filtered = rows.filter(r => (market==='All'||r.market===market) && (bracket==='All'));
+  const filtered = (rows||[]).filter(r => market==='All'||!market);
 
   const medalColor = (rank) => rank===1?'#d97706':rank===2?'#6b7280':rank===3?'#b45309':'var(--text-muted)';
   const medalIcon  = (rank) => rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':null;
@@ -598,14 +522,14 @@ function LeaderboardTab() {
 
       {/* Your rank card */}
       <div style={{ background:'var(--accent-bg)', border:'1px solid var(--accent-border)', borderRadius:12, padding:'14px 18px', marginBottom:16, display:'flex', alignItems:'center', gap:16 }}>
-        <div style={{ fontFamily:'var(--font-mono)', fontSize:28, fontWeight:800, color:'var(--accent)' }}>#7</div>
+        <div style={{ fontFamily:'var(--font-mono)', fontSize:28, fontWeight:800, color:'var(--accent)' }}>#--</div>
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)' }}>Your ranking this week</div>
-          <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>+6.3% P&L · 3 trades · Commodities</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>Log trades to see your ranking</div>
         </div>
         <div style={{ textAlign:'right' }}>
           <div style={{ fontFamily:'var(--font-mono)', fontSize:20, fontWeight:800, color:'var(--green)' }}>+6.3%</div>
-          <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--green)' }}>+3 spots this week</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--green)' }}></div>
         </div>
       </div>
 
@@ -699,199 +623,38 @@ function LeaderboardTab() {
 
 function CompeteHome({ setTab }) {
   const PURPLE = '#4f46e5';
-  const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px' };
-  const btnW = { padding: '9px 14px', background: 'var(--surface)', color: PURPLE, border: '1px solid '+PURPLE, borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flex: 1 };
-  const btnO = { padding: '9px 14px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', flex: 1 };
-  const st = { fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 };
-  const prog = (pct) => <div style={{ height: 5, background: 'var(--surface2)', borderRadius: 3, overflow: 'hidden' }}><div style={{ height: '100%', width: pct + '%', background: PURPLE, borderRadius: 3 }} /></div>;
-  const badge = (bg, color, text) => <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, background: bg, color }}>{text}</span>;
+  const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px' };
 
-  const traders = [
-    { name: 'goldtrader', pct: '+18.4%', color: '#d97706' },
-    { name: 'cotmaster', pct: '+14.2%', color: '#0891b2' },
-    { name: 'swingking', pct: '+11.8%', color: '#16a34a' },
-    { name: 'alphatrader', pct: '+9.3%', color: '#dc2626' },
-    { name: 'forexking', pct: '+8.7%', color: '#16a34a' },
-    { name: 'mktmover', pct: '+7.2%', color: '#7c3aed' },
-    { name: 'you', pct: '+6.1%', color: PURPLE, isYou: true },
-    { name: 'grainbull', pct: '+5.8%', color: '#d97706' },
-    { name: 'crudeoil_k', pct: '+5.2%', color: '#0891b2' },
-    { name: 'silvertop', pct: '+4.9%', color: '#16a34a' },
-    { name: 'eurodave', pct: '+4.6%', color: PURPLE },
-    { name: 'futuresace', pct: '+4.1%', color: '#d97706' },
-    { name: 'cotsignal', pct: '+3.8%', color: '#dc2626' },
-    { name: 'grainlord', pct: '+3.5%', color: '#16a34a' },
-    { name: 'fxmaster', pct: '+3.2%', color: '#0891b2' },
-    { name: 'oiltrader', pct: '+2.9%', color: '#d97706' },
-    { name: 'wheatking', pct: '+2.6%', color: PURPLE },
-    { name: 'cornbull', pct: '+2.3%', color: '#16a34a' },
-    { name: 'metaledge', pct: '+2.0%', color: '#7c3aed' },
-    { name: 'cotpro', pct: '+1.8%', color: '#0891b2' },
-    { name: 'swingtrdr', pct: '+1.6%', color: '#d97706' },
-    { name: 'fxhedge', pct: '+1.4%', color: '#16a34a' },
-    { name: 'grainwave', pct: '+1.2%', color: '#dc2626' },
-    { name: 'silverback', pct: '+1.0%', color: PURPLE },
-    { name: 'goldpulse', pct: '+0.8%', color: '#d97706' },
-  ];
-
-  const upcoming = [
-    { name: 'Forex Weekly Challenge', starts: '2 days', pool: '$300' },
-    { name: 'Gold Sprint — 3 day', starts: '5 days', pool: '$150' },
-    { name: 'COT Monthly Open', starts: '12 days', pool: '$1,000' },
-  ];
-
-  const openChallenges = [
-    { name: 'seasonalace', wr: '76%', league: 'gold', color: '#d97706', asset: 'Commodities', dur: '1 Week', stake: '$50', desc: 'COT setups only' },
-    { name: 'fxswing99', wr: '67%', league: 'silver', color: '#0891b2', asset: 'Forex', dur: '3 Days', stake: '$25', desc: 'Major pairs only' },
-  ];
-
-  const activity = [
-    { type: 'Won', bg: '#EAF3DE', color: '#27500A', text: 'Beat swingking in 7-day gold challenge', time: '2d ago' },
-    { type: 'Joined', bg: '#FAEEDA', color: '#633806', text: 'Entered COT Weekly Contest', time: '3d ago' },
-    { type: 'Lost', bg: '#FCEBEB', color: '#791F1F', text: 'Challenged by cotmaster — forex duel', time: '5d ago' },
+  const modes = [
+    { key:'h2h', icon:'⚔️', title:'Head to Head', desc:'Challenge any trader directly. Best verified P&L wins. Pure skill.', action:'Browse challenges' },
+    { key:'groups', icon:'🏆', title:'Group Contests', desc:'Compete with multiple traders in a contest. Best P&L wins the prize pool.', action:'Browse contests' },
+    { key:'leaderboard', icon:'📊', title:'Leaderboard', desc:'See where you rank among all traders by verified P&L this month.', action:'View leaderboard' },
+    { key:'history', icon:'📋', title:'Match History', desc:'Review your completed H2H matches, stats, and performance over time.', action:'View history' },
   ];
 
   return (
-    <div style={{ display: 'flex', gap: 14 }}>
-      {/* Left main */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-        {/* Stats banner */}
-        <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 0 }}>
-          {[['Global rank', '#7', true], ['Win rate', '68%', false], ['Total winnings', '$840', false], ['Active matches', '2', false]].map(([lbl, val, first], i) => (
-            <div key={lbl} style={{ flex: 1, padding: '0 20px', paddingLeft: first ? 0 : 20, borderRight: i < 3 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{lbl}</div>
-              <div style={{ fontSize: 26, fontWeight: 600, color: first ? PURPLE : 'var(--text)', lineHeight: 1 }}>{val}</div>
-            </div>
-          ))}
-          <button onClick={() => {}} style={{ marginLeft: 20, padding: '8px 14px', background: PURPLE, color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 }}>View full profile →</button>
-        </div>
-
-        {/* H2H + Group Contest */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font)' }}>Head-to-head</div>
-              {badge('#EEEDFE', '#3C3489', 'Winning')}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: '#fff', margin: '0 auto 6px' }}>D</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font)' }}>You</div>
-                <div style={{ fontSize: 20, fontWeight: 600, color: '#16a34a', fontFamily: 'var(--font)' }}>+4.2%</div>
-              </div>
-              <div style={{ textAlign: 'center', width: 50 }}>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, fontFamily: 'var(--font)' }}>VS</div>
-                {prog(60)}
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 5, fontFamily: 'var(--font)' }}>3d left</div>
-              </div>
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: '#fff', margin: '0 auto 6px' }}>T</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font)' }}>trader99</div>
-                <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-muted)', fontFamily: 'var(--font)' }}>+2.8%</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button style={btnW} onClick={() => setTab('h2h')}>View match</button>
-              <button style={btnO}>New challenge</button>
-            </div>
-          </div>
-
-          <div style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font)' }}>Group contest</div>
-              {badge('#EAF3DE', '#27500A', 'Joined · #3')}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, fontFamily: 'var(--font)' }}>Your rank</div>
-                <div style={{ fontSize: 34, fontWeight: 600, color: PURPLE, lineHeight: 1, fontFamily: 'var(--font)' }}>#3</div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--font)' }}>of 12 traders</div>
-              </div>
-              <div style={{ flex: 2 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 3, fontFamily: 'var(--font)' }}>COT Swing Challenge</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10, fontFamily: 'var(--font)' }}>5 days remaining · $500 prize pool</div>
-                {prog(40)}
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 5, fontFamily: 'var(--font)' }}>40% complete</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button style={btnW} onClick={() => setTab('groups')}>View rankings</button>
-              <button style={btnO} onClick={() => setTab('groups')}>Browse contests</button>
-            </div>
-          </div>
-        </div>
-
-        {/* Upcoming Contests + Find a Challenge */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div style={card}>
-            <div style={st}>Upcoming contests</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {upcoming.map((u, i) => (
-                <div key={i} style={{ padding: 10, background: 'var(--surface2)', borderRadius: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2, fontFamily: 'var(--font)' }}>{u.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8, fontFamily: 'var(--font)' }}>Starts in {u.starts} · {u.pool} pool</div>
-                  <button style={{ ...btnW, flex: 'none', width: '100%', fontSize: 12, padding: '7px 12px' }} onClick={() => setTab('groups')}>Join</button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
-            <div style={st}>Find a challenge</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-              {openChallenges.map((c, i) => (
-                <div key={i} style={{ padding: 10, background: 'var(--surface2)', borderRadius: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{c.name[0].toUpperCase()}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font)' }}>{c.name}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font)' }}>{c.wr} win · {c.league}</div>
-                    </div>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: PURPLE, fontFamily: 'var(--font)' }}>{c.stake}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8, fontFamily: 'var(--font)' }}>{c.asset} · {c.dur} · {c.desc}</div>
-                  <button style={{ ...btnW, flex: 'none', width: '100%', fontSize: 12, padding: '7px 12px' }} onClick={() => setTab('h2h')}>Accept →</button>
-                </div>
-              ))}
-              <button style={{ ...btnO, width: '100%', marginTop: 'auto', fontSize: 12 }} onClick={() => setTab('h2h')}>Browse all challenges →</button>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent activity */}
-        <div style={card}>
-          <div style={st}>Recent activity</div>
-          {activity.map((a, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < activity.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 13 }}>
-              <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, background: a.bg, color: a.color, flexShrink: 0, fontFamily: 'var(--font)' }}>{a.type}</span>
-              <span style={{ color: 'var(--text)', flex: 1, fontFamily: 'var(--font)' }}>{a.text}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, fontFamily: 'var(--font)' }}>{a.time}</span>
-            </div>
-          ))}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ ...card, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff' }}>
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, fontFamily: 'var(--font)' }}>Welcome to Compete</div>
+        <div style={{ fontSize: 13, opacity: 0.85, fontFamily: 'var(--font)', lineHeight: 1.5 }}>
+          Challenge other traders head-to-head, join group contests, and climb the leaderboard. All P&L is tracked through your connected broker or journal.
         </div>
       </div>
-
-      {/* Right sidebar - top 25 leaderboard */}
-      <div style={{ width: 220, flexShrink: 0 }}>
-        <div style={{ ...card, padding: 14 }}>
-          <div style={st}>This week's top 25</div>
-          {traders.map((t, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: t.isYou ? '6px' : '6px 0', borderBottom: i < traders.length - 1 ? '0.5px solid var(--border)' : 'none', background: t.isYou ? '#EEEDFE' : 'transparent', borderRadius: t.isYou ? 6 : 0, margin: t.isYou ? '2px -6px' : 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: PURPLE, width: 18, flexShrink: 0, fontFamily: 'var(--font)' }}>{i + 1}</span>
-              <div style={{ width: 22, height: 22, borderRadius: '50%', background: t.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{t.name[0].toUpperCase()}</div>
-              <span style={{ fontSize: 11, color: t.isYou ? '#3C3489' : 'var(--text)', fontWeight: t.isYou ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font)' }}>{t.name}</span>
-              <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, flexShrink: 0, fontFamily: 'var(--font)' }}>{t.pct}</span>
-            </div>
-          ))}
-          <button style={{ ...btnO, width: '100%', marginTop: 10, fontSize: 12 }} onClick={() => setTab('leaderboard')}>Full leaderboard →</button>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        {modes.map(m => (
+          <div key={m.key} onClick={() => setTab(m.key)} style={{ ...card, cursor: 'pointer', transition: 'border-color 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = PURPLE}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>{m.icon}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font)', marginBottom: 6 }}>{m.title}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font)', lineHeight: 1.5, marginBottom: 12 }}>{m.desc}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: PURPLE, fontFamily: 'var(--font)' }}>{m.action} →</div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
-
-
 
 function CompeteSidebar({ tab, setTab, h2hSubTab, setH2hSubTab, groupSubTab, setGroupSubTab, historySubTab, setHistorySubTab }) {
   const [open, setOpen] = useState(false)
@@ -947,7 +710,7 @@ function CompeteSidebar({ tab, setTab, h2hSubTab, setH2hSubTab, groupSubTab, set
           )}
           {t.key === 'history' && isActive && isOpen && (
             <div style={{ width:'100%', paddingLeft:8, display:'flex', flexDirection:'column', gap:1, marginBottom:4 }}>
-              {['h2h','group'].map(ft => (
+              {['overview','my trades','opponent','ai review'].map(ft => (
                 <button key={ft} onClick={() => setHistorySubTab(ft)}
                   style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 8px', borderRadius:5, background:historySubTab===ft?'rgba(75,68,200,0.08)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:'100%', textAlign:'left' }}>
                   <i className="ti ti-chevron-right" style={{ fontSize:11, color:historySubTab===ft?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
@@ -969,7 +732,7 @@ export default function CompeteTab({ currentUserId, externalTab }) {
   const [tab, setTab] = useState('compete');
   const [h2hSubTab, setH2hSubTab] = useState('browse');
   const [groupSubTab, setGroupSubTab] = useState('my contests');
-  const [historySubTab, setHistorySubTab] = useState('h2h');
+  const [historySubTab, setHistorySubTab] = useState('overview');
   useEffect(() => { if (externalTab && TAB_MAP[externalTab]) setTab(TAB_MAP[externalTab]); }, [externalTab]);
 
   const navTabs = [

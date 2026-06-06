@@ -1,33 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 
-const MOCK_LIVE_MATCHES = [
-  {
-    id:1, type:'H2H', status:'live', asset:'Gold (GC=F)', startedAgo:'2h 14m ago',
-    trader1:{ name:'seasonalace', avatar:'S', grad:'linear-gradient(135deg,#d97706,#b45309)', pnl:'+8.4%', pnlDollar:'+$420', trades:3, league:'gold' },
-    trader2:{ name:'fxswing99',   avatar:'F', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)', pnl:'-2.1%', pnlDollar:'-$105', trades:2, league:'silver' },
-    stake:'$50', spectators:14,
-    feed:[
-      { time:'14:22', actor:'seasonalace', action:'Opened Long Gold', detail:'Entry $3,241 · 2 contracts', positive:true },
-      { time:'13:45', actor:'fxswing99',   action:'Closed Short Gold', detail:'Exit $3,198 · -$105 loss', positive:false },
-      { time:'12:01', actor:'seasonalace', action:'Closed Long Silver', detail:'Exit $32.14 · +$180 profit', positive:true },
-      { time:'11:30', actor:'fxswing99',   action:'Opened Short Gold', detail:'Entry $3,201 · 1 contract', positive:false },
-      { time:'10:15', actor:'seasonalace', action:'Opened Long Silver', detail:'Entry $31.90 · 3 contracts', positive:true },
-    ],
-    reactions:{ fire:42, rocket:18, eyes:31, thumbsdown:7 },
-  },
-  {
-    id:2, type:'Group Battle', status:'live', asset:'Forex Majors', startedAgo:'1d 6h ago',
-    trader1:{ name:'COT Masters', avatar:'C', grad:'linear-gradient(135deg,#16a34a,#15803d)', pnl:'+12.4%', pnlDollar:'+$2,480', trades:24, league:'gold', isGroup:true },
-    trader2:{ name:'Grain Alliance', avatar:'G', grad:'linear-gradient(135deg,#0891b2,#0e7490)', pnl:'+8.1%', pnlDollar:'+$1,620', trades:18, league:'silver', isGroup:true },
-    stake:'$200/team', spectators:67,
-    feed:[
-      { time:'15:01', actor:'COT Masters', action:'Member closed EUR/USD Long', detail:'+2.1% · +$420', positive:true },
-      { time:'14:44', actor:'Grain Alliance', action:'Member opened USD/JPY Short', detail:'Entry 155.20', positive:true },
-    ],
-    reactions:{ fire:89, rocket:45, eyes:112, thumbsdown:3 },
-  },
-];
+const MOCK_LIVE_MATCHES = []
 
 const REACTION_EMOJIS = [
   { key:'fire',      emoji:'🔥', label:'Fire' },

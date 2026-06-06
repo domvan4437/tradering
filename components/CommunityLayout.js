@@ -768,7 +768,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
 function RightSidebar() {
   const [groups, setGroups] = useState([]);
   useEffect(() => { setGroups(loadGroups().slice(0,3)); }, []);
-  const TRENDING = [{tag:'GoldCOT',posts:2847},{tag:'FOMC',posts:1204},{tag:'EURUSD',posts:892},{tag:'CrudeOil',posts:744}];
+  const TRENDING = [];
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
       {groups.length > 0 && (
@@ -802,7 +802,7 @@ function RightSidebar() {
       </div>
       <div>
         <div style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--text-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:10 }}>Who to follow</div>
-        {[{user:'seasonaltrader',wr:'67%',style:'Swing',color:'#4f46e5'},{user:'alpharesearch',wr:'71%',style:'Macro',color:'#0891b2'},{user:'graintrader99',wr:'59%',style:'Position',color:'#d97706'}].map(u => (
+        {false && [].map(u => (
           <div key={u.user} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
             <div style={{ width:30, height:30, borderRadius:'50%', background:u.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0 }}>{u.user[0].toUpperCase()}</div>
             <div style={{ flex:1, minWidth:0 }}>

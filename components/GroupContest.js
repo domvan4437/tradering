@@ -1,12 +1,9 @@
 'use client';
 import { useState } from 'react';
 
-const MOCK_CONTESTS = [];
+const MOCK_CONTESTS = []
 
-const MY_CONTESTS = [
-  { id:1, name:'May Commodities Cup', group:'Metal Bulls', rank:3, pnl:'+5.7%', trades:31, prize:'$840', daysLeft:18, pct:35, status:'active' },
-  { id:2, name:'COT Futures Sprint', group:'Metal Bulls', rank:2, pnl:'+8.3%', trades:22, prize:'+$630 won', daysLeft:0, pct:100, status:'completed' },
-];
+const MY_CONTESTS = [];
 
 const ASSET_CLASSES = ['Any','Forex','Commodities','Futures','Stocks','Crypto'];
 const DURATIONS = ['1 Day','3 Days','1 Week','2 Weeks','1 Month','3 Months'];

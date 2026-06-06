@@ -136,14 +136,7 @@ const NEWS = [
 ];
 
 // ── Community data
-const COMMUNITY = [
-  { type:'idea', user:'commodityking', avatar:'C', style:'Swing', asset:'Gold', dir:'Long', body:'COT commercials hit 85th percentile this week. Seasonal tailwind starting in April. Price coiling above key support. Watching for the weekly close above 2,340 to confirm entry.', likes:142, comments:31, time:'2h ago', verified:true },
-  { type:'screener', user:'cotmaster', avatar:'C', style:'Position', name:'COT Extreme Setup', desc:'Flags assets when commercial positioning hits 80th+ percentile AND seasonal score exceeds 70. Currently flagging 3 assets.', uses:847, forks:124, time:'5h ago', verified:true },
-  { type:'idea', user:'fxpro_trader', avatar:'F', style:'Day Trader', asset:'EUR/USD', dir:'Short', body:'DXY bouncing off major support while EUR/USD rejected from 1.0850 resistance. COT shows large specs reducing longs for 3rd consecutive week. Targeting 1.0750.', likes:89, comments:18, time:'3h ago', verified:false },
-  { type:'strategy', user:'seasonaltrader', avatar:'S', style:'Swing', name:'Spring Grain Seasonal', desc:'Captures the April-June seasonal window in corn and soybeans. Uses COT confirmation + price action entry. 67% win rate over 8 years.', likes:203, forks:67, time:'1d ago', verified:true },
-  { type:'idea', user:'energydesk', avatar:'E', style:'Position', asset:'Crude Oil', dir:'Short', body:'Crude rejected the 200-day MA twice this month. EIA showed a large inventory build. COT commercials net short. Monthly seasonal is bearish through May.', likes:76, comments:22, time:'4h ago', verified:false },
-  { type:'screener', user:'alpharesearch', avatar:'A', style:'Macro', name:'Multi-Timeframe COT Divergence', desc:'Identifies markets where the 13-week and 26-week COT trends diverge — often precedes large directional moves.', uses:412, forks:89, time:'2d ago', verified:true },
-];
+const COMMUNITY = []
 
 const TRENDING = [
   { name:'COT Extreme Setup', uses:847, style:'Position', verified:true },

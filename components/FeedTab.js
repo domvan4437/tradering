@@ -21,19 +21,9 @@ function loadPosts() {
 
 const TABS = ['Discover', 'Following', 'Ideas', 'Screeners', 'Strategies', 'COT Signals'];
 
-const TRENDING = [
-  { tag: 'GoldCOT',    cat: 'Commodities', posts: 2847 },
-  { tag: 'FOMC',       cat: 'Futures',     posts: 1204 },
-  { tag: 'EURUSD',     cat: 'Forex',       posts: 892  },
-  { tag: 'CrudeOil',   cat: 'Energy',      posts: 744  },
-  { tag: 'NatGas',     cat: 'Energy',      posts: 381  },
-];
+const TRENDING = [];
 
-const WHO_TO_FOLLOW = [
-  { user: 'seasonaltrader', verified: true,  grad: 'linear-gradient(135deg,#16a34a,#15803d)', avatar: 'S', style: 'Swing',    winRate: '67%' },
-  { user: 'alpharesearch',  verified: true,  grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)', avatar: 'A', style: 'Macro',    winRate: '71%' },
-  { user: 'graintrader99',  verified: false, grad: 'linear-gradient(135deg,#d97706,#b45309)', avatar: 'G', style: 'Position', winRate: '59%' },
-];
+const WHO_TO_FOLLOW = []
 
 // ── Avatar ────────────────────────────────────────────────────
 function Avatar({ letter, grad, size = 40 }) {

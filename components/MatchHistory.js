@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 
-const MOCK_MATCHES = [];
+const MOCK_MATCHES = []
 
 const GRADE_COLORS = { 'A+':'#16a34a','A':'#16a34a','A-':'#16a34a','B+':'#0891b2','B':'#0891b2','B-':'#0891b2','C+':'#d97706','C':'#d97706','C-':'#d97706','D+':'#dc2626','D':'#dc2626','D-':'#dc2626' };
 
@@ -196,10 +196,10 @@ export default function MatchHistory({ onExportNote, subTab, setSubTab }) {
           {/* Summary stats */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:16 }}>
             {[
-              { label:'Total Matches', value:'18', color:'var(--text)' },
-              { label:'Wins', value:'13', color:'var(--green)' },
-              { label:'Losses', value:'5', color:'var(--red)' },
-              { label:'Avg Grade', value:'B+', color:'#0891b2' },
+              { label:'Total Matches', value: matches.length.toString(), color:'var(--text)' },
+              { label:'Wins', value: matches.filter(m=>m.result==='win').length.toString(), color:'var(--green)' },
+              { label:'Losses', value: matches.filter(m=>m.result==='loss').length.toString(), color:'var(--red)' },
+              { label:'Avg Grade', value:'--', color:'#0891b2' },
             ].map(s => (
               <div key={s.label} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'12px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--font-mono)', fontSize:20, fontWeight:800, color:s.color, marginBottom:2 }}>{s.value}</div>
@@ -248,11 +248,7 @@ export default function MatchHistory({ onExportNote, subTab, setSubTab }) {
             <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>Group Contest History</div>
             <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Your past group contest results</div>
           </div>
-          {[
-            { name:'May Commodities Cup', result:'win', rank:2, prize:'+$1,260', pnl:'+8.1%', group:'Metal Bulls', traders:9, settled:'2 weeks ago' },
-            { name:'COT Futures Sprint', result:'win', rank:1, prize:'+$800', pnl:'+12.3%', group:'Metal Bulls', traders:6, settled:'1 month ago' },
-            { name:'Forex Weekly Open', result:'loss', rank:4, prize:'—', pnl:'+2.1%', group:'Metal Bulls', traders:8, settled:'2 months ago' },
-          ].map((c,i) => (
+          {[].map((c,i) => (
             <div key={i} style={{ background:'var(--surface)', border:'1px solid '+(c.result==='win'?'var(--green-border)':'var(--border)'), borderRadius:12, padding:'16px', marginBottom:12 }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
                 <div>

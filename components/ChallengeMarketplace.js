@@ -6,13 +6,7 @@ const ASSET_CLASSES = ['Any','Forex','Commodities','Futures','Stocks','Crypto'];
 const DURATIONS = ['1 Day','3 Days','1 Week','2 Weeks','1 Month'];
 const STAKES = ['$5','$10','$25','$50','$100','$250','$500','$1,000'];
 
-const MOCK_CHALLENGES = [
-  { id:1, poster:'seasonalace', league:'gold', bracket:'standard', asset:'Commodities', duration:'1 Week', stake:'$50', description:'COT-based setups only. Grains and metals. Best P&L after 7 days wins.', posted:'2h ago', accepts:2, maxAccepts:1, winRate:76, wins:38 },
-  { id:2, poster:'fxswing99', league:'silver', bracket:'standard', asset:'Forex', duration:'3 Days', stake:'$25', description:'Major pairs only. No scalping — minimum 4hr hold time per trade.', posted:'4h ago', accepts:0, maxAccepts:1, winRate:67, wins:16 },
-  { id:3, poster:'cotmaster2', league:'gold', bracket:'pro', asset:'Any', duration:'2 Weeks', stake:'$100', description:'Open asset class. Verified broker account required. Top P&L% wins.', posted:'6h ago', accepts:1, maxAccepts:3, winRate:71, wins:35 },
-  { id:4, poster:'edgefinder', league:'platinum', bracket:'pro', asset:'Futures', duration:'1 Month', stake:'$250', description:'Equity index futures only. ES, NQ, YM. Monthly P&L competition.', posted:'1d ago', accepts:0, maxAccepts:1, winRate:74, wins:58 },
-  { id:5, poster:'newtrader22', league:'iron', bracket:'micro', asset:'Forex', duration:'1 Day', stake:'$5', description:'Quick 1-day EUR/USD challenge. First trade within 2hrs of market open.', posted:'30m ago', accepts:0, maxAccepts:1, winRate:40, wins:2 },
-];
+const MOCK_CHALLENGES = []
 
 function ChallengeCard({ c, onAccept, onSpectate }) {
   const league = LEAGUES.find(l => l.id === c.league);
