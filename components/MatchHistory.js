@@ -1,7 +1,40 @@
 'use client';
 import { useState } from 'react';
 
-const MOCK_MATCHES = []
+const MOCK_MATCHES = [
+  {
+    id:1, type:'H2H', result:'win', opponent:'fxswing99', opponentLeague:'silver',
+    asset:'Gold (GC=F)', duration:'1 Week', settled:'2 days ago', stake:'$50', pnl:'+$50',
+    myStats:{ pnl:'+8.4%', pnlDollar:'+$420', trades:3, winTrades:2, lossTrades:1, bestTrade:'+$280', worstTrade:'-$60', avgHold:'18h 24m', avgEntry:'Good', avgStop:'Excellent' },
+    oppStats:{ pnl:'-2.1%', pnlDollar:'-$105', trades:2, winTrades:0, lossTrades:2, bestTrade:'-$40', worstTrade:'-$65', avgHold:'6h 12m', avgEntry:'Poor', avgStop:'Fair' },
+    grades:{ entryTiming:'A', stopPlacement:'A+', positionSizing:'B+', riskManagement:'A', tradeFrequency:'B', overall:'A' },
+    trades:[
+      { id:1, asset:'Silver (SI=F)', dir:'Long', entry:'$31.90', exit:'$32.14', entryTime:'Mon 10:15', exitTime:'Tue 04:32', hold:'18h 17m', pnl:'+$180', pct:'+0.75%', grade:'A', note:'Perfect COT entry — commercials at 78th percentile, strong seasonal. Held through overnight session.', entryScore:92, stopScore:88 },
+      { id:2, asset:'Gold (GC=F)', dir:'Long', entry:'$3,241', exit:'$3,287', entryTime:'Wed 09:00', exitTime:'Thu 14:20', hold:'29h 20m', pnl:'+$300', pct:'+1.42%', grade:'A+', note:'Breakout above key resistance with COT confirming. Scaled out at target. Best trade of the week.', entryScore:95, stopScore:94 },
+      { id:3, asset:'Gold (GC=F)', dir:'Long', entry:'$3,199', exit:'$3,187', entryTime:'Fri 08:45', exitTime:'Fri 14:00', hold:'5h 15m', pnl:'-$60', pct:'-0.37%', grade:'B-', note:'Chased the move — entered late after momentum. Stop was correctly placed but entry was sloppy.', entryScore:61, stopScore:82 },
+    ],
+    aiSummary: 'Strong performance this week. Your COT-based entries in silver and gold showed excellent timing and patience. The third trade reveals a tendency to chase momentum after missing a setup — your entry score dropped 30 points vs your first two trades. Consider waiting for a pullback before entering when price has already moved significantly. Stop placement was consistently excellent, keeping losses small when wrong.',
+    oppTrades:[
+      { id:1, asset:'Gold (GC=F)', dir:'Short', entry:'$3,201', exit:'$3,241', hold:'4h 30m', pnl:'-$65', pct:'-1.25%', grade:'D', note:'Faded a strong uptrend — low probability setup' },
+      { id:2, asset:'Gold (GC=F)', dir:'Short', entry:'$3,198', exit:'$3,238', hold:'7h 54m', pnl:'-$40', pct:'-0.37%', grade:'D+', note:'Second attempt to short into strength' },
+    ],
+  },
+  {
+    id:2, type:'H2H', result:'loss', opponent:'seasonalace', opponentLeague:'gold',
+    asset:'Forex (EUR/USD)', duration:'3 Days', settled:'1 week ago', stake:'$25', pnl:'-$25',
+    myStats:{ pnl:'-3.2%', pnlDollar:'-$160', trades:4, winTrades:1, lossTrades:3, bestTrade:'+$80', worstTrade:'-$120', avgHold:'8h 10m', avgEntry:'Fair', avgStop:'Poor' },
+    oppStats:{ pnl:'+5.8%', pnlDollar:'+$290', trades:2, winTrades:2, lossTrades:0, bestTrade:'+$190', worstTrade:'+$100', avgHold:'22h 30m', avgEntry:'Excellent', avgStop:'Good' },
+    grades:{ entryTiming:'C+', stopPlacement:'C', positionSizing:'B', riskManagement:'C', tradeFrequency:'D', overall:'C' },
+    trades:[
+      { id:1, asset:'EUR/USD', dir:'Long', entry:'1.0842', exit:'1.0901', hold:'22h', pnl:'+$80', pct:'+0.54%', grade:'B+', note:'', entryScore:78, stopScore:72 },
+      { id:2, asset:'EUR/USD', dir:'Long', entry:'1.0901', exit:'1.0868', hold:'3h', pnl:'-$120', pct:'-0.30%', grade:'D', note:'Overtraded — averaged up into a losing position', entryScore:42, stopScore:38 },
+      { id:3, asset:'EUR/USD', dir:'Short', entry:'1.0865', exit:'1.0890', hold:'5h', pnl:'-$75', pct:'-0.23%', grade:'D+', note:'Revenge traded after loss', entryScore:35, stopScore:45 },
+      { id:4, asset:'GBP/USD', dir:'Long', entry:'1.2701', exit:'1.2680', hold:'2h', pnl:'-$45', pct:'-0.16%', grade:'C', note:'Premature exit on normal pullback', entryScore:55, stopScore:48 },
+    ],
+    aiSummary: 'Difficult session — you overtraded significantly. After a solid first trade, three consecutive impulsive entries led to losses. The data shows your entry score dropped from 78 on trade 1 to 35 on trade 3, a classic sign of emotional trading. Your opponent made 2 clean, patient trades while you made 4 rushed ones. Key lesson: quality over quantity. Your best trades come when you wait for full confluence.',
+    oppTrades:[],
+  },
+];
 
 const GRADE_COLORS = { 'A+':'#16a34a','A':'#16a34a','A-':'#16a34a','B+':'#0891b2','B':'#0891b2','B-':'#0891b2','C+':'#d97706','C':'#d97706','C-':'#d97706','D+':'#dc2626','D':'#dc2626','D-':'#dc2626' };
 
@@ -165,11 +198,10 @@ function MatchDetail({ match, onBack, onExportNote }) {
   );
 }
 
-export default function MatchHistory({ onExportNote, subTab, setSubTab }) {
+export default function MatchHistory({ onExportNote }) {
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('all');
-  const historyTab = subTab || 'h2h';
-  const setHistoryTab = (t) => { if (setSubTab) setSubTab(t); };
+  const [historyTab, setHistoryTab] = useState('h2h');
 
   const matches = MOCK_MATCHES.filter(m => filter==='all' || m.result===filter);
 
@@ -196,10 +228,10 @@ export default function MatchHistory({ onExportNote, subTab, setSubTab }) {
           {/* Summary stats */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:16 }}>
             {[
-              { label:'Total Matches', value: matches.length.toString(), color:'var(--text)' },
-              { label:'Wins', value: matches.filter(m=>m.result==='win').length.toString(), color:'var(--green)' },
-              { label:'Losses', value: matches.filter(m=>m.result==='loss').length.toString(), color:'var(--red)' },
-              { label:'Avg Grade', value:'--', color:'#0891b2' },
+              { label:'Total Matches', value:'18', color:'var(--text)' },
+              { label:'Wins', value:'13', color:'var(--green)' },
+              { label:'Losses', value:'5', color:'var(--red)' },
+              { label:'Avg Grade', value:'B+', color:'#0891b2' },
             ].map(s => (
               <div key={s.label} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'12px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--font-mono)', fontSize:20, fontWeight:800, color:s.color, marginBottom:2 }}>{s.value}</div>
@@ -248,7 +280,11 @@ export default function MatchHistory({ onExportNote, subTab, setSubTab }) {
             <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:4 }}>Group Contest History</div>
             <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Your past group contest results</div>
           </div>
-          {[].map((c,i) => (
+          {[
+            { name:'May Commodities Cup', result:'win', rank:2, prize:'+$1,260', pnl:'+8.1%', group:'Metal Bulls', traders:9, settled:'2 weeks ago' },
+            { name:'COT Futures Sprint', result:'win', rank:1, prize:'+$800', pnl:'+12.3%', group:'Metal Bulls', traders:6, settled:'1 month ago' },
+            { name:'Forex Weekly Open', result:'loss', rank:4, prize:'—', pnl:'+2.1%', group:'Metal Bulls', traders:8, settled:'2 months ago' },
+          ].map((c,i) => (
             <div key={i} style={{ background:'var(--surface)', border:'1px solid '+(c.result==='win'?'var(--green-border)':'var(--border)'), borderRadius:12, padding:'16px', marginBottom:12 }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
                 <div>
