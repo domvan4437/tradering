@@ -18,7 +18,7 @@ import { NotesTab, WeeklyReviewTab, PnLCalendar, ThemeSettings } from './RichToo
 import ChartWorkspace from './ChartWorkspace'
 import HomePage from './HomePage'
 import NavBar from './NavBar'
-import TickerStrip from './TickerStrip'
+// import TickerStrip from './TickerStrip'
 import { UpgradeModal } from './UpgradeModal'
 import { ForexOverviewTab, ForexCOTTab, ForexKeyLevelsTab } from './ForexSection'
 import AICoachTab from './AICoachTab'
@@ -655,7 +655,7 @@ export default function App() {
         
       </div>
       {/* CompetitionBanner disabled */}
-      <TickerStrip />
+      {/* TickerStrip removed */}
 
 
       

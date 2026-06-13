@@ -545,61 +545,33 @@ function GroupsView({ currentUserId }) {
 }
 
 
-function CommSidebar({ tab, setTab, feedTab, setFeedTab }) {
-  const [open, setOpen] = useState(false)
-  const [pinned, setPinned] = useState(false)
-  const isOpen = open || pinned
-  const timer = useRef(null)
-  const FEED_SUBTABS = ['Discover','Following','Ideas','Screeners','Strategies','COT Signals']
+function CommSidebar({ tab, setTab }) {
   const TABS = [
     { key:'feed',   label:'Feed',     icon:'ti-home' },
     { key:'groups', label:'Groups',   icon:'ti-users' },
     { key:'dms',    label:'Messages', icon:'ti-message' },
-    { key:'local',  label:'Local Traders', icon:'ti-map-pin' },
+    { key:'local',  label:'Map',      icon:'ti-map-pin' },
   ]
   return (
-    <div
-      onMouseEnter={() => { clearTimeout(timer.current); setOpen(true) }}
-      onMouseLeave={() => { timer.current = setTimeout(() => { if(!pinned) setOpen(false) }, 180) }}
-      style={{ width:isOpen?188:54, minWidth:isOpen?188:54, background:'var(--surface2)', borderRight:'0.5px solid var(--border)', display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'10px 6px', paddingTop:92, transition:'width 0.18s ease, min-width 0.18s ease', overflow:'hidden', flexShrink:0, zIndex:20, position:'sticky', top:82, height:'calc(100vh - 82px)' }}>
-      <div onClick={() => setPinned(p=>!p)} style={{ width:42, height:38, background:'#4B44C8', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, marginBottom:8 }}>
-        <i className="ti ti-menu-2" style={{ fontSize:20, color:'#fff' }} aria-hidden="true" />
-      </div>
+    <div style={{ width:56, display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 0', gap:4, borderRight:'0.5px solid var(--border)', background:'var(--surface)', flexShrink:0, alignSelf:'stretch' }}>
       {TABS.map(t => {
         const isActive = tab === t.key
         return (
-          <React.Fragment key={t.key}>
-          <button onClick={(e)=>{e.stopPropagation();setTab(t.key);}}
-            style={{ display:'flex', alignItems:'center', gap:isOpen?8:0, padding:'8px', borderRadius:8, background:isActive?'rgba(75,68,200,0.1)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:isOpen?'100%':42, justifyContent:isOpen?'flex-start':'center', position:'relative', flexShrink:0 }}>
-            {isActive && <div style={{ position:'absolute', left:0, top:'50%', transform:'translateY(-50%)', width:3, height:22, background:'#4B44C8', borderRadius:'0 3px 3px 0' }} />}
-            <i className={`ti ${t.icon}`} style={{ fontSize:19, color:isActive?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
-            {isOpen && <span style={{ fontSize:12, color:isActive?'#3C3489':'var(--text-muted)', fontWeight:isActive?500:400, whiteSpace:'nowrap' }}>{t.label}</span>}
-          </button>
-          {/* Feed subtabs inline */}
-          {t.key === 'feed' && isActive && isOpen && (
-            <div style={{ width:'100%', paddingLeft:8, display:'flex', flexDirection:'column', gap:1, marginBottom:4 }}>
-              {FEED_SUBTABS.map(ft => (
-                <button key={ft} onClick={(e)=>{e.stopPropagation();setFeedTab(ft);}}
-                  style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 8px', borderRadius:5, background:feedTab===ft?'rgba(75,68,200,0.08)':'transparent', border:'none', cursor:'pointer', fontFamily:'var(--font)', width:'100%', textAlign:'left' }}>
-                  <i className="ti ti-chevron-right" style={{ fontSize:11, color:feedTab===ft?'#4B44C8':'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
-                  <span style={{ fontSize:11, color:feedTab===ft?'#3C3489':'var(--text-muted)', fontWeight:feedTab===ft?500:400, whiteSpace:'nowrap' }}>{ft}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          </React.Fragment>
+          <div
+            key={t.key}
+            title={t.label}
+            onClick={() => setTab(t.key)}
+            style={{ width:38, height:38, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background:isActive?'#534AB7':'transparent', color:isActive?'#fff':'var(--text-muted)', fontSize:19, transition:'all .15s', flexShrink:0 }}
+            onMouseEnter={e => { if(!isActive){ e.currentTarget.style.background='#EEEDFE'; e.currentTarget.style.color='#534AB7'; } }}
+            onMouseLeave={e => { if(!isActive){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; } }}
+          >
+            <i className={`ti ${t.icon}`} aria-hidden="true" />
+          </div>
         )
       })}
     </div>
   )
 }
-
-
-const BROWSE_GROUPS_DATA = []
-
-const ACCESS_COLOR = { Open:'#059669', Invite:'#d97706', Closed:'#dc2626' }
-const ACCESS_BG = { Open:'rgba(5,150,105,0.1)', Invite:'rgba(217,119,6,0.1)', Closed:'rgba(220,38,38,0.08)' }
-
 function BrowseGroupsPanel({ onJoin }) {
   const [search, setSearch] = React.useState('')
   const [cat, setCat] = React.useState('')
@@ -721,98 +693,139 @@ function BrowseGroupsPanel({ onJoin }) {
 }
 
 export default function CommunityLayout({ currentUserId, externalTab, onTabChange }) {
-  const TAB_MAP = { 'Feed':'feed', 'Groups':'groups', 'Messages':'dms', 'Local Traders':'local', 'feed':'feed', 'groups':'groups', 'dms':'dms', 'local':'local' };
-  const [tab, setTabInternal] = useState('feed');
-  const [feedTab, setFeedTab] = useState('Discover');
+  const TAB_MAP = { 'Feed':'feed','Groups':'groups','Messages':'dms','Local Traders':'local','feed':'feed','groups':'groups','dms':'dms','local':'local' };
+  const [tab, setTabInternal] = React.useState('feed');
+  const [feedSection, setFeedSection] = React.useState('discover');
   const setTab = (t) => { setTabInternal(t); if(onTabChange) onTabChange(t); };
-  useEffect(() => { if(externalTab && TAB_MAP[externalTab]) setTabInternal(TAB_MAP[externalTab]); }, [externalTab]);
+  React.useEffect(() => { if(externalTab && TAB_MAP[externalTab]) setTabInternal(TAB_MAP[externalTab]); }, [externalTab]);
+
+  const SIDEBAR_TABS = [
+    { key:'feed',   icon:'ti-home',    label:'Feed',     sub:'Discover & share ideas' },
+    { key:'groups', icon:'ti-users',   label:'Groups',   sub:'Your trading communities' },
+    { key:'dms',    icon:'ti-message', label:'Messages', sub:'Direct messages' },
+    { key:'local',  icon:'ti-map-pin', label:'Map',      sub:'Local traders near you' },
+  ];
+  const meta = SIDEBAR_TABS.find(t => t.key === tab) || SIDEBAR_TABS[0];
+
   return (
-    <div style={{ display:'flex', flexDirection:'row', fontFamily:'var(--font)' }}>
-      {/* Purple top nav */}
-      <CommSidebar tab={tab} setTab={(t)=>setTab(t)} feedTab={feedTab} setFeedTab={setFeedTab} />
+    <div style={{ display:'flex', flexDirection:'row', height:'100%', overflow:'hidden', fontFamily:'var(--font)' }}>
+
+      {/* Icon sidebar */}
+      <div style={{ width:56, display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 0', gap:4, borderRight:'0.5px solid var(--border)', background:'var(--surface)', flexShrink:0, alignSelf:'stretch' }}>
+        {SIDEBAR_TABS.map(t => {
+          const isActive = tab === t.key;
+          return (
+            <div
+              key={t.key}
+              title={t.label}
+              onClick={() => setTab(t.key)}
+              style={{ width:38, height:38, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background:isActive?'#534AB7':'transparent', color:isActive?'#fff':'var(--text-muted)', fontSize:19, transition:'all .15s', flexShrink:0 }}
+              onMouseEnter={e => { if(!isActive){ e.currentTarget.style.background='#EEEDFE'; e.currentTarget.style.color='#534AB7'; }}}
+              onMouseLeave={e => { if(!isActive){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; }}}
+            >
+              <i className={`ti ${t.icon}`} aria-hidden="true" />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Main content */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
 
-      {/* Tab content */}
-      <div style={{ flex:1, display:'flex' }}>
-        {tab === 'feed' && (
-          <div style={{ flex:1, display:'flex' }}>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ height: 40 }} /><FeedTab currentUserId={currentUserId} activeTab={feedTab} />
+        {/* Purple topbar */}
+        <div style={{ background:'#534AB7', padding:'12px 18px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+          <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <i className={`ti ${meta.icon}`} style={{ fontSize:17, color:'#fff' }} aria-hidden="true" />
+          </div>
+          <div>
+            <div style={{ fontSize:14, fontWeight:500, color:'#fff', fontFamily:'var(--font)' }}>{meta.label}</div>
+            <div style={{ fontSize:12, color:'#CECBF6', marginTop:1, fontFamily:'var(--font)' }}>{meta.sub}</div>
+          </div>
+        </div>
+
+        {/* Tab panels */}
+        <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+
+          {/* FEED */}
+          {tab === 'feed' && (
+            <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+              <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:28, borderBottom:'0.5px solid var(--border)', height:44, flexShrink:0 }}>
+                {['discover','following','threads'].map(s => (
+                  <span
+                    key={s}
+                    onClick={() => setFeedSection(s)}
+                    style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:14, fontWeight:feedSection===s?600:400, color:feedSection===s?'var(--text)':'var(--text-muted)', position:'relative', height:44, display:'inline-flex', alignItems:'center', whiteSpace:'nowrap' }}
+                  >
+                    {feedSection===s && <span style={{ position:'absolute', bottom:-1, left:0, right:0, height:2, background:'var(--text)', borderRadius:1 }} />}
+                    {s==='threads'?'Threads':s[0].toUpperCase()+s.slice(1)}
+                  </span>
+                ))}
+                <button
+                  style={{ all:'unset', marginLeft:'auto', cursor:'pointer', width:28, height:28, borderRadius:'50%', background:'#534AB7', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0 }}
+                  onMouseEnter={e => e.currentTarget.style.background='#3C3489'}
+                  onMouseLeave={e => e.currentTarget.style.background='#534AB7'}
+                  title="New post"
+                >+</button>
+              </div>
+              <div style={{ flex:1, overflow:'hidden' }}>
+                {(feedSection==='discover'||feedSection==='following') && (
+                  <FeedTab currentUserId={currentUserId} activeTab={feedSection==='discover'?'Discover':'Following'} />
+                )}
+                {feedSection==='threads' && (
+                  <div style={{ height:'100%', overflowY:'auto', padding:16 }}>
+                    <div style={{ background:'#EEEDFE', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#3C3489', display:'flex', alignItems:'center', gap:8, marginBottom:14, fontFamily:'var(--font)' }}>
+                      <i className="ti ti-messages" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+                      <span>Start a thread, ask a question, or post a poll. Tap <strong>+</strong> to post.</span>
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, minHeight:200, textAlign:'center' }}>
+                      <i className="ti ti-messages" style={{ fontSize:34, color:'#AFA9EC' }} aria-hidden="true" />
+                      <div style={{ fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No threads yet</div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)', maxWidth:220, lineHeight:1.5, fontFamily:'var(--font)' }}>Be the first to start a conversation.</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={{ width:220, borderLeft:'1px solid var(--border)', overflowY:'auto', padding:'16px 14px', flexShrink:0 }}>
-              <RightSidebar />
+          )}
+
+          {/* GROUPS */}
+          {tab === 'groups' && (
+            <div style={{ display:'flex', height:'100%', overflow:'hidden' }}>
+              <div style={{ width:240, borderRight:'0.5px solid var(--border)', background:'var(--surface)', display:'flex', flexDirection:'column', flexShrink:0 }}>
+                <div style={{ padding:'10px 14px', borderBottom:'0.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:13, fontWeight:500, color:'var(--text)', fontFamily:'var(--font)' }}>My Groups</span>
+                  <button
+                    style={{ all:'unset', cursor:'pointer', width:24, height:24, borderRadius:'50%', background:'#534AB7', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:16 }}
+                    onMouseEnter={e => e.currentTarget.style.background='#3C3489'}
+                    onMouseLeave={e => e.currentTarget.style.background='#534AB7'}
+                  >+</button>
+                </div>
+                <GroupsView currentUserId={currentUserId} sidebarOnly={true} />
+              </div>
+              <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, padding:24, textAlign:'center' }}>
+                <i className="ti ti-users" style={{ fontSize:36, color:'#AFA9EC' }} aria-hidden="true" />
+                <div style={{ fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No group selected</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', maxWidth:220, lineHeight:1.5, fontFamily:'var(--font)' }}>Join or create a group to start chatting</div>
+                <div style={{ display:'flex', gap:10, marginTop:8 }}>
+                  <button style={{ all:'unset', cursor:'pointer', padding:'9px 22px', borderRadius:20, background:'#534AB7', color:'#fff', fontSize:14, fontWeight:500, fontFamily:'var(--font)' }}
+                    onMouseEnter={e => e.currentTarget.style.background='#3C3489'}
+                    onMouseLeave={e => e.currentTarget.style.background='#534AB7'}
+                  >Create group</button>
+                  <button style={{ all:'unset', cursor:'pointer', padding:'9px 22px', borderRadius:20, border:'1.5px solid #534AB7', color:'#534AB7', fontSize:14, fontWeight:500, fontFamily:'var(--font)' }}>Browse</button>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
-        {tab === 'groups' && (
-          <div style={{ flex:1, overflow:'visible', paddingTop:56 }}>
-            <GroupsView currentUserId={currentUserId} />
-          </div>
-        )}
-        {tab === 'dms' && (
-          <div style={{ flex:1, overflow:'hidden' }}>
-            <DMTab />
-          </div>
-        )}
-        {tab === 'local' && (
-          <div style={{ flex:1, overflow:'hidden' }}>
-            <LocalTradersTab />
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* MESSAGES */}
+          {tab === 'dms' && <DMTab />}
+
+          {/* MAP */}
+          {tab === 'local' && <LocalTradersTab />}
+
+        </div>
       </div>
     </div>
   );
 }
 
-function RightSidebar() {
-  const [groups, setGroups] = useState([]);
-  useEffect(() => { setGroups(loadGroups().slice(0,3)); }, []);
-  const TRENDING = [];
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-      {groups.length > 0 && (
-        <div>
-          <div style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--text-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:10 }}>Your Groups</div>
-          {groups.map(g => (
-            <div key={g.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:10, background:'var(--surface2)', marginBottom:6, cursor:'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--surface3,var(--surface2))'}
-              onMouseLeave={e => e.currentTarget.style.background='var(--surface2)'}>
-              <div style={{ width:28, height:28, borderRadius:8, background:g.grad||PURPLE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
-                {g.profileImg ? <img src={g.profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{g.name}</div>
-                <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{g.type}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <div>
-        <div style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--text-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:10 }}>Trending</div>
-        {TRENDING.map(t => (
-          <div key={t.tag} style={{ marginBottom:8, cursor:'pointer' }}
-            onMouseEnter={e => e.currentTarget.style.opacity='0.7'}
-            onMouseLeave={e => e.currentTarget.style.opacity='1'}>
-            <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>#{t.tag}</div>
-            <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{t.posts.toLocaleString()} posts</div>
-          </div>
-        ))}
-      </div>
-      <div>
-        <div style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--text-muted)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:10 }}>Who to follow</div>
-        {false && [].map(u => (
-          <div key={u.user} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-            <div style={{ width:30, height:30, borderRadius:'50%', background:u.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0 }}>{u.user[0].toUpperCase()}</div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text)' }}>{u.user}</div>
-              <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{u.wr} WR · {u.style}</div>
-            </div>
-            <button style={{ padding:'4px 10px', borderRadius:20, background:PURPLE, color:'#fff', border:'none', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer', flexShrink:0 }}>Follow</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
