@@ -485,7 +485,7 @@ export default function App() {
   const navItems = [['Community','community'],['Compete','compete'],['Markets','markets'],['Charts','charts'],['Tools','tools2'],['Account','account']]
 
   return (
-    <div style={{ minHeight:'100vh', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontFamily:'var(--font)', fontSize:13 }}>
+    <div style={{ height:'100vh', overflow:'hidden', display:'flex', flexDirection:'column', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontSize:13 }}>
 
       {/* ── Navbar — TradingView style ── */}
       <div data-community-nav="true" style={{ background:'#4B44C8', position:'sticky', top:0, zIndex:300, borderBottom:'none' }}>
@@ -669,7 +669,7 @@ export default function App() {
       )}
 
       {/* Main content — full width, no max-width cap on outer, padding on inner */}
-      <div style={{ padding: 0, paddingTop: (section==='community'||section==='compete'||section==='markets') ? 0 : 82 }} onClick={()=>setShowAccount(false)}>
+      <div style={{ padding: 0, paddingTop: (section==='community'||section==='compete'||section==='markets') ? 0 : 82, flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }} onClick={()=>setShowAccount(false)}>
         {section==='markets' ? (
           <div style={{height:'calc(100vh - 82px)', overflow:'hidden', display:'flex', flexDirection:'column'}}>
             {tab==='News' && <div style={{padding:'20px 24px', overflowY:'auto', flex:1}}><NewsTab /></div>}
