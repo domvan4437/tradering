@@ -691,10 +691,150 @@ function BrowseGroupsPanel({ onJoin }) {
   )
 }
 
+
+function PostComposer({ onClose, currentUserId }) {
+  const [text, setText] = React.useState('');
+  const [assetTag, setAssetTag] = React.useState('');
+  const [attachment, setAttachment] = React.useState(null);
+  const [showPoll, setShowPoll] = React.useState(false);
+  const [pollOptions, setPollOptions] = React.useState(['', '']);
+  const fileRef = React.useRef(null);
+  const charsLeft = 280 - text.length;
+  const canPost = text.trim().length > 0 || attachment;
+
+  const handleFile = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const isImg = f.type.startsWith('image/');
+    const reader = new FileReader();
+    reader.onload = (ev) => setAttachment({
+      type: isImg ? 'image' : 'file',
+      url: isImg ? ev.target.result : null,
+      name: f.name,
+      size: f.size > 1024*1024 ? (f.size/1024/1024).toFixed(1)+'MB' : Math.round(f.size/1024)+'KB',
+    });
+    isImg ? reader.readAsDataURL(f) : reader.readAsArrayBuffer(f);
+    e.target.value = '';
+  };
+
+  const handlePost = () => {
+    if (!canPost) return;
+    const post = {
+      id: Date.now(),
+      user: currentUserId || 'you',
+      username: 'you',
+      body: text.trim(),
+      asset: assetTag,
+      poll: showPoll ? pollOptions.filter(o => o.trim()).map(o => ({ label:o, votes:0 })) : null,
+      attachmentUrl: attachment?.url || null,
+      attachmentType: attachment?.type || null,
+      attachmentName: attachment?.name || null,
+      attachmentSize: attachment?.size || null,
+      time: new Date().toISOString(),
+      likes: 0, reposts: 0, comments_count: 0, comments_data: [],
+    };
+    try {
+      const existing = JSON.parse(localStorage.getItem('tr_posts_v2') || '[]');
+      localStorage.setItem('tr_posts_v2', JSON.stringify([post, ...existing]));
+    } catch {}
+    window.dispatchEvent(new CustomEvent('post-created'));
+    onClose();
+  };
+
+  const iStyle = { padding:'7px 10px', border:'0.5px solid var(--border)', borderRadius:8, fontSize:12, background:'var(--surface)', color:'var(--text)', fontFamily:'var(--font)', outline:'none', boxSizing:'border-box' };
+  const iconBtn = (icon, tip, fn, active) => (
+    <button key={icon} title={tip} onClick={fn}
+      style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, color:active?'#534AB7':'var(--text-muted)', background:active?'#EEEDFE':'transparent' }}
+      onMouseEnter={e=>{e.currentTarget.style.color='#534AB7';e.currentTarget.style.background='#EEEDFE';}}
+      onMouseLeave={e=>{e.currentTarget.style.color=active?'#534AB7':'var(--text-muted)';e.currentTarget.style.background=active?'#EEEDFE':'transparent';}}
+    ><i className={`ti ${icon}`} aria-hidden="true" /></button>
+  );
+
+  return (
+    <div>
+      <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx" style={{ display:'none' }} onChange={handleFile} />
+
+      {/* Body */}
+      <div style={{ display:'flex', gap:10, alignItems:'flex-start', padding:'14px 16px' }}>
+        <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, marginTop:2 }}>Y</div>
+        <textarea
+          value={text}
+          onChange={e => setText(e.target.value.slice(0,280))}
+          placeholder="Share a trade idea, chart, or market insight..."
+          rows={4}
+          autoFocus
+          style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:14, color:'var(--text)', resize:'none', outline:'none', lineHeight:1.6 }}
+        />
+      </div>
+
+      {/* Asset tag */}
+      <div style={{ padding:'0 16px 10px', display:'flex', alignItems:'center', gap:8 }}>
+        <span style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)', flexShrink:0 }}>Asset:</span>
+        <input value={assetTag} onChange={e=>setAssetTag(e.target.value.toUpperCase().slice(0,10))}
+          placeholder="e.g. GOLD, EURUSD, BTC"
+          style={{ ...iStyle, flex:1 }} />
+      </div>
+
+      {/* Attachment preview */}
+      {attachment && (
+        <div style={{ margin:'0 16px 10px', borderRadius:10, overflow:'hidden', border:'0.5px solid var(--border)', position:'relative' }}>
+          {attachment.type==='image'
+            ? <img src={attachment.url} alt="" style={{ width:'100%', maxHeight:200, objectFit:'cover', display:'block' }} />
+            : <div style={{ padding:'10px 14px', background:'var(--surface2)', display:'flex', alignItems:'center', gap:10 }}>
+                <i className="ti ti-file" style={{ fontSize:16, color:'var(--text-muted)' }} aria-hidden="true" />
+                <div>
+                  <div style={{ fontSize:12, fontWeight:500, color:'var(--text)', fontFamily:'var(--font)' }}>{attachment.name}</div>
+                  <div style={{ fontSize:10, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{attachment.size}</div>
+                </div>
+              </div>
+          }
+          <button onClick={()=>setAttachment(null)} style={{ position:'absolute', top:6, right:6, width:22, height:22, borderRadius:'50%', background:'rgba(0,0,0,0.6)', border:'none', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>×</button>
+        </div>
+      )}
+
+      {/* Poll builder */}
+      {showPoll && (
+        <div style={{ margin:'0 16px 10px', padding:12, background:'var(--surface2)', borderRadius:10, border:'0.5px solid var(--border)' }}>
+          <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8, fontFamily:'var(--font)' }}>Poll options</div>
+          {pollOptions.map((opt, i) => (
+            <div key={i} style={{ display:'flex', gap:6, marginBottom:6 }}>
+              <input value={opt} onChange={e=>{ const n=[...pollOptions]; n[i]=e.target.value; setPollOptions(n); }}
+                placeholder={`Option ${i+1}`} style={{ ...iStyle, flex:1 }} />
+              {pollOptions.length > 2 && (
+                <button onClick={()=>setPollOptions(p=>p.filter((_,j)=>j!==i))}
+                  style={{ all:'unset', cursor:'pointer', color:'var(--text-muted)', fontSize:18, padding:'0 4px' }}>×</button>
+              )}
+            </div>
+          ))}
+          {pollOptions.length < 5 && (
+            <button onClick={()=>setPollOptions(p=>[...p,''])}
+              style={{ all:'unset', cursor:'pointer', padding:'4px 12px', borderRadius:8, border:'0.5px solid var(--border)', color:'var(--text-muted)', fontSize:12, fontFamily:'var(--font)' }}>+ Add option</button>
+          )}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div style={{ display:'flex', alignItems:'center', gap:4, padding:'10px 14px', borderTop:'0.5px solid var(--border)', background:'var(--surface2)' }}>
+        {iconBtn('ti-photo', 'Image / chart', ()=>{ fileRef.current.accept='image/*'; fileRef.current.click(); }, false)}
+        {iconBtn('ti-paperclip', 'Attach file', ()=>{ fileRef.current.accept='.pdf,.doc,.docx,.txt,.csv,.xlsx'; fileRef.current.click(); }, false)}
+        <div style={{ width:'0.5px', height:20, background:'var(--border)', margin:'0 4px' }} />
+        {iconBtn('ti-chart-bar', 'Add poll', ()=>setShowPoll(p=>!p), showPoll)}
+        <div style={{ flex:1 }} />
+        <span style={{ fontSize:11, color:charsLeft<20?'#dc2626':charsLeft<50?'#d97706':'var(--text-muted)', fontFamily:'var(--font)' }}>{charsLeft}</span>
+        <button onClick={handlePost} disabled={!canPost}
+          style={{ all:'unset', cursor:canPost?'pointer':'default', padding:'7px 20px', borderRadius:20, fontSize:13, fontWeight:600, background:canPost?'#534AB7':'var(--surface3)', color:canPost?'#fff':'var(--text-muted)', fontFamily:'var(--font)', marginLeft:8 }}>
+          Post
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 export default function CommunityLayout({ currentUserId, externalTab, onTabChange }) {
   const TAB_MAP = { 'Feed':'feed','Groups':'groups','Messages':'dms','Local Traders':'local','feed':'feed','groups':'groups','dms':'dms','local':'local' };
   const [tab, setTabInternal] = React.useState('feed');
   const [feedSection, setFeedSection] = React.useState('discover');
+  const [showPostModal, setShowPostModal] = React.useState(false);
   const setTab = (t) => { setTabInternal(t); if(onTabChange) onTabChange(t); };
   React.useEffect(() => { if(externalTab && TAB_MAP[externalTab]) setTabInternal(TAB_MAP[externalTab]); }, [externalTab]);
 
@@ -733,7 +873,8 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
                 <button style={{ all:'unset', marginLeft:'auto', cursor:'pointer', width:28, height:28, borderRadius:'50%', background:'#534AB7', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0 }}
                   onMouseEnter={e => e.currentTarget.style.background='#3C3489'}
                   onMouseLeave={e => e.currentTarget.style.background='#534AB7'}
-                  title="New post">+</button>
+                  
+                  title="New post" onClick={()=>setShowPostModal(true)}>+</button>
               </div>
               <div style={{ flex:1, overflow:'hidden', minHeight:0 }}>
                 {(feedSection==='discover'||feedSection==='following') && <FeedTab currentUserId={currentUserId} activeTab={feedSection==='discover'?'Discover':'Following'} />}
@@ -757,6 +898,19 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
           {tab === 'local' && <LocalTradersTab />}
         </div>
       </div>
+
+      {showPostModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}
+          onClick={e => { if(e.target===e.currentTarget) setShowPostModal(false); }}>
+          <div style={{ background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:16, width:500, maxWidth:'95vw', overflow:'hidden', boxShadow:'0 16px 48px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding:'12px 16px', borderBottom:'0.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <span style={{ fontSize:14, fontWeight:500, color:'var(--text)', fontFamily:'var(--font)' }}>New post</span>
+              <button onClick={()=>setShowPostModal(false)} style={{ all:'unset', cursor:'pointer', width:26, height:26, borderRadius:'50%', background:'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:14 }}>×</button>
+            </div>
+            <PostComposer onClose={()=>setShowPostModal(false)} currentUserId={currentUserId} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

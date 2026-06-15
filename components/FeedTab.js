@@ -329,7 +329,7 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
 
 
 
-        {/* Compose box hidden — post via + button */}
+        
         {/* Posts */}
         {posts.length === 0 ? (
           <div style={{ padding:'60px 20px', textAlign:'center' }}>
