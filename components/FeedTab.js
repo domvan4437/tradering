@@ -43,7 +43,11 @@ function Post({ post, onLike, onRepost, onDelete }) {
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
-  const isOwn = post.user === 'you';
+  const profile = (() => { try { return JSON.parse(localStorage.getItem('tr_profile_v1') || '{}'); } catch(e) { return {}; } })();
+  const myName = profile.displayName || profile.username || 'you';
+  const _profile = (() => { try { return JSON.parse(localStorage.getItem('tr_profile_v1') || '{}'); } catch(e) { return {}; } })();
+  const _myName = _profile.displayName || _profile.username || 'you';
+  const isOwn = post.user === 'you' || post.user === _myName;
   const fmt = (n) => n >= 1000 ? (n/1000).toFixed(1)+'K' : n;
   const [localComments, setLocalComments] = useState(post.comments_data || []);
   const saveComments = (newComments) => {
@@ -240,7 +244,7 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
   const setActiveTab = (t) => { if (!activeTabProp) setActiveTabLocal(t); };
   const [mounted, setMounted] = useState(false);
   const [posts, setPosts] = useState([]);
-  useEffect(() => { setMounted(true); setPosts(loadPosts()); }, []);
+  useEffect(() => { setMounted(true); setPosts(loadPosts()); const h=()=>setPosts(loadPosts()); window.addEventListener("post-created",h); return ()=>window.removeEventListener("post-created",h); }, []);
   useEffect(() => { if (mounted) savePosts(posts); }, [posts, mounted]);
   const [postText, setPostText]   = useState('');
   
@@ -260,8 +264,16 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
   };
 
   const visiblePosts = (() => {
+    if (activeTab === 'Following') {
+      // Load followed users from localStorage
+      try {
+        const followed = JSON.parse(localStorage.getItem('tr_followed_users') || '[]');
+        if (followed.length === 0) return []; // nobody followed yet
+        return posts.filter(p => followed.includes(p.user) || followed.includes(p.username));
+      } catch(e) { return []; }
+    }
     const filter = TAB_FILTER[activeTab];
-    if(!filter) return posts;
+    if (!filter) return posts; // Discover = all posts
     return posts.filter(p => p.postType === filter);
   })();
 

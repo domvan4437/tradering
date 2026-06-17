@@ -692,7 +692,99 @@ function BrowseGroupsPanel({ onJoin }) {
 }
 
 
-function PostComposer({ onClose, currentUserId }) {
+function ThreadsFeed({ onNewPost }) {
+  const [threads, setThreads] = React.useState([]);
+
+  React.useEffect(() => {
+    const load = () => {
+      try { setThreads(JSON.parse(localStorage.getItem('tr_threads') || '[]')); } catch(e) { setThreads([]); }
+    };
+    load();
+    window.addEventListener('post-created', load);
+    return () => window.removeEventListener('post-created', load);
+  }, []);
+
+  const handleDelete = (id) => {
+    const updated = threads.filter(t => t.id !== id);
+    setThreads(updated);
+    try { localStorage.setItem('tr_threads', JSON.stringify(updated)); } catch(e) {}
+  };
+
+  const handleVote = (id) => {
+    const updated = threads.map(t => t.id === id ? {...t, likes: (t.likes||0)+1} : t);
+    setThreads(updated);
+    try { localStorage.setItem('tr_threads', JSON.stringify(updated)); } catch(e) {}
+  };
+
+  const profile = (() => { try { return JSON.parse(localStorage.getItem('tr_profile_v1') || '{}'); } catch(e) { return {}; } })();
+  const myName = profile.displayName || profile.username || 'you';
+
+  if (threads.length === 0) return (
+    <div style={{ height:'100%', overflowY:'auto', padding:16 }}>
+      <div style={{ background:'#EEEDFE', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#3C3489', display:'flex', alignItems:'center', gap:8, marginBottom:14, fontFamily:'var(--font)' }}>
+        <i className="ti ti-messages" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+        <span>Start a thread or ask a question. Tap <strong>+</strong> to post.</span>
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, minHeight:200, textAlign:'center' }}>
+        <i className="ti ti-messages" style={{ fontSize:34, color:'#AFA9EC' }} aria-hidden="true" />
+        <div style={{ fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No threads yet</div>
+        <div style={{ fontSize:12, color:'var(--text-muted)', maxWidth:220, lineHeight:1.5, fontFamily:'var(--font)' }}>Be the first to start a conversation.</div>
+        <button onClick={onNewPost} style={{ all:'unset', cursor:'pointer', padding:'7px 18px', borderRadius:20, background:'#534AB7', color:'#fff', fontSize:13, fontWeight:500, fontFamily:'var(--font)', marginTop:8 }}>Start a thread</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ height:'100%', overflowY:'auto', padding:16 }}>
+      <div style={{ background:'#EEEDFE', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#3C3489', display:'flex', alignItems:'center', gap:8, marginBottom:14, fontFamily:'var(--font)' }}>
+        <i className="ti ti-messages" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+        <span>Start a thread or ask a question. Tap <strong>+</strong> to post.</span>
+      </div>
+      {threads.map(t => (
+        <div key={t.id} style={{ background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:12, padding:14, marginBottom:10 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap' }}>
+            <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0 }}>
+              {(t.user||'Y')[0].toUpperCase()}
+            </div>
+            <span style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)' }}>@{t.user || 'you'}</span>
+            <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{new Date(t.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+            {t.asset && <span style={{ fontSize:10, fontWeight:500, padding:'2px 8px', borderRadius:12, background:'#EEEDFE', color:'#3C3489', fontFamily:'var(--font)' }}>{t.asset}</span>}
+            {(t.user === 'you' || t.user === myName) && (
+              <button onClick={() => handleDelete(t.id)} style={{ all:'unset', cursor:'pointer', marginLeft:'auto', fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)', padding:'2px 8px', borderRadius:6 }}
+                onMouseEnter={e=>{e.currentTarget.style.color='#dc2626';e.currentTarget.style.background='rgba(220,38,38,0.08)';}}
+                onMouseLeave={e=>{e.currentTarget.style.color='var(--text-muted)';e.currentTarget.style.background='transparent';}}
+              >Delete</button>
+            )}
+          </div>
+          <div style={{ fontSize:14, color:'var(--text)', marginBottom:t.body?5:10, lineHeight:1.45, fontFamily:'var(--font)' }}>{t.body}</div>
+          {t.poll && (
+            <div style={{ marginBottom:10 }}>
+              {t.poll.map((opt, i) => (
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
+                  <div style={{ flex:1, background:'var(--surface2)', borderRadius:6, height:32, display:'flex', alignItems:'center', padding:'0 10px', fontSize:12, fontFamily:'var(--font)', color:'var(--text)', border:'0.5px solid var(--border)', cursor:'pointer' }}>{opt.label}</div>
+                  <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)', minWidth:28 }}>{opt.votes}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display:'flex', gap:14 }}>
+            {[['ti-arrow-up', t.likes||0, ()=>handleVote(t.id)], ['ti-message', '0 replies', null], ['ti-share', 'Share', null]].map(([ic, label, fn]) => (
+              <button key={ic} onClick={fn||undefined}
+                style={{ all:'unset', cursor:'pointer', fontSize:12, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4, fontFamily:'var(--font)' }}
+                onMouseEnter={e=>e.currentTarget.style.color='#534AB7'}
+                onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}
+              >
+                <i className={`ti ${ic}`} style={{ fontSize:14 }} aria-hidden="true" />{label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PostComposer({ onClose, currentUserId, feedSection }) {
   const [text, setText] = React.useState('');
   const [assetTag, setAssetTag] = React.useState('');
   const [attachment, setAttachment] = React.useState(null);
@@ -720,8 +812,8 @@ function PostComposer({ onClose, currentUserId }) {
     if (!canPost) return;
     const post = {
       id: Date.now(),
-      user: currentUserId || 'you',
-      username: 'you',
+      user: (()=>{ try{ const p=JSON.parse(localStorage.getItem('tr_profile_v1')||'{}'); return p.displayName||p.username||'you'; }catch(e){return 'you';} })(),
+      username: (()=>{ try{ const p=JSON.parse(localStorage.getItem('tr_profile_v1')||'{}'); return p.username||p.displayName||'you'; }catch(e){return 'you';} })(),
       body: text.trim(),
       asset: assetTag,
       poll: showPoll ? pollOptions.filter(o => o.trim()).map(o => ({ label:o, votes:0 })) : null,
@@ -733,8 +825,9 @@ function PostComposer({ onClose, currentUserId }) {
       likes: 0, reposts: 0, comments_count: 0, comments_data: [],
     };
     try {
-      const existing = JSON.parse(localStorage.getItem('tr_posts_v2') || '[]');
-      localStorage.setItem('tr_posts_v2', JSON.stringify([post, ...existing]));
+      const key = feedSection === 'threads' ? 'tr_threads' : 'tr_feed_posts';
+      const existing = JSON.parse(localStorage.getItem(key) || '[]');
+      localStorage.setItem(key, JSON.stringify([post, ...existing]));
     } catch {}
     window.dispatchEvent(new CustomEvent('post-created'));
     onClose();
@@ -878,18 +971,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
               </div>
               <div style={{ flex:1, overflow:'hidden', minHeight:0 }}>
                 {(feedSection==='discover'||feedSection==='following') && <FeedTab currentUserId={currentUserId} activeTab={feedSection==='discover'?'Discover':'Following'} />}
-                {feedSection==='threads' && (
-                  <div style={{ height:'100%', overflowY:'auto', padding:16 }}>
-                    <div style={{ background:'#EEEDFE', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#3C3489', display:'flex', alignItems:'center', gap:8, marginBottom:14, fontFamily:'var(--font)' }}>
-                      <i className="ti ti-messages" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
-                      <span>Start a thread or ask a question. Tap <strong>+</strong> to post.</span>
-                    </div>
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, minHeight:200, textAlign:'center' }}>
-                      <i className="ti ti-messages" style={{ fontSize:34, color:'#AFA9EC' }} aria-hidden="true" />
-                      <div style={{ fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No threads yet</div>
-                    </div>
-                  </div>
-                )}
+                {feedSection==='threads' && <ThreadsFeed onNewPost={()=>setShowPostModal(true)} />}
               </div>
             </div>
           )}
@@ -904,10 +986,10 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
           onClick={e => { if(e.target===e.currentTarget) setShowPostModal(false); }}>
           <div style={{ background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:16, width:500, maxWidth:'95vw', overflow:'hidden', boxShadow:'0 16px 48px rgba(0,0,0,0.2)' }}>
             <div style={{ padding:'12px 16px', borderBottom:'0.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <span style={{ fontSize:14, fontWeight:500, color:'var(--text)', fontFamily:'var(--font)' }}>New post</span>
+              <span style={{ fontSize:14, fontWeight:500, color:'var(--text)', fontFamily:'var(--font)' }}>{feedSection === 'threads' ? 'New thread' : 'New post'}</span>
               <button onClick={()=>setShowPostModal(false)} style={{ all:'unset', cursor:'pointer', width:26, height:26, borderRadius:'50%', background:'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:14 }}>×</button>
             </div>
-            <PostComposer onClose={()=>setShowPostModal(false)} currentUserId={currentUserId} />
+            <PostComposer onClose={()=>setShowPostModal(false)} currentUserId={currentUserId} feedSection={feedSection} />
           </div>
         </div>
       )}
