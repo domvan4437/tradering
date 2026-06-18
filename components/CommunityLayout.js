@@ -428,7 +428,7 @@ function GroupsView({ currentUserId }) {
   const roleLabel = (r) => r==='owner'?'Founder':r==='co-leader'?'Co-leader':'Member';
 
   React.useEffect(() => {
-    if (!openGroup?.fromDB) { setMembers([]); return; }
+    if (!openGroup?.id) { setMembers([]); return; }
     fetch(`/api/groups/members?groupId=${openGroup.id}`)
       .then(r => r.json())
       .then(d => setMembers(d.members || []))
