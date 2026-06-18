@@ -1,29 +1,61 @@
 'use client'
-// Navigate to a user profile inside the app
 function goToProfile(slug) {
   if (typeof window !== 'undefined' && window.__goToProfile) window.__goToProfile(slug);
 }
-function openDM(user) {
-  if (typeof window !== 'undefined' && window.__openDM) window.__openDM(user);
-}
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // ── Constants ─────────────────────────────────────────────────
 
-function savePosts(posts) {
-  if (typeof window === 'undefined') return;
-  try { localStorage.setItem('tr_feed_posts', JSON.stringify(posts)); } catch(e) {}
+const GRADS = [
+  'linear-gradient(135deg,#4f46e5,#7c3aed)',
+  'linear-gradient(135deg,#0ea5e9,#6366f1)',
+  'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#10b981,#059669)',
+  'linear-gradient(135deg,#ec4899,#8b5cf6)',
+];
+
+function gradFromId(id) {
+  if (!id) return GRADS[0];
+  let n = 0;
+  for (let i = 0; i < id.length; i++) n += id.charCodeAt(i);
+  return GRADS[n % GRADS.length];
 }
-function loadPosts() {
-  if (typeof window === 'undefined') return [];
-  try { const d = localStorage.getItem('tr_feed_posts'); return d ? JSON.parse(d) : []; } catch(e) { return []; }
+
+function mapApiPost(p) {
+  const name = p.authorName || p.user?.username || p.user?.name || 'Trader';
+  const username = p.user?.username || p.user?.name || 'trader';
+  const letter = name[0]?.toUpperCase() || 'T';
+  const elapsed = (() => {
+    const secs = Math.floor((Date.now() - new Date(p.createdAt)) / 1000);
+    if (secs < 60) return `${secs}s`;
+    if (secs < 3600) return `${Math.floor(secs/60)}m`;
+    if (secs < 86400) return `${Math.floor(secs/3600)}h`;
+    return `${Math.floor(secs/86400)}d`;
+  })();
+  return {
+    id: p.id,
+    userId: p.userId,
+    user: name,
+    handle: `@${username}`,
+    verified: false,
+    avatar: letter,
+    grad: gradFromId(p.userId),
+    slug: username,
+    time: elapsed,
+    body: p.content || p.body || '',
+    assetTag: p.assetTag || p.symbol || '',
+    direction: p.direction || null,
+    attachmentUrl: p.imageUrl || null,
+    attachmentType: p.imageUrl ? 'image' : null,
+    poll: p.poll || null,
+    likes: p.likes || 0,
+    comments: p.commentsCount || 0,
+    reposts: p.reposts || 0,
+    liked: p.liked || false,
+    reposted: false,
+    comments_data: [],
+  };
 }
-
-const TABS = ['Discover', 'Following', 'Ideas', 'Screeners', 'Strategies', 'COT Signals'];
-
-const TRENDING = [];
-
-const WHO_TO_FOLLOW = []
 
 // ── Avatar ────────────────────────────────────────────────────
 function Avatar({ letter, grad, size = 40 }) {
@@ -37,31 +69,114 @@ function Avatar({ letter, grad, size = 40 }) {
   );
 }
 
-// ── Post Component ────────────────────────────────────────────
-function Post({ post, onLike, onRepost, onDelete }) {
-  const [showComments, setShowComments] = useState(false);
-  const [comment, setComment] = useState('');
-  const [comments, setComments] = useState([]);
-  const [showMenu, setShowMenu] = useState(false);
-  const profile = (() => { try { return JSON.parse(localStorage.getItem('tr_profile_v1') || '{}'); } catch(e) { return {}; } })();
-  const myName = profile.displayName || profile.username || 'you';
-  const _profile = (() => { try { return JSON.parse(localStorage.getItem('tr_profile_v1') || '{}'); } catch(e) { return {}; } })();
-  const _myName = _profile.displayName || _profile.username || 'you';
-  const isOwn = post.user === 'you' || post.user === _myName;
-  const fmt = (n) => n >= 1000 ? (n/1000).toFixed(1)+'K' : n;
-  const [localComments, setLocalComments] = useState(post.comments_data || []);
-  const saveComments = (newComments) => {
-    const all = loadPosts();
-    const idx = all.findIndex(p => p.id === post.id);
-    if (idx !== -1) { all[idx].comments_data = newComments; localStorage.setItem('tr_feed_posts', JSON.stringify(all)); }
+// ── Poll Block ────────────────────────────────────────────────
+function PollBlock({ postId, initialPoll }) {
+  const [poll, setPoll] = useState(initialPoll);
+  const [voted, setVoted] = useState(null); // index of chosen option
+
+  const totalVotes = poll.reduce((s, o) => s + (o.votes || 0), 0);
+
+  const handleVote = async (i) => {
+    if (voted !== null) return; // already voted
+    // Optimistic
+    const updated = poll.map((o, idx) => idx === i ? { ...o, votes: (o.votes || 0) + 1 } : o);
+    setPoll(updated);
+    setVoted(i);
+    try {
+      const res = await fetch('/api/social/posts/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId, optionIndex: i }),
+      });
+      const data = await res.json();
+      if (res.ok && data.poll) setPoll(data.poll);
+    } catch(e) {}
   };
 
-  const addComment = () => {
-    if(!comment.trim()) return;
-    const newC = [...localComments, { id:Date.now(), text:comment, user:'you', time:'now' }];
-    setLocalComments(newC);
-    saveComments(newC);
+  return (
+    <div style={{ marginBottom:10 }}>
+      {poll.map((opt, i) => {
+        const pct = totalVotes > 0 ? Math.round(((opt.votes || 0) / totalVotes) * 100) : 0;
+        const isChosen = voted === i;
+        return (
+          <div key={i} onClick={() => handleVote(i)}
+            style={{ position:'relative', marginBottom:6, borderRadius:8, overflow:'hidden',
+              border: `1px solid ${isChosen ? 'var(--accent)' : 'var(--border)'}`,
+              cursor: voted !== null ? 'default' : 'pointer', height:36 }}>
+            {/* Vote bar */}
+            {voted !== null && (
+              <div style={{ position:'absolute', inset:0, width:`${pct}%`,
+                background: isChosen ? 'rgba(99,102,241,0.18)' : 'var(--surface2)', transition:'width 0.3s' }} />
+            )}
+            <div style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'space-between',
+              padding:'0 12px', height:'100%', fontFamily:'var(--font)', fontSize:13, color:'var(--text)' }}>
+              <span>{opt.label}</span>
+              {voted !== null && <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600 }}>{pct}%</span>}
+            </div>
+          </div>
+        );
+      })}
+      <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+        {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
+      </div>
+    </div>
+  );
+}
+
+// ── Post Component ────────────────────────────────────────────
+function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
+  const [showComments, setShowComments] = useState(false);
+  const [comment, setComment] = useState('');
+  const [localComments, setLocalComments] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentCount, setCommentCount] = useState(post.comments || 0);
+  const [showMenu, setShowMenu] = useState(false);
+  const isOwn = currentUserId && post.userId === currentUserId;
+  const fmt = (n) => n >= 1000 ? (n/1000).toFixed(1)+'K' : n;
+
+  const fetchComments = useCallback(async () => {
+    setLoadingComments(true);
+    try {
+      const res = await fetch(`/api/social/posts/comment?postId=${post.id}`);
+      const data = await res.json();
+      if (data.comments) {
+        setLocalComments(data.comments.map(c => ({
+          id: c.id,
+          text: c.content,
+          user: c.authorName || 'Trader',
+        })));
+        setCommentCount(data.comments.length);
+      }
+    } catch(e) {}
+    setLoadingComments(false);
+  }, [post.id]);
+
+  const toggleComments = () => {
+    if (!showComments) fetchComments();
+    setShowComments(v => !v);
+  };
+
+  const addComment = async () => {
+    if (!comment.trim()) return;
+    const text = comment;
+    setLocalComments(prev => [...prev, { id: Date.now(), text, user: 'You' }]);
+    setCommentCount(c => c + 1);
     setComment('');
+    try {
+      await fetch('/api/social/posts/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: post.id, content: text }),
+      });
+    } catch(e) {}
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({ title: 'Tradering post', text: post.body, url: window.location.href }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(window.location.href);
+    }
   };
 
   const btnBase = {
@@ -76,9 +191,9 @@ function Post({ post, onLike, onRepost, onDelete }) {
     <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', gap:12, transition:'background 0.1s' }}
       onMouseEnter={e => e.currentTarget.style.background='var(--accent-bg)'}
       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-      <div onClick={()=>{ if(typeof window!=='undefined'&&window.__goToProfile) window.__goToProfile(post.slug||post.user); }} style={{ cursor:'pointer' }}>
-  <Avatar letter={post.avatar} grad={post.grad} size={42} />
-</div>
+      <div onClick={() => goToProfile(post.slug || post.user)} style={{ cursor:'pointer' }}>
+        <Avatar letter={post.avatar} grad={post.grad} size={42} />
+      </div>
       <div style={{ flex:1, minWidth:0 }}>
         {post.repostedBy && (
           <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:6, display:'flex', alignItems:'center', gap:5 }}>
@@ -87,7 +202,9 @@ function Post({ post, onLike, onRepost, onDelete }) {
           </div>
         )}
         <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom:4, flexWrap:'wrap' }}>
-          <span onClick={()=>{ if(typeof window!=='undefined'&&window.__goToProfile) window.__goToProfile(post.slug||post.user); }} style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)', cursor:'pointer' }} onMouseEnter={e=>e.currentTarget.style.color='var(--accent)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text)'}>{post.user}</span>
+          <span onClick={() => goToProfile(post.slug || post.user)} style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)', cursor:'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.color='var(--accent)'}
+            onMouseLeave={e => e.currentTarget.style.color='var(--text)'}>{post.user}</span>
           {post.verified && <span style={{ color:'var(--accent)', fontSize:12, fontWeight:700 }}>✓</span>}
           <span style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>{post.handle}</span>
           <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginLeft:'auto' }}>{post.time}</span>
@@ -95,7 +212,7 @@ function Post({ post, onLike, onRepost, onDelete }) {
           <div style={{ position:'relative' }}>
             <button onClick={() => setShowMenu(!showMenu)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:'2px 6px', fontSize:16, lineHeight:1 }}>···</button>
             {showMenu && (
-              <div style={{ position:'absolute', right:0, top:'100%', zIndex:200, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:6, boxShadow:'0 8px 24px rgba(0,0,0,0.15)', minWidth:150 }}
+              <div style={{ position:'absolute', right:0, top:'100%', zIndex:200, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:6, boxShadow:'0 8px 24px rgba(0,0,0,0.15)', minWidth:160 }}
                 onMouseLeave={() => setShowMenu(false)}>
                 <div onClick={() => { navigator.clipboard?.writeText(window.location.href); setShowMenu(false); }}
                   style={{ padding:'8px 12px', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', cursor:'pointer', borderRadius:6, display:'flex', alignItems:'center', gap:8 }}
@@ -104,10 +221,17 @@ function Post({ post, onLike, onRepost, onDelete }) {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                   Copy link
                 </div>
+                <div onClick={() => { window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.body)}`, '_blank'); setShowMenu(false); }}
+                  style={{ padding:'8px 12px', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', cursor:'pointer', borderRadius:6, display:'flex', alignItems:'center', gap:8 }}
+                  onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
+                  onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.254 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+                  Share on X
+                </div>
                 {isOwn && (
                   <div onClick={() => { onDelete(post.id); setShowMenu(false); }}
-                    style={{ padding:'8px 12px', fontFamily:'var(--font)', fontSize:12, color:'var(--red)', cursor:'pointer', borderRadius:6, display:'flex', alignItems:'center', gap:8 }}
-                    onMouseEnter={e => e.currentTarget.style.background='var(--red-bg)'}
+                    style={{ padding:'8px 12px', fontFamily:'var(--font)', fontSize:12, color:'#dc2626', cursor:'pointer', borderRadius:6, display:'flex', alignItems:'center', gap:8 }}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(220,38,38,0.08)'}
                     onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                     Delete post
@@ -116,119 +240,82 @@ function Post({ post, onLike, onRepost, onDelete }) {
               </div>
             )}
           </div>
-        {(post.assetTag || (post.postType && post.postType !== 'General')) && (
+        </div>
+
+        {(post.assetTag || post.direction) && (
           <div style={{ display:'flex', gap:6, marginBottom:8, flexWrap:'wrap' }}>
-            {post.assetTag ? <span style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20, background:'var(--accent-bg)', color:'var(--accent)', border:'1px solid var(--accent)' }}>{post.assetTag}</span> : null}
-            {post.postType && post.postType !== 'General' ? <span style={{ fontFamily:'var(--font)', fontSize:11, padding:'2px 8px', borderRadius:20, background:'var(--surface2)', color:'var(--text-muted)', border:'1px solid var(--border)' }}>{post.postType}</span> : null}
+            {post.assetTag && <span style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20, background:'var(--accent-bg)', color:'var(--accent)', border:'1px solid var(--accent)' }}>{post.assetTag}</span>}
+            {post.direction && <span style={{ fontFamily:'var(--font)', fontSize:11, padding:'2px 8px', borderRadius:20, background: post.direction==='LONG'?'rgba(22,163,74,0.1)':post.direction==='SHORT'?'rgba(220,38,38,0.1)':'var(--surface2)', color: post.direction==='LONG'?'#16a34a':post.direction==='SHORT'?'#dc2626':'var(--text-muted)', border:`1px solid ${post.direction==='LONG'?'#16a34a':post.direction==='SHORT'?'#dc2626':'var(--border)'}` }}>{post.direction}</span>}
           </div>
         )}
-        </div>
 
         <div style={{ fontFamily:'var(--font)', fontSize:14, color:'var(--text)', lineHeight:1.65, marginBottom:10 }}>
-          {post.body}{' '}
-          {post.tags?.map(t => <span key={t} style={{ color:'var(--accent)' }}>#{t} </span>)}
+          {post.body}
         </div>
 
-        {post.images === 2 && (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, borderRadius:12, overflow:'hidden', marginBottom:10 }}>
-            {[0,1].map(i => (
-              <div key={i} style={{ background:'var(--surface2)', height:120, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              </div>
-            ))}
+        {post.attachmentUrl && post.attachmentType === 'image' && (
+          <div style={{ marginBottom:10 }}>
+            <img src={post.attachmentUrl} alt="attachment"
+              style={{ maxWidth:'100%', maxHeight:220, objectFit:'contain', borderRadius:10, display:'block', background:'var(--surface2)' }} />
           </div>
         )}
 
-        {post.attachmentUrl && (
-          <div style={{ marginBottom:10, borderRadius:12, overflow:'hidden', border:'1px solid var(--border)' }}>
-            {post.attachmentType === 'image'
-              ? <img src={post.attachmentUrl} alt="attachment" style={{ width:'100%', maxHeight:300, objectFit:'cover', display:'block' }} />
-              : <div style={{ padding:'12px 14px', background:'var(--surface2)', display:'flex', alignItems:'center', gap:10 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <div>
-                    <div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text)' }}>{post.attachmentName}</div>
-                    <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{post.attachmentSize}</div>
-                  </div>
-                </div>
-            }
-          </div>
-        )}
-
-        {post.tradeTag && (
-          <div style={{ display:'inline-flex', alignItems:'center', gap:8, background: post.tradeTag.up?'var(--green-bg)':'var(--red-bg)', border:`1px solid ${post.tradeTag.up?'var(--green-border)':'var(--red-border)'}`, padding:'5px 14px', borderRadius:8, marginBottom:10 }}>
-            <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:700, color: post.tradeTag.up?'var(--green)':'var(--red)' }}>
-              {post.tradeTag.up?'▲':'▼'} {post.tradeTag.dir} · {post.tradeTag.asset} · {post.tradeTag.sym}
-            </span>
-            <div style={{ width:1, height:12, background: post.tradeTag.up?'var(--green-border)':'var(--red-border)' }} />
-            {post.tradeTag.cot && (
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <div style={{ width:36, height:4, background:'var(--surface3)', borderRadius:2, overflow:'hidden' }}>
-                  <div style={{ width:`${post.tradeTag.cot}%`, height:'100%', background: post.tradeTag.up?'var(--green)':'var(--red)', borderRadius:2 }} />
-                </div>
-                <span style={{ fontFamily:'var(--font-mono)', fontSize:10, fontWeight:700, color: post.tradeTag.up?'var(--green)':'var(--red)' }}>COT {post.tradeTag.cot}%</span>
-              </div>
-            )}
-            {post.tradeTag.target && <span style={{ fontFamily:'var(--font-mono)', fontSize:11, color: post.tradeTag.up?'var(--green)':'var(--red)' }}>{post.tradeTag.target}</span>}
-          </div>
-        )}
-
-        {post.screener && (
-          <div style={{ border:'1px solid var(--border)', borderRadius:12, padding:'12px 14px', marginBottom:10, transition:'background 0.1s' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
-            onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-            <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:4 }}>{post.screener.name}</div>
-            <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', lineHeight:1.5, marginBottom:8 }}>{post.screener.desc}</div>
-            <div style={{ display:'flex', gap:6 }}>
-              <span style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:500, background:'var(--accent-bg)', color:'var(--accent)', padding:'2px 9px', borderRadius:20 }}>{post.screener.uses.toLocaleString()}× used</span>
-              <span style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:500, background:'var(--surface2)', color:'var(--text-muted)', padding:'2px 9px', borderRadius:20 }}>{post.screener.forks}× forked</span>
-            </div>
-          </div>
+        {post.poll && Array.isArray(post.poll) && post.poll.length > 0 && (
+          <PollBlock postId={post.id} initialPoll={post.poll} />
         )}
 
         {/* Action bar */}
         <div style={{ display:'flex', alignItems:'center', marginTop:8, marginLeft:-10 }}>
           <button style={{ ...btnBase, color:'var(--text-muted)' }}
-            onClick={() => setShowComments(!showComments)}
+            onClick={toggleComments}
             onMouseEnter={e => { e.currentTarget.style.background='rgba(99,102,241,0.08)'; e.currentTarget.style.color='#6366f1'; }}
             onMouseLeave={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color='var(--text-muted)'; }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>{fmt(post.comments + comments.length)}</span>
+            <span>{fmt(commentCount)}</span>
           </button>
           <button style={{ ...btnBase, color: post.reposted?'#16a34a':'var(--text-muted)' }}
             onClick={() => onRepost(post.id)}
             onMouseEnter={e => { e.currentTarget.style.background='rgba(22,163,74,0.08)'; e.currentTarget.style.color='#16a34a'; }}
             onMouseLeave={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color=post.reposted?'#16a34a':'var(--text-muted)'; }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-            <span>{fmt(post.reposts + (post.reposted?1:0))}</span>
+            <span>{fmt(post.reposts)}</span>
           </button>
           <button style={{ ...btnBase, color: post.liked?'#e11d48':'var(--text-muted)' }}
             onClick={() => onLike(post.id)}
             onMouseEnter={e => { e.currentTarget.style.background='rgba(225,29,72,0.08)'; e.currentTarget.style.color='#e11d48'; }}
             onMouseLeave={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color=post.liked?'#e11d48':'var(--text-muted)'; }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill={post.liked?'#e11d48':'none'} stroke="currentColor" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            <span>{fmt(post.likes + (post.liked?1:0))}</span>
+            <span>{fmt(post.likes)}</span>
           </button>
           <button style={{ ...btnBase, color:'var(--text-muted)' }}
+            onClick={handleShare}
             onMouseEnter={e => { e.currentTarget.style.background='rgba(99,102,241,0.08)'; e.currentTarget.style.color='#6366f1'; }}
             onMouseLeave={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color='var(--text-muted)'; }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            <span>{fmt(post.views)}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <span>Share</span>
           </button>
         </div>
 
         {/* Inline comments */}
         {showComments && (
           <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid var(--border)' }}>
-            {comments.length === 0 && <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:8 }}>No comments yet.</div>}
-            {localComments.map(c => (
-              <div key={c.id} style={{ display:'flex', gap:8, marginBottom:8 }}>
-                <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:9, fontWeight:800, color:'#fff', flexShrink:0 }}>D</div>
-                <div style={{ flex:1, background:'var(--surface2)', borderRadius:10, padding:'6px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text)' }}>{c.text}</div>
-              </div>
-            ))}
-            <div style={{ display:'flex', gap:8 }}>
-              <input value={comment} onChange={e => setComment(e.target.value)} onKeyDown={e => e.key==='Enter' && addComment()} placeholder="Add a comment..." style={{ flex:1, padding:'6px 12px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none' }} />
-              <button onClick={addComment} disabled={!comment.trim()} style={{ padding:'6px 14px', background: comment.trim()?'var(--accent)':'var(--surface2)', color: comment.trim()?'#fff':'var(--text-muted)', border:'none', borderRadius:20, fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor: comment.trim()?'pointer':'default' }}>Post</button>
+            {loadingComments ? (
+              <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:8 }}>Loading…</div>
+            ) : localComments.length === 0 ? (
+              <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:8 }}>No comments yet.</div>
+            ) : (
+              localComments.map(c => (
+                <div key={c.id} style={{ display:'flex', gap:8, marginBottom:8 }}>
+                  <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:9, fontWeight:800, color:'#fff', flexShrink:0 }}>{(c.user||'T')[0].toUpperCase()}</div>
+                  <div style={{ flex:1, background:'var(--surface2)', borderRadius:10, padding:'6px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text)' }}>
+                    <span style={{ fontWeight:700, marginRight:6 }}>{c.user}</span>{c.text}
+                  </div>
+                </div>
+              ))
+            )}
+            <div style={{ display:'flex', gap:8, marginTop:4 }}>
+              <input value={comment} onChange={e => setComment(e.target.value)} onKeyDown={e => e.key==='Enter' && addComment()} placeholder="Add a comment…" style={{ flex:1, padding:'7px 14px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none' }} />
+              <button onClick={addComment} disabled={!comment.trim()} style={{ padding:'7px 16px', background:comment.trim()?'var(--accent)':'var(--surface2)', color:comment.trim()?'#fff':'var(--text-muted)', border:'none', borderRadius:20, fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:comment.trim()?'pointer':'default' }}>Reply</button>
             </div>
           </div>
         )}
@@ -239,125 +326,77 @@ function Post({ post, onLike, onRepost, onDelete }) {
 
 // ── Main FeedTab ──────────────────────────────────────────────
 export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
-  const [activeTabLocal, setActiveTabLocal] = useState('Discover');
-  const activeTab = activeTabProp || activeTabLocal;
-  const setActiveTab = (t) => { if (!activeTabProp) setActiveTabLocal(t); };
-  const [mounted, setMounted] = useState(false);
   const [posts, setPosts] = useState([]);
-  useEffect(() => { setMounted(true); setPosts(loadPosts()); const h=()=>setPosts(loadPosts()); window.addEventListener("post-created",h); return ()=>window.removeEventListener("post-created",h); }, []);
-  useEffect(() => { if (mounted) savePosts(posts); }, [posts, mounted]);
-  const [postText, setPostText]   = useState('');
-  
-  const fileInputRef              = useRef(null);
-  const [pendingFile, setPendingFile] = useState(null); // { url, type, name, size }
-  const [postType, setPostType] = useState('General');
-  const [assetTag, setAssetTag] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const POST_TYPES = ['General', 'Idea', 'Screener', 'Strategy', 'COT Signal'];
-  const TAB_FILTER = {
-    'Discover':    null,         // show all
-    'Following':   null,         // show all (would filter by followed users later)
-    'Ideas':       'Idea',
-    'Screeners':   'Screener',
-    'Strategies':  'Strategy',
-    'COT Signals': 'COT Signal',
-  };
+  const activeTab = activeTabProp || 'Discover';
 
-  const visiblePosts = (() => {
-    if (activeTab === 'Following') {
-      // Load followed users from localStorage
-      try {
-        const followed = JSON.parse(localStorage.getItem('tr_followed_users') || '[]');
-        if (followed.length === 0) return []; // nobody followed yet
-        return posts.filter(p => followed.includes(p.user) || followed.includes(p.username));
-      } catch(e) { return []; }
-    }
-    const filter = TAB_FILTER[activeTab];
-    if (!filter) return posts; // Discover = all posts
-    return posts.filter(p => p.postType === filter);
-  })();
+  const fetchPosts = useCallback(async () => {
+    try {
+      const tabParam = activeTab === 'Following' ? 'following' : 'discover';
+      const res = await fetch(`/api/social/posts?tab=${tabParam}`);
+      const data = await res.json();
+      if (data.posts) setPosts(data.posts.map(mapApiPost));
+    } catch(e) {}
+    setLoading(false);
+  }, [activeTab]);
 
-  const handleLike   = (id) => setPosts(p => p.map(post => post.id===id ? {...post, liked:!post.liked} : post));
-  const handleRepost = (id) => setPosts(p => p.map(post => post.id===id ? {...post, reposted:!post.reposted} : post));
-  const handleDelete = (id) => setPosts(p => p.filter(post => post.id!==id));
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if(!file) return;
-    const isImage = file.type.startsWith('image/');
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if(isImage) {
-        setPendingFile({ url:ev.target.result, type:'image', name:file.name, size:'' });
-      } else {
-        setPendingFile({ url:null, type:'file', name:file.name, size: file.size>1024*1024?(file.size/1024/1024).toFixed(1)+'MB':Math.round(file.size/1024)+'KB' });
-      }
+  useEffect(() => {
+    setLoading(true);
+    fetchPosts();
+    const interval = setInterval(fetchPosts, 20000);
+    // Refresh immediately when a post is created via the "+" modal
+    const onPost = () => fetchPosts();
+    window.addEventListener('post-created', onPost);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('post-created', onPost);
     };
-    isImage ? reader.readAsDataURL(file) : reader.readAsArrayBuffer(file);
-    e.target.value='';
+  }, [fetchPosts]);
+
+  const handleLike = async (id) => {
+    setPosts(p => p.map(post => post.id === id ? { ...post, liked: !post.liked, likes: post.liked ? post.likes - 1 : post.likes + 1 } : post));
+    try { await fetch('/api/social/posts/like', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ postId: id }) }); } catch(e) {}
   };
 
-  const handlePost = () => {
-    if(!postText.trim() && !pendingFile) return;
-    const newPost = {
-      id: Date.now(),
-      user:'you', handle:'@you', verified:false,
-      avatar:'D', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)',
-      time:'now',
-      body: postText,
-      tags: [],
-      postType,
-      assetTag: assetTag.trim(),
-      tradeTag: null,
-      attachmentUrl: pendingFile?.url || null,
-      attachmentType: pendingFile?.type || null,
-      attachmentName: pendingFile?.name || null,
-      attachmentSize: pendingFile?.size || null,
-      likes:0, comments:0, reposts:0, views:0, liked:false, reposted:false,
-    };
-    setPosts(p => [newPost, ...p]);
-    setPostText(''); setPendingFile(null); setPostType('General'); setAssetTag('');
+  const handleRepost = async (id) => {
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    const undoing = post.reposted;
+    setPosts(p => p.map(p2 => p2.id === id ? { ...p2, reposted: !p2.reposted, reposts: undoing ? p2.reposts - 1 : p2.reposts + 1 } : p2));
+    try {
+      await fetch('/api/social/posts/repost', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: id, action: undoing ? 'undo' : 'repost' }),
+      });
+    } catch(e) {}
   };
 
-  const charsLeft = 280 - postText.length;
+  const handleDelete = async (id) => {
+    setPosts(p => p.filter(post => post.id !== id));
+    try { await fetch('/api/social/posts', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id }) }); } catch(e) {}
+  };
 
   return (
     <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)' }}>
-      <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.mp4" style={{ display:'none' }} onChange={handleFileSelect} />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-        {/* Posts */}
-        {posts.length === 0 ? (
-          <div style={{ padding:'60px 20px', textAlign:'center' }}>
-            <div style={{ fontSize:36, marginBottom:12 }}>📊</div>
-            <div style={{ fontFamily:'var(--font)', fontSize:16, fontWeight:700, color:'var(--text)', marginBottom:8 }}>
-              {TAB_FILTER[activeTab] ? `No ${activeTab} posts yet` : activeTab==='Following' ? 'Follow traders to see their posts' : 'Be the first to post'}
-            </div>
-            <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', maxWidth:300, margin:'0 auto', lineHeight:1.6 }}>
-              {TAB_FILTER[activeTab] ? `Be the first to post in ${activeTab}.` : activeTab==='Following' ? 'Find traders on the Discover feed.' : 'Share your market analysis, trade ideas, and COT insights.'}
-            </div>
+      {loading ? (
+        <div style={{ padding:'60px 20px', textAlign:'center' }}>
+          <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading posts…</div>
+        </div>
+      ) : posts.length === 0 ? (
+        <div style={{ padding:'60px 20px', textAlign:'center' }}>
+          <div style={{ fontSize:36, marginBottom:12 }}>📊</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:16, fontWeight:700, color:'var(--text)', marginBottom:8 }}>
+            {activeTab === 'Following' ? 'Follow traders to see their posts' : 'Be the first to post'}
           </div>
-        ) : (
-          visiblePosts.map(post => <Post key={post.id} post={post} onLike={handleLike} onRepost={handleRepost} onDelete={handleDelete} />)
-        )}
-      </div>
-
-
+          <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', maxWidth:300, margin:'0 auto', lineHeight:1.6 }}>
+            {activeTab === 'Following' ? 'Follow traders on Discover to see their ideas here.' : 'Tap the + button to share your market analysis, trade ideas, and COT insights.'}
+          </div>
+        </div>
+      ) : (
+        posts.map(post => <Post key={post.id} post={post} onLike={handleLike} onRepost={handleRepost} onDelete={handleDelete} currentUserId={currentUserId} />)
+      )}
+    </div>
   );
 }

@@ -23,6 +23,19 @@ export async function GET(request) {
   return Response.json({ groups })
 }
 
+export async function DELETE(request) {
+  const session = await getSession()
+  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+  if (!id) return Response.json({ error: 'Group ID required' }, { status: 400 })
+  const group = await prisma.group.findUnique({ where: { id } })
+  if (!group) return Response.json({ error: 'Not found' }, { status: 404 })
+  if (group.ownerId !== session.user.id) return Response.json({ error: 'Only the owner can delete this group' }, { status: 403 })
+  await prisma.group.delete({ where: { id } })
+  return Response.json({ ok: true })
+}
+
 export async function POST(request) {
   const session = await getSession()
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })

@@ -1,9 +1,7 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
+import { prisma } from '../../../../lib/prisma'
 
 export const authOptions = {
   providers: [
@@ -15,23 +13,13 @@ export const authOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
-        
-        const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/User?email=eq.${encodeURIComponent(credentials.email.toLowerCase())}&select=id,email,name,password,plan`,
-          {
-            headers: {
-              'apikey': SERVICE_KEY,
-              'Authorization': `Bearer ${SERVICE_KEY}`,
-            }
-          }
-        )
-        const users = await res.json()
-        if (!users || users.length === 0) return null
-        
-        const user = users[0]
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email.toLowerCase() },
+          select: { id: true, email: true, name: true, password: true, plan: true },
+        })
+        if (!user) return null
         const valid = await bcrypt.compare(credentials.password, user.password)
         if (!valid) return null
-        
         return { id: user.id, email: user.email, name: user.name, plan: user.plan }
       },
     }),

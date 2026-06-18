@@ -1,3 +1,10 @@
+require('fs').readFileSync('.env.local', 'utf8').split('\n').forEach(line => {
+  const eq = line.indexOf('=');
+  if (eq > 0 && !line.startsWith('#')) {
+    const val = line.slice(eq + 1).trim().replace(/^"|"$/g, '');
+    if (val) process.env[line.slice(0, eq).trim()] = val;
+  }
+});
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
@@ -5,7 +12,7 @@ const prisma = new PrismaClient();
 
 async function resetPassword() {
   const email = 'dominicvansaghi@yahoo.com';
-  const newPassword = 'TradeZar2026!';
+  const newPassword = 'Tradezar2026';
   
   const hash = await bcrypt.hash(newPassword, 12);
   

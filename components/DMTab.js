@@ -2,20 +2,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const PURPLE = '#4f46e5';
-
 const COLORS = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
 function getColor(name) { return COLORS[(name||'?').charCodeAt(0) % COLORS.length]; }
 
 function Avatar({ letter, size=36 }) {
   return (
-    <div style={{ width:size, height:size, borderRadius:'50%', background:getColor(letter), display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font)', fontSize:size*0.38, fontWeight:700, color:'#fff', flexShrink:0 }}>
+    <div style={{ width:size, height:size, borderRadius:'50%', background:getColor(letter||'?'), display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font)', fontSize:size*0.38, fontWeight:700, color:'#fff', flexShrink:0 }}>
       {(letter||'?')[0].toUpperCase()}
     </div>
   );
 }
 
-// Groups a flat list of DirectMessage rows into per-conversation threads keyed by the
-// other participant's user id. myId is required to know which side of each row is "them".
 function groupIntoConvos(rows, myId, userDirectory) {
   const byOther = new Map();
   for (const m of rows) {
@@ -27,41 +24,45 @@ function groupIntoConvos(rows, myId, userDirectory) {
   for (const [otherId, msgs] of byOther.entries()) {
     msgs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const info = userDirectory[otherId] || {};
-    convos.push({
-      otherId,
-      displayName: info.displayName || 'Unknown user',
-      messages: msgs,
-    });
+    convos.push({ otherId, displayName: info.displayName || 'Unknown user', messages: msgs });
   }
   convos.sort((a, b) => {
-    const aLast = a.messages[a.messages.length - 1]?.createdAt || '';
-    const bLast = b.messages[b.messages.length - 1]?.createdAt || '';
+    const aLast = a.messages[a.messages.length-1]?.createdAt || '';
+    const bLast = b.messages[b.messages.length-1]?.createdAt || '';
     return aLast < bLast ? 1 : -1;
   });
   return convos;
 }
 
+function fmt(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = new Date();
+  const secs = Math.floor((now - d) / 1000);
+  if (secs < 60) return 'now';
+  if (secs < 3600) return Math.floor(secs/60)+'m';
+  if (secs < 86400) return Math.floor(secs/3600)+'h';
+  return d.toLocaleDateString([], { month:'short', day:'numeric' });
+}
+
 export default function DMTab({ initialUser }) {
   const [myId, setMyId] = useState(null);
   const [convos, setConvos] = useState([]);
-  const [userDirectory, setUserDirectory] = useState({}); // userId -> {displayName, username, verifiedBadge}
-  const [activeId, setActiveId] = useState(null); // otherUserId of the open thread
+  const [userDirectory, setUserDirectory] = useState({});
+  const [activeId, setActiveId] = useState(null);
   const [msgText, setMsgText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-
   const [showNew, setShowNew] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
-
   const [dmSearch, setDmSearch] = useState('');
   const endRef = useRef(null);
+  const inputRef = useRef(null);
   const searchDebounceRef = useRef(null);
 
-  // Loads all messages involving the current user, resolves the other participants'
-  // display names, and groups everything into threads.
   const loadConvos = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -76,21 +77,22 @@ export default function DMTab({ initialUser }) {
       if (!res.ok) throw new Error(data.error || 'Failed to load messages');
       const rows = data.messages || [];
 
-      const idSet = new Set();
-      rows.forEach(m => { idSet.add(m.fromUserId); idSet.add(m.toUserId); });
-
-      let directory = {};
-      if (idSet.size > 0) {
-        const dirRes = await fetch(`/api/users/lookup?ids=${[...idSet].join(',')}`);
-        if (dirRes.ok) {
-          const dirData = await dirRes.json();
-          directory = dirData.users || {};
-        }
+      // Build directory from included user objects
+      const directory = {};
+      for (const m of rows) {
+        if (m.fromUser) directory[m.fromUser.id] = m.fromUser;
+        if (m.toUser)   directory[m.toUser.id]   = m.toUser;
+      }
+      // Fallback: batch lookup for any missing ids
+      const idSet = new Set(rows.flatMap(m => [m.fromUserId, m.toUserId]));
+      const missing = [...idSet].filter(id => !directory[id]);
+      if (missing.length) {
+        const dirRes = await fetch(`/api/users/lookup?ids=${missing.join(',')}`);
+        if (dirRes.ok) { const d = await dirRes.json(); Object.assign(directory, d.users || {}); }
       }
       setUserDirectory(directory);
       setConvos(groupIntoConvos(rows, me.id, directory));
-
-      if (initialUser) setActiveId(initialUser); // initialUser is expected to be a real userId
+      if (initialUser) setActiveId(initialUser);
     } catch (e) {
       setError(e.message || 'Failed to load messages');
     } finally {
@@ -99,15 +101,21 @@ export default function DMTab({ initialUser }) {
   }, [initialUser]);
 
   useEffect(() => { loadConvos(); }, [loadConvos]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [activeId, convos]);
 
-  // Expose global so other components (e.g. FeedTab) can open a DM by real user id.
   useEffect(() => {
-    window.__openDM = (userId) => { setActiveId(userId); };
+    endRef.current?.scrollIntoView({ behavior:'smooth' });
+  }, [activeId, convos]);
+
+  useEffect(() => {
+    if (activeId) setTimeout(() => inputRef.current?.focus(), 50);
+  }, [activeId]);
+
+  useEffect(() => {
+    window.__openDM = (userId) => setActiveId(userId);
     return () => { delete window.__openDM; };
   }, []);
 
-  // Debounced live search against the real User table instead of accepting raw text.
+  // Debounced user search
   useEffect(() => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     if (!searchQuery.trim()) { setSearchResults([]); return; }
@@ -117,13 +125,9 @@ export default function DMTab({ initialUser }) {
         const res = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery.trim())}`);
         const data = await res.json();
         setSearchResults(res.ok ? (data.users || []) : []);
-      } catch (e) {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
+      } catch { setSearchResults([]); }
+      setSearching(false);
     }, 300);
-    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
   }, [searchQuery]);
 
   const activeConvo = convos.find(c => c.otherId === activeId);
@@ -144,6 +148,8 @@ export default function DMTab({ initialUser }) {
     if (!text || !activeId || sending) return;
     setSending(true);
     setMsgText('');
+    const optimistic = { id: 'tmp_'+Date.now(), fromUserId: myId, toUserId: activeId, content: text, createdAt: new Date().toISOString() };
+    setConvos(prev => prev.map(c => c.otherId === activeId ? { ...c, messages: [...c.messages, optimistic] } : c));
     try {
       const res = await fetch('/api/social/messages', {
         method: 'POST',
@@ -152,127 +158,199 @@ export default function DMTab({ initialUser }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send');
+      // Replace optimistic with real
       setConvos(prev => prev.map(c => c.otherId === activeId
-        ? { ...c, messages: [...c.messages, data.message] }
+        ? { ...c, messages: c.messages.map(m => m.id === optimistic.id ? data.message : m) }
         : c));
     } catch (e) {
-      setError(e.message || 'Failed to send message');
-      setMsgText(text); // restore so the user doesn't lose what they typed
+      setError(e.message || 'Failed to send');
+      setMsgText(text);
+      setConvos(prev => prev.map(c => c.otherId === activeId
+        ? { ...c, messages: c.messages.filter(m => m.id !== optimistic.id) }
+        : c));
     } finally {
       setSending(false);
     }
   };
 
   const deleteConvo = async (otherId) => {
-    if (!window.confirm('Delete this conversation? This cannot be undone.')) return;
+    if (!window.confirm('Delete this conversation?')) return;
     try {
-      const res = await fetch(`/api/social/messages?with=${otherId}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to delete');
+      await fetch(`/api/social/messages?with=${otherId}`, { method: 'DELETE' });
       setConvos(prev => prev.filter(c => c.otherId !== otherId));
       if (activeId === otherId) setActiveId(null);
-    } catch (e) {
-      setError(e.message || 'Failed to delete conversation');
-    }
+    } catch (e) { setError('Failed to delete'); }
   };
 
   const lastMsg = (convo) => {
     if (!convo.messages.length) return 'No messages yet';
     const m = convo.messages[convo.messages.length-1];
-    const mine = myId !== null && m.fromUserId === myId;
-    return (mine ? 'You: ' : '') + m.content;
+    return (m.fromUserId === myId ? 'You: ' : '') + m.content;
   };
 
-  return (
-    <div style={{ display:'flex', height:'100%', fontFamily:'var(--font)' }}>
-      <div style={{ width:'100%', display:'flex', flexDirection:'column', height:'100%' }}>
-        <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-          <div style={{ marginBottom:10 }}>
-            <input
-              value={dmSearch}
-              onChange={e => setDmSearch(e.target.value)}
-              placeholder="Search conversations..."
-              style={{ width:'100%', padding:'8px 12px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none', boxSizing:'border-box' }}
-            />
-          </div>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: showNew?10:0 }}>
-            <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)' }}>Messages</span>
-            <button onClick={() => setShowNew(s=>!s)} style={{ padding:'4px 10px', borderRadius:6, border:'none', background:PURPLE, color:'#fff', fontFamily:'var(--font)', fontSize:11, fontWeight:600, cursor:'pointer' }}>+ New</button>
-          </div>
-          {showNew && (
-            <div style={{ position:'relative' }}>
-              <input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search by username..."
-                autoFocus
-                style={{ width:'100%', padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none', boxSizing:'border-box' }}
-              />
-              {searchQuery.trim() && (
-                <div style={{ marginTop:6, border:'1px solid var(--border)', borderRadius:8, maxHeight:200, overflowY:'auto', background:'var(--surface)' }}>
-                  {searching ? (
-                    <div style={{ padding:10, fontSize:12, color:'var(--text-muted)' }}>Searching...</div>
-                  ) : searchResults.length === 0 ? (
-                    <div style={{ padding:10, fontSize:12, color:'var(--text-muted)' }}>No users found.</div>
-                  ) : searchResults.map(u => (
-                    <div key={u.id} onClick={() => startConvoWith(u)}
-                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', cursor:'pointer' }}
-                      onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
-                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                      <Avatar letter={u.displayName} size={26} />
-                      <span style={{ fontSize:12, color:'var(--text)' }}>{u.displayName}</span>
-                      {u.verifiedBadge && <span style={{ fontSize:10, color:PURPLE }}>✓ Verified</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+  const filtered = convos.filter(c => !dmSearch.trim() || c.displayName.toLowerCase().includes(dmSearch.toLowerCase()));
+
+  // ── Conversation thread view ──────────────────────────────────
+  if (activeId) {
+    const convo = activeConvo || { otherId: activeId, displayName: userDirectory[activeId]?.displayName || 'Unknown', messages: [] };
+    return (
+      <div style={{ display:'flex', flexDirection:'column', height:'100%', fontFamily:'var(--font)' }}>
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderBottom:'1px solid var(--border)', flexShrink:0, background:'var(--surface)' }}>
+          <button onClick={() => setActiveId(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:18, padding:'0 4px', display:'flex', alignItems:'center' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <Avatar letter={convo.displayName} size={32} />
+          <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)' }}>{convo.displayName}</span>
+          <div style={{ flex:1 }} />
+          <button onClick={() => deleteConvo(activeId)} title="Delete conversation" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:4 }}
+            onMouseEnter={e => e.currentTarget.style.color='#dc2626'}
+            onMouseLeave={e => e.currentTarget.style.color='var(--text-muted)'}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
         </div>
 
-        {error && (
-          <div style={{ padding:'8px 14px', fontSize:12, color:'#dc2626', background:'#fef2f2' }}>{error}</div>
-        )}
+        {error && <div style={{ padding:'6px 14px', fontSize:12, color:'#dc2626', background:'#fef2f2', flexShrink:0 }}>{error}<button onClick={()=>setError('')} style={{marginLeft:8,background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>×</button></div>}
 
-        {loading ? (
-          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, color:'var(--text-muted)' }}>Loading...</div>
-        ) : convos.length === 0 ? (
-          <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:20, gap:8 }}>
-            <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', textAlign:'center' }}>No messages yet. Click "+ New" to start a conversation with a real user.</div>
-          </div>
-        ) : (
-          <div style={{ flex:1, overflowY:'auto' }}>
-            {convos.filter(c => !dmSearch.trim() || c.displayName.toLowerCase().includes(dmSearch.toLowerCase())).map(c => (
-              <div key={c.otherId} style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 14px', cursor:'pointer', borderBottom:'1px solid var(--border)', background: activeId===c.otherId ? 'var(--accent-bg)' : 'transparent' }}>
-                <div onClick={() => setActiveId(c.otherId)} style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 }}>
-                  <Avatar letter={c.displayName} size={38} />
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: activeId===c.otherId?PURPLE:'var(--text)' }}>{c.displayName}</div>
-                    <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lastMsg(c)}</div>
-                  </div>
+        {/* Messages */}
+        <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', display:'flex', flexDirection:'column', gap:4 }}>
+          {convo.messages.length === 0 && (
+            <div style={{ margin:'auto', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
+              No messages yet. Say hi to {convo.displayName}!
+            </div>
+          )}
+          {convo.messages.map((m, i) => {
+            const isMe = m.fromUserId === myId;
+            const showName = !isMe && (i === 0 || convo.messages[i-1]?.fromUserId !== m.fromUserId);
+            return (
+              <div key={m.id} style={{ display:'flex', flexDirection:'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom:2 }}>
+                {showName && <span style={{ fontSize:11, color:'var(--text-muted)', marginBottom:2, marginLeft:4 }}>{convo.displayName}</span>}
+                <div style={{
+                  maxWidth:'72%', padding:'9px 13px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                  background: isMe ? PURPLE : 'var(--surface2)',
+                  color: isMe ? '#fff' : 'var(--text)',
+                  fontFamily:'var(--font)', fontSize:13, lineHeight:1.5,
+                  border: isMe ? 'none' : '1px solid var(--border)',
+                }}>
+                  {m.content}
                 </div>
-                <button onClick={() => deleteConvo(c.otherId)} title="Delete conversation"
-                  style={{ border:'none', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontSize:14, padding:4 }}>✕</button>
+                <span style={{ fontSize:10, color:'var(--text-muted)', marginTop:2, marginLeft:4, marginRight:4 }}>{fmt(m.createdAt)}</span>
               </div>
-            ))}
-          </div>
-        )}
+            );
+          })}
+          <div ref={endRef} />
+        </div>
 
-        {activeConvo && (
-          <div style={{ borderTop:'2px solid var(--border)', padding:'10px 14px', display:'flex', gap:8, flexShrink:0 }}>
+        {/* Input */}
+        <div style={{ padding:'10px 14px', borderTop:'1px solid var(--border)', flexShrink:0 }}>
+          <div style={{ display:'flex', gap:8, alignItems:'center', background:'#1e1e2e', border:'2px solid #534AB7', borderRadius:14, padding:'10px 14px', boxShadow:'0 2px 12px rgba(83,74,183,0.18)' }}>
             <input
+              ref={inputRef}
               value={msgText}
               onChange={e => setMsgText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMsg()}
-              placeholder={`Message ${activeConvo.displayName}...`}
+              placeholder={`Message ${convo.displayName}...`}
               disabled={sending}
-              style={{ flex:1, padding:'8px 12px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none' }}
+              style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'#fff', outline:'none', caretColor:'#AFA9EC' }}
             />
-            <button onClick={sendMsg} disabled={sending || !msgText.trim()} style={{ padding:'8px 16px', borderRadius:20, border:'none', background:PURPLE, color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer', opacity: sending?0.6:1 }}>Send</button>
+            <button onClick={sendMsg} disabled={sending || !msgText.trim()}
+              style={{ width:30, height:30, borderRadius:8, background: msgText.trim() ? PURPLE : 'rgba(83,74,183,0.3)', color:'#fff', border:'none', cursor: msgText.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, opacity: sending ? 0.6 : 1 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Conversation list view ────────────────────────────────────
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', fontFamily:'var(--font)' }}>
+      {/* Header */}
+      <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+          <span style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>Messages</span>
+          <button onClick={() => setShowNew(s => !s)}
+            style={{ padding:'5px 12px', borderRadius:8, border:'none', background:PURPLE, color:'#fff', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            + New
+          </button>
+        </div>
+
+        {/* New message search */}
+        {showNew && (
+          <div style={{ marginBottom:8 }}>
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by username..."
+              autoFocus
+              style={{ width:'100%', padding:'8px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none', boxSizing:'border-box' }}
+            />
+            {searchQuery.trim() && (
+              <div style={{ marginTop:4, border:'1px solid var(--border)', borderRadius:10, maxHeight:220, overflowY:'auto', background:'var(--surface)', boxShadow:'0 4px 16px rgba(0,0,0,0.15)' }}>
+                {searching ? (
+                  <div style={{ padding:12, fontSize:12, color:'var(--text-muted)', textAlign:'center' }}>Searching…</div>
+                ) : searchResults.length === 0 ? (
+                  <div style={{ padding:12, fontSize:12, color:'var(--text-muted)', textAlign:'center' }}>No users found for "{searchQuery}"</div>
+                ) : searchResults.map(u => (
+                  <div key={u.id} onClick={() => startConvoWith(u)}
+                    style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', cursor:'pointer', borderBottom:'1px solid var(--border)' }}
+                    onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
+                    onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                    <Avatar letter={u.displayName} size={30} />
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{u.displayName}</div>
+                      {u.username && <div style={{ fontSize:11, color:'var(--text-muted)' }}>@{u.username}</div>}
+                    </div>
+                    {u.verifiedBadge && <span style={{ marginLeft:'auto', fontSize:10, color:PURPLE }}>✓</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
-        <div ref={endRef} />
+
+        {/* Filter existing convos */}
+        <input
+          value={dmSearch}
+          onChange={e => setDmSearch(e.target.value)}
+          placeholder="Search conversations..."
+          style={{ width:'100%', padding:'7px 12px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none', boxSizing:'border-box' }}
+        />
       </div>
+
+      {error && <div style={{ padding:'6px 14px', fontSize:12, color:'#dc2626', background:'#fef2f2', flexShrink:0 }}>{error}<button onClick={()=>setError('')} style={{marginLeft:8,background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>×</button></div>}
+
+      {loading ? (
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, color:'var(--text-muted)' }}>Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, padding:20, color:'var(--text-muted)', fontSize:13, textAlign:'center' }}>
+          {dmSearch ? 'No conversations match.' : 'No messages yet.\nClick "+ New" to message a trader.'}
+        </div>
+      ) : (
+        <div style={{ flex:1, overflowY:'auto' }}>
+          {filtered.map(c => (
+            <div key={c.otherId}
+              onClick={() => setActiveId(c.otherId)}
+              style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer', borderBottom:'1px solid var(--border)', background:'transparent' }}
+              onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
+              onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+              <Avatar letter={c.displayName} size={40} />
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', marginBottom:2 }}>{c.displayName}</div>
+                <div style={{ fontSize:11, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lastMsg(c)}</div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0 }}>
+                <span style={{ fontSize:10, color:'var(--text-muted)' }}>{fmt(c.messages[c.messages.length-1]?.createdAt)}</span>
+                <button onClick={e => { e.stopPropagation(); deleteConvo(c.otherId); }}
+                  title="Delete" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:2, lineHeight:1 }}
+                  onMouseEnter={e => e.currentTarget.style.color='#dc2626'}
+                  onMouseLeave={e => e.currentTarget.style.color='var(--text-muted)'}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

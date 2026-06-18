@@ -74,13 +74,14 @@ function UserSearch() {
   );
 }
 
-function GroupChatRoom({ group, activeRoom }) {
+function GroupChatRoom({ group, activeRoom, myName }) {
   const [msg, setMsg] = useState('');
   const [messages, setMessages] = useState([]);
   const [attachment, setAttachment] = useState(null);
   const [popover, setPopover] = useState(false);
   const [linkInput, setLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
+  const [hoveredMsg, setHoveredMsg] = useState(null);
   const fileRef = useRef(null);
   const popRef = useRef(null);
   const endRef = useRef(null);
@@ -117,11 +118,19 @@ function GroupChatRoom({ group, activeRoom }) {
 
   const send = () => {
     if (!msg.trim() && !attachment) return;
-    const m = { id:Date.now(), user:'you', text:msg.trim(), time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), attachment: attachment||null };
+    const displayName = myName || 'you';
+    const m = { id:Date.now(), user:displayName, text:msg.trim(), time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), attachment: attachment||null };
     const updated = [...messages, m];
     setMessages(updated);
     try { localStorage.setItem('tr_chat_'+group.id+'_'+activeRoom, JSON.stringify(updated)); } catch {}
     setMsg(''); setAttachment(null);
+  };
+
+  const deleteMsg = (id) => {
+    const updated = messages.filter(m => m.id !== id);
+    setMessages(updated);
+    try { localStorage.setItem('tr_chat_'+group.id+'_'+activeRoom, JSON.stringify(updated)); } catch {}
+    setHoveredMsg(null);
   };
 
   const popItems = [
@@ -130,47 +139,65 @@ function GroupChatRoom({ group, activeRoom }) {
     { label:'Link', icon:'🔗', action:() => { setLinkInput(true); setPopover(false); } },
   ];
 
+  const myDisplayName = myName || 'you';
+
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0, overflow:'hidden' }}>
-      
+
       <div style={{ flex:1, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
         {messages.length === 0 && <div style={{ textAlign:'center', padding:'40px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>No messages in #{activeRoom} yet. Say hello!</div>}
-        {messages.map(m => (
-          <div key={m.id} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-            <div style={{ width:32, height:32, borderRadius:'50%', background:getColor(m.user), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0 }}>{(m.user||'?')[0].toUpperCase()}</div>
-            <div>
-              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
-                <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{m.user}</span>
-                <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.time}</span>
+        {messages.map(m => {
+          const isOwn = m.user === myDisplayName;
+          const isHovered = hoveredMsg === m.id;
+          return (
+            <div key={m.id} onMouseEnter={() => setHoveredMsg(m.id)} onMouseLeave={() => setHoveredMsg(null)}
+              style={{ display:'flex', gap:10, alignItems:'flex-start', position:'relative', padding:'2px 4px', borderRadius:8, background: isHovered ? 'var(--surface2)' : 'transparent' }}>
+              <div style={{ width:32, height:32, borderRadius:'50%', background:getColor(m.user), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0 }}>{(m.user||'?')[0].toUpperCase()}</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+                  <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{m.user}</span>
+                  <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.time}</span>
+                </div>
+                {m.text && <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text)', lineHeight:1.5 }}>{m.text}</div>}
+                {m.attachment?.type==="image" && <div style={{ marginTop:6, borderRadius:10, overflow:'hidden', maxWidth:280 }}><img src={m.attachment.url} alt="" style={{ width:'100%', display:'block', borderRadius:10 }} /></div>}
+                {m.attachment?.type==="file" && <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', maxWidth:280 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div><div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text)' }}>{m.attachment.name}</div>{m.attachment.size&&<div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{m.attachment.size}</div>}</div></div>}
+                {m.attachment?.type==="link" && <a href={m.attachment.url} target="_blank" rel="noreferrer" style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', maxWidth:280, textDecoration:'none' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--accent)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.attachment.url}</span></a>}
               </div>
-              {m.text && <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text)', lineHeight:1.5 }}>{m.text}</div>}
-              {m.attachment?.type==="image" && <div style={{ marginTop:6, borderRadius:10, overflow:'hidden', maxWidth:280 }}><img src={m.attachment.url} alt="" style={{ width:'100%', display:'block', borderRadius:10 }} /></div>}
-              {m.attachment?.type==="file" && <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', maxWidth:280 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div><div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text)' }}>{m.attachment.name}</div>{m.attachment.size&&<div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{m.attachment.size}</div>}</div></div>}
-              {m.attachment?.type==="link" && <a href={m.attachment.url} target="_blank" rel="noreferrer" style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', maxWidth:280, textDecoration:'none' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--accent)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.attachment.url}</span></a>}
+              {/* Delete button — shows on hover for any message */}
+              {isHovered && (
+                <button onClick={() => deleteMsg(m.id)} title="Delete message"
+                  style={{ position:'absolute', top:2, right:4, width:26, height:26, borderRadius:6, background:'rgba(220,38,38,0.1)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#dc2626', fontSize:12 }}
+                  onMouseEnter={e => e.currentTarget.style.background='rgba(220,38,38,0.2)'}
+                  onMouseLeave={e => e.currentTarget.style.background='rgba(220,38,38,0.1)'}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={endRef} />
       </div>
+
       <div style={{ padding:'10px 16px', borderTop:'1px solid var(--border)', flexShrink:0 }}>
         {attachment && (
           <div style={{ marginBottom:8, display:'flex', alignItems:'center', gap:8, padding:'6px 10px', borderRadius:8, background:'var(--surface2)', border:'1px solid var(--border)' }}>
             {attachment.type==='image' && <img src={attachment.url} alt="" style={{ width:36, height:36, borderRadius:6, objectFit:'cover' }} />}
             <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{attachment.name}</span>
-            <button onClick={() => setAttachment(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:18, lineHeight:1 }}>x</button>
+            <button onClick={() => setAttachment(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:18, lineHeight:1 }}>×</button>
           </div>
         )}
         {linkInput && (
           <div style={{ marginBottom:8, display:'flex', gap:6 }}>
             <input value={linkUrl} onChange={e=>setLinkUrl(e.target.value)} onKeyDown={e=>e.key==="Enter"&&attachLink()} placeholder="Paste a URL..." autoFocus style={{ flex:1, padding:'7px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none' }} />
             <button onClick={attachLink} style={{ padding:'7px 14px', borderRadius:8, background:PURPLE, color:'#fff', border:'none', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'pointer' }}>Attach</button>
-            <button onClick={() => { setLinkInput(false); setLinkUrl(''); }} style={{ padding:'7px 10px', borderRadius:8, background:'var(--surface2)', color:'var(--text-muted)', border:'1px solid var(--border)', cursor:'pointer' }}>x</button>
+            <button onClick={() => { setLinkInput(false); setLinkUrl(''); }} style={{ padding:'7px 10px', borderRadius:8, background:'var(--surface2)', color:'var(--text-muted)', border:'1px solid var(--border)', cursor:'pointer' }}>×</button>
           </div>
         )}
         <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx" style={{ display:'none' }} onChange={handleFile} />
-        <div style={{ display:'flex', gap:8, alignItems:'center', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, padding:'8px 12px' }}>
+        {/* Message bar */}
+        <div style={{ display:'flex', gap:8, alignItems:'center', background:'#1e1e2e', border:'2px solid #534AB7', borderRadius:14, padding:'10px 14px', boxShadow:'0 2px 12px rgba(83,74,183,0.18)' }}>
           <div ref={popRef} style={{ position:'relative', flexShrink:0 }}>
-            <button onClick={() => setPopover(p => !p)} style={{ width:28, height:28, borderRadius:'50%', background:popover?PURPLE:'var(--accent-bg,#EEEDFE)', border:'1px solid '+(popover?PURPLE:'#4f46e5'), display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:popover?'#fff':PURPLE, fontSize:20, lineHeight:1, fontWeight:300, outline:'none' }}>+</button>
+            <button onClick={() => setPopover(p => !p)} style={{ width:28, height:28, borderRadius:'50%', background:popover?PURPLE:'rgba(83,74,183,0.2)', border:'1px solid '+(popover?PURPLE:'#534AB7'), display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#AFA9EC', fontSize:20, lineHeight:1, fontWeight:300, outline:'none' }}>+</button>
             {popover && (
               <div style={{ position:'fixed', bottom:60, left:16, background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:'6px', minWidth:160, zIndex:99999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }}>
                 {popItems.map(item => (
@@ -183,8 +210,10 @@ function GroupChatRoom({ group, activeRoom }) {
               </div>
             )}
           </div>
-          <input value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} }} placeholder={'Message #'+activeRoom} style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none' }} />
-          <button onClick={send} disabled={!msg.trim()&&!attachment} style={{ width:30, height:30, borderRadius:8, background:(msg.trim()||attachment)?PURPLE:'var(--surface3)', color:'#fff', border:'none', cursor:(msg.trim()||attachment)?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <input value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} }}
+            placeholder={'Message #'+activeRoom}
+            style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'#fff', outline:'none', caretColor:'#AFA9EC' }} />
+          <button onClick={send} disabled={!msg.trim()&&!attachment} style={{ width:30, height:30, borderRadius:8, background:(msg.trim()||attachment)?PURPLE:'rgba(83,74,183,0.3)', color:'#fff', border:'none', cursor:(msg.trim()||attachment)?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
@@ -268,8 +297,23 @@ function GroupSettings({ group, onClose, onUpdate }) {
             <label style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, textTransform:'uppercase', color:'var(--text-muted)', display:'block', marginBottom:6 }}>Monthly Price ($)</label>
             <input value={price} onChange={e=>setPrice(e.target.value)} type="number" min="0" placeholder="0 for free" style={inp} />
           </div>
-          <button onClick={save} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+          <button onClick={save} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--accent)', color:'#fff', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:'pointer', marginBottom:10 }}>
             {saved ? '✓ Saved' : 'Save Changes'}
+          </button>
+          <button onClick={async () => {
+            if (!confirm(`Delete "${group.name}"? This cannot be undone.`)) return;
+            if (group.fromDB) {
+              await fetch(`/api/groups?id=${group.id}`, { method: 'DELETE' }).catch(() => {});
+            }
+            try {
+              const local = loadGroups().filter(g => String(g.id) !== String(group.id));
+              localStorage.setItem('tr_groups', JSON.stringify(local));
+              localStorage.removeItem('tr_rooms_'+group.id);
+            } catch {}
+            if (onUpdate) onUpdate({ _deleted: true });
+            onClose();
+          }} style={{ width:'100%', padding:'11px', borderRadius:10, border:'1px solid rgba(239,68,68,0.3)', background:'transparent', color:'#ef4444', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            Delete group
           </button>
         </div>
       </div>
@@ -289,7 +333,7 @@ function GroupsView({ currentUserId }) {
   const [groupMenuPos, setGroupMenuPos] = useState(null);
   const [showBrowse, setShowBrowse] = useState(false);
   const [showManageRooms, setShowManageRooms] = useState(false);
-  const [customRooms, setCustomRooms] = useState(['general','trade-ideas','cot-analysis','announcements']);
+  const [customRooms, setCustomRooms] = useState(['general']);
   const [newRoomName, setNewRoomName] = useState('');
   const [createName, setCreateName] = useState('');
   const [createType, setCreateType] = useState('club');
@@ -299,14 +343,58 @@ function GroupsView({ currentUserId }) {
   const [createPrice, setCreatePrice] = useState('');
   const [createImg, setCreateImg] = useState(null);
   const [createGrad, setCreateGrad] = useState('linear-gradient(135deg,#4f46e5,#7c3aed)');
-  const ROOMS = ['general','trade-ideas','cot-analysis','announcements'];
+  const [myName, setMyName] = useState('');
+
+  // Load current user's display name
+  useEffect(() => {
+    fetch('/api/auth/session').then(r => r.json()).then(s => {
+      if (s?.user) setMyName(s.user.username || s.user.name || '');
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
-    const loaded = loadGroups();
-    setGroups(loaded);
-    const lastId = localStorage.getItem('tr_last_group');
-    const def = loaded.find(g => g.id === lastId) || loaded.find(g => g.joined) || loaded[0] || null;
-    if (def) setOpenGroup(def);
+    fetch('/api/groups?mine=true')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.groups) return;
+        const dbGroups = d.groups.map(g => ({
+          id: g.id,
+          name: g.name,
+          desc: g.description || '',
+          type: 'club',
+          visibility: g.isPublic ? 'open' : 'invite',
+          members: g._count?.members || g.memberCount || 1,
+          joined: true,
+          creator: g.ownerId === currentUserId ? 'me' : (g.owner?.name || g.owner?.username || ''),
+          grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+          fromDB: true,
+        }));
+        const localGroups = loadGroups().filter(lg => !dbGroups.find(dg => String(dg.id) === String(lg.id)));
+        const all = [...dbGroups, ...localGroups];
+        setGroups(all);
+        const lastId = localStorage.getItem('tr_last_group');
+        const def = all.find(g => String(g.id) === lastId) || all[0] || null;
+        if (def) {
+          setOpenGroup(def);
+          try {
+            const stored = localStorage.getItem('tr_rooms_'+def.id);
+            setCustomRooms(stored ? JSON.parse(stored) : ['general']);
+          } catch { setCustomRooms(['general']); }
+        }
+      })
+      .catch(() => {
+        const loaded = loadGroups();
+        setGroups(loaded);
+        const lastId = localStorage.getItem('tr_last_group');
+        const def = loaded.find(g => g.id === lastId) || loaded[0] || null;
+        if (def) {
+          setOpenGroup(def);
+          try {
+            const stored = localStorage.getItem('tr_rooms_'+def.id);
+            setCustomRooms(stored ? JSON.parse(stored) : ['general']);
+          } catch { setCustomRooms(['general']); }
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -324,8 +412,22 @@ function GroupsView({ currentUserId }) {
     setDropdownOpen(d => !d);
   };
 
-  const switchGroup = (g) => { setOpenGroup(g); setActiveRoom('general'); setDropdownOpen(false); try { localStorage.setItem('tr_last_group', g.id); } catch {} };
-  const MEMBERS = openGroup ? (openGroup.creator==='you' ? [{name:'you',role:'Founder',color:'#4f46e5'}] : [{name:openGroup.creator||'Creator',role:'Founder',color:'#16a34a'},{name:'you',role:'Member',color:'#4f46e5'}]) : [];
+  const switchGroup = (g) => {
+    setOpenGroup(g);
+    setActiveRoom('general');
+    setDropdownOpen(false);
+    try {
+      localStorage.setItem('tr_last_group', g.id);
+      const stored = localStorage.getItem('tr_rooms_'+g.id);
+      setCustomRooms(stored ? JSON.parse(stored) : ['general']);
+    } catch {}
+  };
+  const displayMe = myName || 'You';
+  const MEMBERS = openGroup
+    ? (openGroup.creator === 'me' || openGroup.creator === 'you' || !openGroup.creator
+        ? [{ name: displayMe, role:'Founder', color:'#4f46e5' }]
+        : [{ name: openGroup.creator, role:'Founder', color:'#16a34a' }, { name: displayMe, role:'Member', color:'#4f46e5' }])
+    : [];
   const roleColor = (r) => r==='Founder'?'#16a34a':r==='Co-Leader'?'#d97706':'var(--text-muted)';
 
   return (
@@ -374,7 +476,20 @@ function GroupsView({ currentUserId }) {
         </div>
       , document.body)}
 
-      {showSettings && openGroup && <GroupSettings group={openGroup} onClose={() => setShowSettings(false)} onUpdate={(u) => { setOpenGroup(g => ({...g, ...u})); setGroups(prev => prev.map(g => g.id===openGroup.id ? {...g,...u} : g)); }} />}
+      {showSettings && openGroup && <GroupSettings group={openGroup} onClose={() => setShowSettings(false)} onUpdate={(u) => {
+        if (u._deleted) {
+          const remaining = groups.filter(g => String(g.id) !== String(openGroup.id));
+          setGroups(remaining);
+          setOpenGroup(remaining[0] || null);
+          if (remaining[0]) {
+            try { const s = localStorage.getItem('tr_rooms_'+remaining[0].id); setCustomRooms(s ? JSON.parse(s) : ['general']); } catch { setCustomRooms(['general']); }
+          }
+          setShowSettings(false);
+        } else {
+          setOpenGroup(g => ({...g, ...u}));
+          setGroups(prev => prev.map(g => g.id===openGroup.id ? {...g,...u} : g));
+        }
+      }} />}
       {/* Icon rail */}
       <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0, overflowX:'auto' }}>
         {groups.length === 0
@@ -410,7 +525,7 @@ function GroupsView({ currentUserId }) {
       {/* Chat */}
       <div style={{ flex:1, overflow:'hidden' }}>
         {openGroup
-          ? <GroupChatRoom group={openGroup} activeRoom={activeRoom} />
+          ? <GroupChatRoom group={openGroup} activeRoom={activeRoom} myName={displayMe} />
           : <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:12 }}>
               <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)' }}>No groups yet</div>
               <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Click + to create your first group.</div>
@@ -443,7 +558,12 @@ function GroupsView({ currentUserId }) {
                   <span style={{ fontSize:14, color:'var(--text-muted)' }}>#</span>
                   <span style={{ flex:1, fontSize:13, color:'var(--text)' }}>{room}</span>
                   {room !== 'general' && (
-                    <button onClick={() => setCustomRooms(r => r.filter((_,idx)=>idx!==i))} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:14, padding:'0 2px' }}
+                    <button onClick={() => {
+                      const updated = customRooms.filter((_,idx)=>idx!==i);
+                      setCustomRooms(updated);
+                      if (openGroup) { try { localStorage.setItem('tr_rooms_'+openGroup.id, JSON.stringify(updated)); } catch {} }
+                      if (activeRoom === room) setActiveRoom('general');
+                    }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:14, padding:'0 2px' }}
                       onMouseEnter={e=>e.currentTarget.style.color='#dc2626'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>×</button>
                   )}
                 </div>
@@ -451,9 +571,9 @@ function GroupsView({ currentUserId }) {
             </div>
             <div style={{ display:'flex', gap:8 }}>
               <input value={newRoomName} onChange={e=>setNewRoomName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,''))}
-                placeholder="new-room-name" onKeyDown={e=>{if(e.key==='Enter'&&newRoomName.trim()){setCustomRooms(r=>[...r,newRoomName.trim()]);setNewRoomName('');}}}
+                placeholder="new-room-name" onKeyDown={e=>{if(e.key==='Enter'&&newRoomName.trim()){const u=[...customRooms,newRoomName.trim()];setCustomRooms(u);if(openGroup){try{localStorage.setItem('tr_rooms_'+openGroup.id,JSON.stringify(u));}catch{}}setNewRoomName('');}}}
                 style={{ flex:1, padding:'7px 10px', border:'0.5px solid var(--border2)', borderRadius:6, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }} />
-              <button onClick={()=>{if(newRoomName.trim()){setCustomRooms(r=>[...r,newRoomName.trim()]);setNewRoomName('');}}}
+              <button onClick={()=>{if(newRoomName.trim()){const u=[...customRooms,newRoomName.trim()];setCustomRooms(u);if(openGroup){try{localStorage.setItem('tr_rooms_'+openGroup.id,JSON.stringify(u));}catch{}}setNewRoomName('');}}}
                 style={{ padding:'7px 14px', background:'#4B44C8', color:'#fff', border:'none', borderRadius:6, fontSize:12, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' }}>Add</button>
             </div>
             <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:6 }}>Type a name and press Enter or Add. "general" cannot be removed.</div>
@@ -526,12 +646,34 @@ function GroupsView({ currentUserId }) {
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={()=>setShowCreate(false)} style={{ flex:1, padding:'11px', borderRadius:10, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancel</button>
-              <button onClick={() => {
+              <button onClick={async () => {
                 if (!createName.trim()) return;
-                const ng = { id:Date.now(), name:createName, type:createType, visibility:createVis, desc:createDesc, country:createCountry, price:parseFloat(createPrice)||0, profileImg:createImg, grad:createGrad, members:1, max:50, joined:true, creator:'you' };
-                const all = [...groups, ng]; setGroups(all);
-                try { localStorage.setItem('tr_groups', JSON.stringify(all)); } catch {}
-                setOpenGroup(ng); setShowCreate(false); setCreateName(''); setCreateDesc(''); setCreateCountry(''); setCreatePrice(''); setCreateImg(null); setCreateGrad('linear-gradient(135deg,#4f46e5,#7c3aed)');
+                try {
+                  const res = await fetch('/api/groups', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: createName, description: createDesc, price: parseFloat(createPrice)||0, isPublic: createVis === 'open' }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok || !data.group) throw new Error(data.error || 'Failed');
+                  const ng = { id: data.group.id, name: createName, type: createType, visibility: createVis, desc: createDesc, country: createCountry, price: parseFloat(createPrice)||0, profileImg: createImg, grad: createGrad, members: 1, joined: true, creator: 'me', fromDB: true };
+                  const all = [...groups, ng];
+                  setGroups(all);
+                  try { localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
+                  setCustomRooms(['general']);
+                  setActiveRoom('general');
+                  setOpenGroup(ng);
+                } catch (e) {
+                  // Fallback to localStorage-only group
+                  const ng = { id: Date.now(), name: createName, type: createType, visibility: createVis, desc: createDesc, country: createCountry, price: parseFloat(createPrice)||0, profileImg: createImg, grad: createGrad, members: 1, joined: true, creator: 'me' };
+                  const all = [...groups, ng];
+                  setGroups(all);
+                  try { localStorage.setItem('tr_groups', JSON.stringify(all)); localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
+                  setCustomRooms(['general']);
+                  setActiveRoom('general');
+                  setOpenGroup(ng);
+                }
+                setShowCreate(false); setCreateName(''); setCreateDesc(''); setCreateCountry(''); setCreatePrice(''); setCreateImg(null); setCreateGrad('linear-gradient(135deg,#4f46e5,#7c3aed)');
               }} disabled={!createName.trim()} style={{ flex:1, padding:'11px', borderRadius:10, border:'none', background:createName.trim()?PURPLE:'var(--surface3)', color:createName.trim()?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:createName.trim()?'pointer':'default' }}>Create Group</button>
             </div>
           </div>
@@ -692,94 +834,169 @@ function BrowseGroupsPanel({ onJoin }) {
 }
 
 
-function ThreadsFeed({ onNewPost }) {
-  const [threads, setThreads] = React.useState([]);
+function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
+  const [showComments, setShowComments] = React.useState(false);
+  const [comments, setComments] = React.useState([]);
+  const [loadingComments, setLoadingComments] = React.useState(false);
+  const [commentText, setCommentText] = React.useState('');
+  const [commentCount, setCommentCount] = React.useState(t.commentsCount || 0);
 
-  React.useEffect(() => {
-    const load = () => {
-      try { setThreads(JSON.parse(localStorage.getItem('tr_threads') || '[]')); } catch(e) { setThreads([]); }
-    };
-    load();
-    window.addEventListener('post-created', load);
-    return () => window.removeEventListener('post-created', load);
-  }, []);
-
-  const handleDelete = (id) => {
-    const updated = threads.filter(t => t.id !== id);
-    setThreads(updated);
-    try { localStorage.setItem('tr_threads', JSON.stringify(updated)); } catch(e) {}
+  const fetchComments = async () => {
+    setLoadingComments(true);
+    try {
+      const res = await fetch(`/api/social/posts/comment?postId=${t.id}`);
+      const data = await res.json();
+      if (data.comments) {
+        setComments(data.comments.map(c => ({ id: c.id, text: c.content, user: c.authorName || 'Trader' })));
+        setCommentCount(data.comments.length);
+      }
+    } catch(e) {}
+    setLoadingComments(false);
   };
 
-  const handleVote = (id) => {
-    const updated = threads.map(t => t.id === id ? {...t, likes: (t.likes||0)+1} : t);
-    setThreads(updated);
-    try { localStorage.setItem('tr_threads', JSON.stringify(updated)); } catch(e) {}
+  const toggleComments = () => {
+    if (!showComments) fetchComments();
+    setShowComments(v => !v);
   };
 
-  const profile = (() => { try { return JSON.parse(localStorage.getItem('tr_profile_v1') || '{}'); } catch(e) { return {}; } })();
-  const myName = profile.displayName || profile.username || 'you';
+  const addComment = async () => {
+    if (!commentText.trim()) return;
+    const text = commentText;
+    setComments(prev => [...prev, { id: Date.now(), text, user: 'You' }]);
+    setCommentCount(c => c + 1);
+    setCommentText('');
+    try {
+      await fetch('/api/social/posts/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: t.id, content: text }),
+      });
+    } catch(e) {}
+  };
 
-  if (threads.length === 0) return (
-    <div style={{ height:'100%', overflowY:'auto', padding:16 }}>
-      <div style={{ background:'#EEEDFE', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#3C3489', display:'flex', alignItems:'center', gap:8, marginBottom:14, fontFamily:'var(--font)' }}>
-        <i className="ti ti-messages" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
-        <span>Start a thread or ask a question. Tap <strong>+</strong> to post.</span>
+  return (
+    <div style={{ background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:12, padding:14, marginBottom:10 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap' }}>
+        <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0 }}>
+          {(t.user||'T')[0].toUpperCase()}
+        </div>
+        <span style={{ fontSize:13, fontWeight:600, color:'var(--text)', fontFamily:'var(--font)' }}>{t.user}</span>
+        <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{new Date(t.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+        {t.asset && <span style={{ fontSize:10, fontWeight:500, padding:'2px 8px', borderRadius:12, background:'#EEEDFE', color:'#3C3489', fontFamily:'var(--font)' }}>{t.asset}</span>}
+        {t.userId === myUserId && (
+          <button onClick={() => onDelete(t.id)} style={{ all:'unset', cursor:'pointer', marginLeft:'auto', fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)', padding:'2px 8px', borderRadius:6 }}
+            onMouseEnter={e=>{e.currentTarget.style.color='#dc2626';e.currentTarget.style.background='rgba(220,38,38,0.08)';}}
+            onMouseLeave={e=>{e.currentTarget.style.color='var(--text-muted)';e.currentTarget.style.background='transparent';}}
+          >Delete</button>
+        )}
       </div>
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, minHeight:200, textAlign:'center' }}>
-        <i className="ti ti-messages" style={{ fontSize:34, color:'#AFA9EC' }} aria-hidden="true" />
-        <div style={{ fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No threads yet</div>
-        <div style={{ fontSize:12, color:'var(--text-muted)', maxWidth:220, lineHeight:1.5, fontFamily:'var(--font)' }}>Be the first to start a conversation.</div>
-        <button onClick={onNewPost} style={{ all:'unset', cursor:'pointer', padding:'7px 18px', borderRadius:20, background:'#534AB7', color:'#fff', fontSize:13, fontWeight:500, fontFamily:'var(--font)', marginTop:8 }}>Start a thread</button>
+      <div style={{ fontSize:14, color:'var(--text)', marginBottom:10, lineHeight:1.5, fontFamily:'var(--font)' }}>{t.body}</div>
+      <div style={{ display:'flex', gap:14, alignItems:'center' }}>
+        <button onClick={() => onVote(t.id)}
+          style={{ all:'unset', cursor:'pointer', fontSize:12, color:t.liked?'#e11d48':'var(--text-muted)', display:'flex', alignItems:'center', gap:4, fontFamily:'var(--font)' }}
+          onMouseEnter={e=>e.currentTarget.style.color='#e11d48'}
+          onMouseLeave={e=>e.currentTarget.style.color=t.liked?'#e11d48':'var(--text-muted)'}
+        >
+          <i className="ti ti-heart" style={{ fontSize:14 }} aria-hidden="true" />{t.likes||0}
+        </button>
+        <button onClick={toggleComments}
+          style={{ all:'unset', cursor:'pointer', fontSize:12, color:showComments?'#534AB7':'var(--text-muted)', display:'flex', alignItems:'center', gap:4, fontFamily:'var(--font)' }}
+          onMouseEnter={e=>e.currentTarget.style.color='#534AB7'}
+          onMouseLeave={e=>e.currentTarget.style.color=showComments?'#534AB7':'var(--text-muted)'}
+        >
+          <i className="ti ti-message" style={{ fontSize:14 }} aria-hidden="true" />{commentCount}
+        </button>
       </div>
+      {showComments && (
+        <div style={{ marginTop:10, paddingTop:10, borderTop:'0.5px solid var(--border)' }}>
+          {loadingComments ? (
+            <div style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)', marginBottom:8 }}>Loading…</div>
+          ) : comments.length === 0 ? (
+            <div style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)', marginBottom:8 }}>No replies yet.</div>
+          ) : (
+            comments.map(c => (
+              <div key={c.id} style={{ display:'flex', gap:8, marginBottom:8 }}>
+                <div style={{ width:24, height:24, borderRadius:'50%', background:'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, color:'#fff', flexShrink:0 }}>{(c.user||'T')[0].toUpperCase()}</div>
+                <div style={{ flex:1, background:'var(--surface2)', borderRadius:8, padding:'5px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text)' }}>
+                  <span style={{ fontWeight:700, marginRight:6 }}>{c.user}</span>{c.text}
+                </div>
+              </div>
+            ))
+          )}
+          <div style={{ display:'flex', gap:8, marginTop:4 }}>
+            <input value={commentText} onChange={e => setCommentText(e.target.value)} onKeyDown={e => e.key==='Enter' && addComment()} placeholder="Reply…"
+              style={{ flex:1, padding:'6px 12px', borderRadius:20, border:'0.5px solid var(--border)', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', outline:'none' }} />
+            <button onClick={addComment} disabled={!commentText.trim()}
+              style={{ all:'unset', cursor:commentText.trim()?'pointer':'default', padding:'6px 14px', borderRadius:20, background:commentText.trim()?'#534AB7':'var(--surface2)', color:commentText.trim()?'#fff':'var(--text-muted)', fontSize:12, fontWeight:600, fontFamily:'var(--font)' }}>
+              Reply
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function ThreadsFeed({ onNewPost, currentUserId }) {
+  const [threads, setThreads] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const fetchThreads = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/social/posts?tab=threads');
+      const data = await res.json();
+      if (data.posts) {
+        setThreads(data.posts.map(p => ({
+          id: p.id,
+          userId: p.userId,
+          user: p.authorName || 'Trader',
+          body: p.content,
+          asset: p.assetTag,
+          time: p.createdAt,
+          likes: p.likes || 0,
+          liked: p.liked || false,
+          commentsCount: p.commentsCount || 0,
+        })));
+      }
+    } catch(e) {}
+    setLoading(false);
+  }, []);
+
+  React.useEffect(() => {
+    fetchThreads();
+    const interval = setInterval(fetchThreads, 20000);
+    const handler = () => fetchThreads();
+    window.addEventListener('post-created', handler);
+    return () => { clearInterval(interval); window.removeEventListener('post-created', handler); };
+  }, [fetchThreads]);
+
+  const handleDelete = async (id) => {
+    setThreads(t => t.filter(x => x.id !== id));
+    try { await fetch('/api/social/posts', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id }) }); } catch(e) {}
+  };
+
+  const handleVote = async (id) => {
+    setThreads(t => t.map(x => x.id === id ? {...x, likes: x.liked ? x.likes - 1 : x.likes + 1, liked: !x.liked} : x));
+    try { await fetch('/api/social/posts/like', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ postId: id }) }); } catch(e) {}
+  };
+
+  const myUserId = currentUserId;
 
   return (
     <div style={{ height:'100%', overflowY:'auto', padding:16 }}>
-      <div style={{ background:'#EEEDFE', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#3C3489', display:'flex', alignItems:'center', gap:8, marginBottom:14, fontFamily:'var(--font)' }}>
-        <i className="ti ti-messages" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
-        <span>Start a thread or ask a question. Tap <strong>+</strong> to post.</span>
-      </div>
-      {threads.map(t => (
-        <div key={t.id} style={{ background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:12, padding:14, marginBottom:10 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap' }}>
-            <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0 }}>
-              {(t.user||'Y')[0].toUpperCase()}
-            </div>
-            <span style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)' }}>@{t.user || 'you'}</span>
-            <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{new Date(t.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
-            {t.asset && <span style={{ fontSize:10, fontWeight:500, padding:'2px 8px', borderRadius:12, background:'#EEEDFE', color:'#3C3489', fontFamily:'var(--font)' }}>{t.asset}</span>}
-            {(t.user === 'you' || t.user === myName) && (
-              <button onClick={() => handleDelete(t.id)} style={{ all:'unset', cursor:'pointer', marginLeft:'auto', fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)', padding:'2px 8px', borderRadius:6 }}
-                onMouseEnter={e=>{e.currentTarget.style.color='#dc2626';e.currentTarget.style.background='rgba(220,38,38,0.08)';}}
-                onMouseLeave={e=>{e.currentTarget.style.color='var(--text-muted)';e.currentTarget.style.background='transparent';}}
-              >Delete</button>
-            )}
-          </div>
-          <div style={{ fontSize:14, color:'var(--text)', marginBottom:t.body?5:10, lineHeight:1.45, fontFamily:'var(--font)' }}>{t.body}</div>
-          {t.poll && (
-            <div style={{ marginBottom:10 }}>
-              {t.poll.map((opt, i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
-                  <div style={{ flex:1, background:'var(--surface2)', borderRadius:6, height:32, display:'flex', alignItems:'center', padding:'0 10px', fontSize:12, fontFamily:'var(--font)', color:'var(--text)', border:'0.5px solid var(--border)', cursor:'pointer' }}>{opt.label}</div>
-                  <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)', minWidth:28 }}>{opt.votes}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ display:'flex', gap:14 }}>
-            {[['ti-arrow-up', t.likes||0, ()=>handleVote(t.id)], ['ti-message', '0 replies', null], ['ti-share', 'Share', null]].map(([ic, label, fn]) => (
-              <button key={ic} onClick={fn||undefined}
-                style={{ all:'unset', cursor:'pointer', fontSize:12, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4, fontFamily:'var(--font)' }}
-                onMouseEnter={e=>e.currentTarget.style.color='#534AB7'}
-                onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}
-              >
-                <i className={`ti ${ic}`} style={{ fontSize:14 }} aria-hidden="true" />{label}
-              </button>
-            ))}
-          </div>
+      {loading ? (
+        <div style={{ textAlign:'center', padding:'40px 20px', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading threads…</div>
+      ) : threads.length === 0 ? (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, minHeight:160, textAlign:'center' }}>
+          <i className="ti ti-messages" style={{ fontSize:34, color:'#AFA9EC' }} aria-hidden="true" />
+          <div style={{ fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No threads yet</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', maxWidth:220, lineHeight:1.5, fontFamily:'var(--font)' }}>Be the first to start a conversation above.</div>
         </div>
-      ))}
+      ) : (
+        threads.map(t => (
+          <ThreadCard key={t.id} thread={t} myUserId={myUserId} onDelete={handleDelete} onVote={handleVote} />
+        ))
+      )}
     </div>
   );
 }
@@ -790,45 +1007,62 @@ function PostComposer({ onClose, currentUserId, feedSection }) {
   const [attachment, setAttachment] = React.useState(null);
   const [showPoll, setShowPoll] = React.useState(false);
   const [pollOptions, setPollOptions] = React.useState(['', '']);
+  const [posting, setPosting] = React.useState(false);
+  const [postError, setPostError] = React.useState('');
   const fileRef = React.useRef(null);
   const charsLeft = 280 - text.length;
-  const canPost = text.trim().length > 0 || attachment;
+  const validPoll = showPoll && pollOptions.filter(o => o.trim()).length >= 2;
+  const canPost = (text.trim().length > 0 || attachment || validPoll) && !posting;
 
   const handleFile = (e) => {
     const f = e.target.files[0]; if (!f) return;
     const isImg = f.type.startsWith('image/');
-    const reader = new FileReader();
-    reader.onload = (ev) => setAttachment({
-      type: isImg ? 'image' : 'file',
-      url: isImg ? ev.target.result : null,
-      name: f.name,
-      size: f.size > 1024*1024 ? (f.size/1024/1024).toFixed(1)+'MB' : Math.round(f.size/1024)+'KB',
-    });
-    isImg ? reader.readAsDataURL(f) : reader.readAsArrayBuffer(f);
+    const sizeLabel = f.size > 1024*1024 ? (f.size/1024/1024).toFixed(1)+'MB' : Math.round(f.size/1024)+'KB';
+    if (isImg) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 1200;
+          let { width, height } = img;
+          if (width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
+          else if (height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          setAttachment({ type:'image', url: compressed, name: f.name, size: sizeLabel });
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(f);
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => setAttachment({ type:'file', url:null, name:f.name, size:sizeLabel });
+      reader.readAsArrayBuffer(f);
+    }
     e.target.value = '';
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!canPost) return;
-    const post = {
-      id: Date.now(),
-      user: (()=>{ try{ const p=JSON.parse(localStorage.getItem('tr_profile_v1')||'{}'); return p.displayName||p.username||'you'; }catch(e){return 'you';} })(),
-      username: (()=>{ try{ const p=JSON.parse(localStorage.getItem('tr_profile_v1')||'{}'); return p.username||p.displayName||'you'; }catch(e){return 'you';} })(),
-      body: text.trim(),
-      asset: assetTag,
-      poll: showPoll ? pollOptions.filter(o => o.trim()).map(o => ({ label:o, votes:0 })) : null,
-      attachmentUrl: attachment?.url || null,
-      attachmentType: attachment?.type || null,
-      attachmentName: attachment?.name || null,
-      attachmentSize: attachment?.size || null,
-      time: new Date().toISOString(),
-      likes: 0, reposts: 0, comments_count: 0, comments_data: [],
-    };
+    setPosting(true); setPostError('');
+    const pollData = showPoll ? pollOptions.filter(o => o.trim()).map(o => ({ label: o.trim(), votes: 0 })) : null;
     try {
-      const key = feedSection === 'threads' ? 'tr_threads' : 'tr_feed_posts';
-      const existing = JSON.parse(localStorage.getItem(key) || '[]');
-      localStorage.setItem(key, JSON.stringify([post, ...existing]));
-    } catch {}
+      const res = await fetch('/api/social/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: text.trim(),
+          assetTag: assetTag.trim() || undefined,
+          postType: feedSection === 'threads' ? 'thread' : 'post',
+          imageUrl: attachment?.type === 'image' ? attachment.url : undefined,
+          poll: pollData && pollData.length >= 2 ? pollData : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setPostError(data.error || 'Failed to post'); setPosting(false); return; }
+    } catch(e) { setPostError('Network error — try again'); setPosting(false); return; }
     window.dispatchEvent(new CustomEvent('post-created'));
     onClose();
   };
@@ -905,6 +1139,13 @@ function PostComposer({ onClose, currentUserId, feedSection }) {
         </div>
       )}
 
+      {/* Error message */}
+      {postError && (
+        <div style={{ margin:'0 16px 8px', padding:'8px 12px', background:'#fee2e2', border:'1px solid #fca5a5', borderRadius:8, fontSize:12, color:'#dc2626', fontFamily:'var(--font)' }}>
+          {postError}
+        </div>
+      )}
+
       {/* Footer */}
       <div style={{ display:'flex', alignItems:'center', gap:4, padding:'10px 14px', borderTop:'0.5px solid var(--border)', background:'var(--surface2)' }}>
         {iconBtn('ti-photo', 'Image / chart', ()=>{ fileRef.current.accept='image/*'; fileRef.current.click(); }, false)}
@@ -913,9 +1154,9 @@ function PostComposer({ onClose, currentUserId, feedSection }) {
         {iconBtn('ti-chart-bar', 'Add poll', ()=>setShowPoll(p=>!p), showPoll)}
         <div style={{ flex:1 }} />
         <span style={{ fontSize:11, color:charsLeft<20?'#dc2626':charsLeft<50?'#d97706':'var(--text-muted)', fontFamily:'var(--font)' }}>{charsLeft}</span>
-        <button onClick={handlePost} disabled={!canPost}
-          style={{ all:'unset', cursor:canPost?'pointer':'default', padding:'7px 20px', borderRadius:20, fontSize:13, fontWeight:600, background:canPost?'#534AB7':'var(--surface3)', color:canPost?'#fff':'var(--text-muted)', fontFamily:'var(--font)', marginLeft:8 }}>
-          Post
+        <button onClick={handlePost} disabled={!canPost || posting}
+          style={{ all:'unset', cursor:(canPost&&!posting)?'pointer':'default', padding:'7px 20px', borderRadius:20, fontSize:13, fontWeight:600, background:(canPost&&!posting)?'#534AB7':'var(--surface3)', color:(canPost&&!posting)?'#fff':'var(--text-muted)', fontFamily:'var(--font)', marginLeft:8 }}>
+          {posting ? 'Posting…' : 'Post'}
         </button>
       </div>
     </div>
@@ -971,13 +1212,13 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
               </div>
               <div style={{ flex:1, overflow:'hidden', minHeight:0 }}>
                 {(feedSection==='discover'||feedSection==='following') && <FeedTab currentUserId={currentUserId} activeTab={feedSection==='discover'?'Discover':'Following'} />}
-                {feedSection==='threads' && <ThreadsFeed onNewPost={()=>setShowPostModal(true)} />}
+                {feedSection==='threads' && <ThreadsFeed onNewPost={()=>setShowPostModal(true)} currentUserId={currentUserId} />}
               </div>
             </div>
           )}
           {tab === 'groups' && <GroupsView currentUserId={currentUserId} />}
           {tab === 'dms' && <DMTab />}
-          {tab === 'local' && <LocalTradersTab />}
+          {tab === 'local' && <LocalTradersTab currentUserId={currentUserId} onNavigate={(t) => setTab(TAB_MAP[t] || t)} />}
         </div>
       </div>
 

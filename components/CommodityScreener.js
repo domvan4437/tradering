@@ -693,7 +693,7 @@ export default function App() {
         ) : section==='tools2' ? (
           <ToolsLayout tab={tab} setTab={setTab} userInfo={userInfo} />
         ) : section==='account' ? (
-          <div><AccountTab user={userInfo} /></div>
+          <div style={{ flex:1, overflowY:'auto', height:'calc(100vh - 82px)' }}><AccountTab user={userInfo} /></div>
         ) : (
           <>
             {/* Commodities tabs */}

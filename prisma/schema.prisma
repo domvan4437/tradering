@@ -37,6 +37,20 @@ model User {
   tradingStyle         String?
   twitterHandle        String?
   verifiedBadge        Boolean               @default(false)
+  city                 String?
+  country              String?
+  openToMeetups        Boolean               @default(false)
+  experience           String?
+  openToMentoring      Boolean               @default(false)
+  twitter              String?
+  instagram            String?
+  youtube              String?
+  website              String?
+  publicWinRate        Boolean               @default(true)
+  publicPnl            Boolean               @default(true)
+  publicTrades         Boolean               @default(true)
+  publicLocation       Boolean               @default(true)
+  tagline              String?
   aiConversations      AIConversation[]
   alerts               Alert[]
   brokerConnections    BrokerConnection[]
@@ -322,6 +336,7 @@ model SocialPost {
   imageUrl  String?
   assetTag  String?
   direction String?
+  poll      Json?
   likes     Int             @default(0)
   reposts   Int             @default(0)
   isPublic  Boolean         @default(true)

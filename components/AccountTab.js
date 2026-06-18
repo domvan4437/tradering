@@ -59,12 +59,47 @@ function BtnS({ children, onClick, style }) {
 function OverviewTab({ user }) {
   const [editing, setEditing] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
+  const [saveError, setSaveError] = React.useState('')
   const [profile, setProfile] = React.useState(() => {
     try {
       const s = typeof window !== 'undefined' ? localStorage.getItem('tr_profile_v1') : null
       return s ? JSON.parse(s) : {}
     } catch { return {} }
   })
+
+  // Fetch real profile from DB on mount
+  React.useEffect(() => {
+    fetch('/api/profile/update').then(r => r.json()).then(d => {
+      if (d.user) {
+        const u = d.user
+        const merged = {
+          displayName: u.displayName || u.name || '',
+          username: u.username || '',
+          tagline: u.tagline || '',
+          bio: u.bio || '',
+          country: u.country || '',
+          city: u.city || '',
+          tradingStyle: u.tradingStyle || '',
+          experience: u.experience || '',
+          assets: u.primaryAssets ? u.primaryAssets.split(',').map(s => s.trim()).filter(Boolean) : [],
+          openToMeetups: !!u.openToMeetups,
+          openToMentoring: !!u.openToMentoring,
+          twitter: u.twitter || '',
+          youtube: u.youtube || '',
+          website: u.website || '',
+          instagram: u.instagram || '',
+          publicWinRate: u.publicWinRate !== false,
+          publicPnl: u.publicPnl !== false,
+          publicTrades: u.publicTrades !== false,
+          publicLocation: u.publicLocation !== false,
+        }
+        setProfile(merged)
+        setForm(merged)
+        try { localStorage.setItem('tr_profile_v1', JSON.stringify(merged)) } catch {}
+      }
+    }).catch(() => {})
+  }, [])
 
   const [form, setForm] = React.useState({
     displayName: profile.displayName || user?.name || '',
@@ -95,10 +130,51 @@ function OverviewTab({ user }) {
     assets: f.assets.includes(a) ? f.assets.filter(x => x !== a) : [...f.assets, a]
   }))
 
-  const save = () => {
+  const save = async () => {
+    setSaving(true)
+    setSaveError('')
+    try {
+      const body = {
+        displayName: form.displayName,
+        username: form.username,
+        tagline: form.tagline,
+        bio: form.bio,
+        country: form.country,
+        city: form.city,
+        tradingStyle: form.tradingStyle,
+        experience: form.experience,
+        primaryAssets: form.assets.join(', '),
+        openToMeetups: form.openToMeetups,
+        openToMentoring: form.openToMentoring,
+        twitter: form.twitter,
+        youtube: form.youtube,
+        website: form.website,
+        instagram: form.instagram,
+        publicWinRate: form.publicWinRate,
+        publicPnl: form.publicPnl,
+        publicTrades: form.publicTrades,
+        publicLocation: form.publicLocation,
+      }
+      const res = await fetch('/api/profile/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        setSaveError(d.error || 'Save failed')
+        setSaving(false)
+        return
+      }
+    } catch (e) {
+      setSaveError('Network error')
+      setSaving(false)
+      return
+    }
     try { localStorage.setItem('tr_profile_v1', JSON.stringify(form)) } catch {}
     setProfile(form)
     setEditing(false)
+    setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
@@ -127,10 +203,11 @@ function OverviewTab({ user }) {
         <div style={{ fontSize:18, fontWeight:600, color:'var(--text,#111)' }}>My Profile</div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           {saved && <span style={{ fontSize:12, color:'#059669' }}>✓ Saved</span>}
+          {saveError && <span style={{ fontSize:12, color:'#dc2626' }}>{saveError}</span>}
           {editing ? (
             <>
-              <button onClick={() => setEditing(false)} style={{ padding:'7px 16px', background:'transparent', color:'var(--text-muted,#6b7280)', border:'0.5px solid var(--border,#e5e7eb)', borderRadius:8, fontSize:13, cursor:'pointer', fontFamily:'var(--font,system-ui)' }}>Cancel</button>
-              <button onClick={save} style={{ padding:'7px 16px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font,system-ui)' }}>Save profile</button>
+              <button onClick={() => { setEditing(false); setSaveError('') }} style={{ padding:'7px 16px', background:'transparent', color:'var(--text-muted,#6b7280)', border:'0.5px solid var(--border,#e5e7eb)', borderRadius:8, fontSize:13, cursor:'pointer', fontFamily:'var(--font,system-ui)' }}>Cancel</button>
+              <button onClick={save} disabled={saving} style={{ padding:'7px 16px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:saving?'default':'pointer', opacity:saving?0.7:1, fontFamily:'var(--font,system-ui)' }}>{saving ? 'Saving…' : 'Save profile'}</button>
             </>
           ) : (
             <button onClick={() => setEditing(true)} style={{ padding:'7px 16px', background:P, color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font,system-ui)' }}>Edit profile</button>
@@ -816,9 +893,7 @@ function SettingsContent({ section, user }) {
                 </select>
               </div>
             </div>
-            <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Password</div>
-              <div style={{ display: 'flex', gap: 6 }}><input type="password" defaultValue="••••••••" style={{ flex: 1, padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }} /><BtnS>Update</BtnS></div>
-            </div>
+            <ChangePasswordSection />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '0.5px solid var(--border)' }}>
               <div><div style={{ fontSize: 12, fontWeight: 500 }}>Two-factor authentication</div><div style={{ fontSize: 10, color: '#dc2626' }}>Currently off</div></div>
               <BtnS>Enable 2FA</BtnS>
@@ -907,6 +982,65 @@ function SettingsContent({ section, user }) {
             <button style={{ padding: '7px 14px', background: 'transparent', color: '#dc2626', border: '0.5px solid #dc2626', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' }}>Delete my account</button>
           </div>
         )}
+    </div>
+  )
+}
+
+function ChangePasswordSection() {
+  const [open, setOpen] = React.useState(false)
+  const [current, setCurrent] = React.useState('')
+  const [next, setNext] = React.useState('')
+  const [confirm, setConfirm] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
+  const [msg, setMsg] = React.useState(null) // { type: 'success'|'error', text }
+
+  const inp = { width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }
+
+  const handleSave = async () => {
+    if (!current || !next || !confirm) { setMsg({ type: 'error', text: 'All fields are required' }); return }
+    if (next !== confirm) { setMsg({ type: 'error', text: 'New passwords do not match' }); return }
+    if (next.length < 8) { setMsg({ type: 'error', text: 'Password must be at least 8 characters' }); return }
+    setLoading(true); setMsg(null)
+    try {
+      const res = await fetch('/api/change-pw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update password')
+      setMsg({ type: 'success', text: 'Password updated successfully' })
+      setCurrent(''); setNext(''); setConfirm(''); setOpen(false)
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message })
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Password</div>
+      {!open ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ flex: 1, padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text-muted)', letterSpacing: 2 }}>••••••••</span>
+          <BtnS onClick={() => { setOpen(true); setMsg(null); }}>Change</BtnS>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', border: '0.5px solid var(--border2)', borderRadius: 8, background: 'var(--surface2)' }}>
+          <input type="password" value={current} onChange={e => setCurrent(e.target.value)} placeholder="Current password" style={inp} />
+          <input type="password" value={next} onChange={e => setNext(e.target.value)} placeholder="New password (min 8 chars)" style={inp} />
+          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Confirm new password" style={inp} />
+          {msg && (
+            <div style={{ fontSize: 11, padding: '5px 8px', borderRadius: 5, background: msg.type === 'success' ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', color: msg.type === 'success' ? '#16a34a' : '#dc2626' }}>
+              {msg.text}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+            <BtnP onClick={handleSave} style={{ fontSize: 11, padding: '5px 12px' }}>{loading ? 'Saving…' : 'Save'}</BtnP>
+            <BtnS onClick={() => { setOpen(false); setCurrent(''); setNext(''); setConfirm(''); setMsg(null); }} style={{ fontSize: 11 }}>Cancel</BtnS>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
