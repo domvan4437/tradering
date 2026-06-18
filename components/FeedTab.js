@@ -48,6 +48,7 @@ function mapApiPost(p) {
     attachmentUrl: p.imageUrl || null,
     attachmentType: p.imageUrl ? 'image' : null,
     poll: p.poll || null,
+    myVote: p.myVote ?? -1,
     likes: p.likes || 0,
     comments: p.commentsCount || 0,
     reposts: p.reposts || 0,
@@ -70,9 +71,9 @@ function Avatar({ letter, grad, size = 40 }) {
 }
 
 // ── Poll Block ────────────────────────────────────────────────
-function PollBlock({ postId, initialPoll }) {
+function PollBlock({ postId, initialPoll, initialVoted }) {
   const [poll, setPoll] = useState(initialPoll);
-  const [voted, setVoted] = useState(null); // index of chosen option
+  const [voted, setVoted] = useState(initialVoted >= 0 ? initialVoted : null);
 
   const totalVotes = poll.reduce((s, o) => s + (o.votes || 0), 0);
 
@@ -90,6 +91,7 @@ function PollBlock({ postId, initialPoll }) {
       });
       const data = await res.json();
       if (res.ok && data.poll) setPoll(data.poll);
+      if (data.alreadyVoted) setVoted(data.votedIndex);
     } catch(e) {}
   };
 
@@ -261,7 +263,7 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
         )}
 
         {post.poll && Array.isArray(post.poll) && post.poll.length > 0 && (
-          <PollBlock postId={post.id} initialPoll={post.poll} />
+          <PollBlock postId={post.id} initialPoll={post.poll} initialVoted={post.myVote ?? -1} />
         )}
 
         {/* Action bar */}

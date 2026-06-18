@@ -16,8 +16,18 @@ export async function POST(request) {
     const poll = post.poll
     if (optionIndex < 0 || optionIndex >= poll.length) return Response.json({ error: 'Invalid option' }, { status: 400 })
 
-    // Increment vote
-    poll[optionIndex] = { ...poll[optionIndex], votes: (poll[optionIndex].votes || 0) + 1 }
+    // Check if user already voted
+    const alreadyVotedIndex = poll.findIndex(o => Array.isArray(o.voters) && o.voters.includes(session.user.id))
+    if (alreadyVotedIndex !== -1) {
+      return Response.json({ poll, alreadyVoted: true, votedIndex: alreadyVotedIndex })
+    }
+
+    // Record vote + voter
+    poll[optionIndex] = {
+      ...poll[optionIndex],
+      votes: (poll[optionIndex].votes || 0) + 1,
+      voters: [...(poll[optionIndex].voters || []), session.user.id],
+    }
 
     const updated = await prisma.socialPost.update({
       where: { id: postId },

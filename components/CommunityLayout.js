@@ -423,12 +423,17 @@ function GroupsView({ currentUserId }) {
     } catch {}
   };
   const displayMe = myName || 'You';
-  const MEMBERS = openGroup
-    ? (openGroup.creator === 'me' || openGroup.creator === 'you' || !openGroup.creator
-        ? [{ name: displayMe, role:'Founder', color:'#4f46e5' }]
-        : [{ name: openGroup.creator, role:'Founder', color:'#16a34a' }, { name: displayMe, role:'Member', color:'#4f46e5' }])
-    : [];
-  const roleColor = (r) => r==='Founder'?'#16a34a':r==='Co-Leader'?'#d97706':'var(--text-muted)';
+  const [members, setMembers] = React.useState([]);
+  const roleColor = (r) => r==='owner'?'#16a34a':r==='co-leader'?'#d97706':'var(--text-muted)';
+  const roleLabel = (r) => r==='owner'?'Founder':r==='co-leader'?'Co-leader':'Member';
+
+  React.useEffect(() => {
+    if (!openGroup?.fromDB) { setMembers([]); return; }
+    fetch(`/api/groups/members?groupId=${openGroup.id}`)
+      .then(r => r.json())
+      .then(d => setMembers(d.members || []))
+      .catch(() => setMembers([]));
+  }, [openGroup?.id]);
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
@@ -455,15 +460,20 @@ function GroupsView({ currentUserId }) {
               </button>
             ))}
           </div>
-          <div style={{ padding:'4px 8px 4px', borderTop:'1px solid var(--border)' }}>
-            <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:600, color:'var(--text-muted)', padding:'4px 10px', letterSpacing:'0.08em', textTransform:'uppercase' }}>Members</div>
-            {MEMBERS.map(m => (
-              <div key={m.name} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8 }}>
-                <div style={{ width:24, height:24, borderRadius:'50%', background:m.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', flexShrink:0 }}>{m.name[0].toUpperCase()}</div>
-                <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text)', flex:1 }}>{m.name}</span>
-                <span style={{ fontFamily:'var(--font)', fontSize:10, color:roleColor(m.role) }}>{m.role}</span>
-              </div>
-            ))}
+          <div style={{ padding:'4px 8px 4px', borderTop:'1px solid var(--border)', maxHeight:180, overflowY:'auto' }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:600, color:'var(--text-muted)', padding:'4px 10px', letterSpacing:'0.08em', textTransform:'uppercase' }}>
+              Members {members.length > 0 ? `(${members.length})` : ''}
+            </div>
+            {members.length === 0
+              ? <div style={{ padding:'6px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Loading…</div>
+              : members.map(m => (
+                <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8 }}>
+                  <div style={{ width:24, height:24, borderRadius:'50%', background:getColor(m.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', flexShrink:0 }}>{(m.name||'?')[0].toUpperCase()}</div>
+                  <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text)', flex:1 }}>{m.name}</span>
+                  <span style={{ fontFamily:'var(--font)', fontSize:10, color:roleColor(m.role) }}>{roleLabel(m.role)}</span>
+                </div>
+              ))
+            }
           </div>
           <div style={{ padding:'4px 8px 8px', borderTop:'1px solid var(--border)' }}>
             <button style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, border:'none', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, cursor:'pointer', textAlign:'left' }}
@@ -817,9 +827,9 @@ function BrowseGroupsPanel({ onJoin }) {
 }
 
 
-function ThreadPoll({ postId, initialPoll }) {
+function ThreadPoll({ postId, initialPoll, initialVoted }) {
   const [poll, setPoll] = React.useState(initialPoll);
-  const [voted, setVoted] = React.useState(null);
+  const [voted, setVoted] = React.useState(initialVoted >= 0 ? initialVoted : null);
   const total = poll.reduce((s, o) => s + (o.votes || 0), 0);
   const handleVote = async (i) => {
     if (voted !== null) return;
@@ -829,6 +839,7 @@ function ThreadPoll({ postId, initialPoll }) {
       const res = await fetch('/api/social/posts/vote', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ postId, optionIndex: i }) });
       const data = await res.json();
       if (res.ok && data.poll) setPoll(data.poll);
+      if (data.alreadyVoted) setVoted(data.votedIndex);
     } catch {}
   };
   return (
@@ -910,7 +921,7 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
       </div>
       {t.body && <div style={{ fontSize:14, color:'var(--text)', marginBottom:10, lineHeight:1.5, fontFamily:'var(--font)' }}>{t.body}</div>}
       {t.poll && Array.isArray(t.poll) && t.poll.length >= 2 && (
-        <ThreadPoll postId={t.id} initialPoll={t.poll} />
+        <ThreadPoll postId={t.id} initialPoll={t.poll} initialVoted={t.myVote ?? -1} />
       )}
       <div style={{ display:'flex', gap:14, alignItems:'center' }}>
         <button onClick={() => onVote(t.id)}
@@ -978,6 +989,7 @@ function ThreadsFeed({ onNewPost, currentUserId }) {
           liked: p.liked || false,
           commentsCount: p.commentsCount || 0,
           poll: p.poll || null,
+          myVote: p.myVote ?? -1,
         })));
       }
     } catch(e) {}
