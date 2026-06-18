@@ -17,7 +17,7 @@ export async function GET(request) {
 
   const groups = await prisma.group.findMany({
     where: { isPublic: true },
-    include: { _count: { select: { members: true } }, owner: { select: { name: true, username: true } } },
+    include: { _count: { select: { members: true } }, owner: { select: { name: true, username: true, displayName: true } } },
     orderBy: { memberCount: 'desc' }
   })
   return Response.json({ groups })

@@ -541,7 +541,17 @@ function GroupsView({ currentUserId }) {
               <div style={{ fontSize:16, fontWeight:500, color:'var(--text)' }}>Browse groups</div>
               <button onClick={()=>setShowBrowse(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'var(--text-muted)' }}>×</button>
             </div>
-            <BrowseGroupsPanel onJoin={()=>setShowBrowse(false)} />
+            <BrowseGroupsPanel onJoin={(g) => {
+              const ng = { id: g.id, name: g.name, desc: g.description||'', visibility: g.isPublic?'open':'invite', members: (g._count?.members||g.memberCount||1)+1, joined: true, creator: g.owner?.name||'', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)', fromDB: true };
+              if (!groups.find(x => x.id === g.id)) {
+                const all = [...groups, ng];
+                setGroups(all);
+                setOpenGroup(ng);
+                setActiveRoom('general');
+                try { localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
+              }
+              setShowBrowse(false);
+            }} />
           </div>
         </div>
       )}
@@ -709,130 +719,138 @@ function CommSidebar({ tab, setTab }) {
   )
 }
 
-const BROWSE_GROUPS_DATA = []
-const ACCESS_COLOR = { Open:'#059669', Invite:'#d97706', Closed:'#dc2626' }
-const ACCESS_BG = { Open:'rgba(5,150,105,0.1)', Invite:'rgba(217,119,6,0.1)', Closed:'rgba(220,38,38,0.08)' }
-
 function BrowseGroupsPanel({ onJoin }) {
   const [search, setSearch] = React.useState('')
-  const [cat, setCat] = React.useState('')
-  const [vis, setVis] = React.useState('')
-  const [expanded, setExpanded] = React.useState(null)
-
-  const filtered = BROWSE_GROUPS_DATA.filter(g =>
-    g.access !== 'Closed' &&
-    (!search || g.name.toLowerCase().includes(search.toLowerCase()) || g.tags.join(' ').toLowerCase().includes(search.toLowerCase()) || g.bio.toLowerCase().includes(search.toLowerCase())) &&
-    (!cat || g.cat === cat) &&
-    (!vis || g.access === vis)
-  )
+  const [country, setCountry] = React.useState('')
+  const [groups, setGroups] = React.useState([])
+  const [loading, setLoading] = React.useState(true)
+  const [joining, setJoining] = React.useState(null)
+  const [joined, setJoined] = React.useState({})
 
   const PURPLE = '#4B44C8'
+  const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Belgium','Brazil','Canada','Chile','China','Colombia','Croatia','Czech Republic','Denmark','Egypt','Finland','France','Germany','Ghana','Greece','Hungary','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Malaysia','Mexico','Morocco','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Serbia','Singapore','South Africa','South Korea','Spain','Sweden','Switzerland','Taiwan','Thailand','Turkey','UAE','Ukraine','United Kingdom','United States','Uruguay','Venezuela','Vietnam']
 
-  function GroupRow({ g, compact }) {
-    const isExp = expanded === g.name
-    return (
-      <div onClick={() => setExpanded(isExp ? null : g.name)}
-        style={{ background:'var(--surface)', border:`0.5px solid ${isExp ? PURPLE : 'var(--border)'}`, borderRadius:10, padding:'12px 14px', marginBottom:7, cursor:'pointer' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:40, height:40, borderRadius:9, background:g.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:500, color:'#fff', flexShrink:0 }}>{g.name[0]}</div>
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:2 }}>
-              <span style={{ fontSize:13, fontWeight:500, color:'var(--text)' }}>{g.name}</span>
-              <span style={{ fontSize:10, fontWeight:500, padding:'2px 6px', borderRadius:10, background:ACCESS_BG[g.access], color:ACCESS_COLOR[g.access] }}>{g.access}</span>
-              <span style={{ fontSize:10, padding:'2px 6px', borderRadius:10, background:'var(--surface2)', color:'var(--text-muted)' }}>{g.cat}</span>
-            </div>
-            <div style={{ fontSize:11, color:'var(--text-muted)' }}>{g.members} members · {g.country}</div>
-          </div>
-          <button onClick={e=>{e.stopPropagation();onJoin();}}
-            style={{ padding:'5px 14px', background:PURPLE, color:'#fff', border:'none', borderRadius:6, fontSize:12, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)', flexShrink:0 }}>
-            {g.access==='Invite'?'Request to join':'Join'}
-          </button>
-        </div>
-        {isExp && (
-          <div style={{ marginTop:12 }}>
-            <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5, marginBottom:10 }}>{g.bio}</div>
-            <div style={{ height:'0.5px', background:'var(--border)', marginBottom:10 }} />
-            <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginBottom:10 }}>
-              {[{l:'Members',v:g.members},{l:'Avg win rate',v:g.winRate,c:'#16a34a'},{l:'Avg R:R',v:g.avgRR+'R'},{l:'Access',v:g.access,c:ACCESS_COLOR[g.access]}].map(stat=>(
-                <div key={stat.l}>
-                  <div style={{ fontSize:13, fontWeight:500, color:stat.c||'var(--text)' }}>{stat.v}</div>
-                  <div style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.04em' }}>{stat.l}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ height:'0.5px', background:'var(--border)', marginBottom:10 }} />
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
-              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <div style={{ width:22, height:22, borderRadius:'50%', background:PURPLE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:500, color:'#fff' }}>{g.founder[0].toUpperCase()}</div>
-                  <span style={{ fontSize:11, color:'var(--text-muted)' }}>@{g.founder}</span>
-                  <span style={{ fontSize:10, fontWeight:500, padding:'1px 5px', borderRadius:8, background:'rgba(75,68,200,0.1)', color:'#3C3489' }}>Founder</span>
-                </div>
-                {g.coLeader && (
-                  <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                    <div style={{ width:22, height:22, borderRadius:'50%', background:'#d97706', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:500, color:'#fff' }}>{g.coLeader[0].toUpperCase()}</div>
-                    <span style={{ fontSize:11, color:'var(--text-muted)' }}>@{g.coLeader}</span>
-                    <span style={{ fontSize:10, fontWeight:500, padding:'1px 5px', borderRadius:8, background:'rgba(217,119,6,0.1)', color:'#92400e' }}>Co-leader</span>
-                  </div>
-                )}
-              </div>
-              <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                {g.tags.map(t=><span key={t} style={{ fontSize:10, padding:'2px 7px', borderRadius:10, background:'var(--surface2)', color:'var(--text-muted)', border:'0.5px solid var(--border)' }}>{t}</span>)}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    )
+  React.useEffect(() => {
+    fetch('/api/groups')
+      .then(r => r.json())
+      .then(d => { setGroups(d.groups || []); setLoading(false); })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const filtered = groups.filter(g => {
+    const q = search.toLowerCase()
+    const matchSearch = !q || g.name.toLowerCase().includes(q) || (g.description||'').toLowerCase().includes(q)
+    const matchCountry = !country || (g.country||'') === country
+    return matchSearch && matchCountry
+  })
+
+  const handleJoin = async (g) => {
+    setJoining(g.id)
+    try {
+      const res = await fetch('/api/groups/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId: g.id }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setJoined(prev => ({ ...prev, [g.id]: true }))
+        onJoin(g)
+      }
+    } catch {}
+    setJoining(null)
   }
 
   return (
     <div>
-      <div style={{ display:'flex', gap:8, marginBottom:10 }}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search groups..." style={{ flex:1, padding:'7px 10px', border:'0.5px solid var(--border2)', borderRadius:7, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }} />
-        <select value={cat} onChange={e=>setCat(e.target.value)} style={{ padding:'7px 10px', border:'0.5px solid var(--border2)', borderRadius:7, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}>
-          <option value="">All categories</option>
-          {['Crypto','Futures','Forex','Trading'].map(c=><option key={c}>{c}</option>)}
-        </select>
-        <select value={vis} onChange={e=>setVis(e.target.value)} style={{ padding:'7px 10px', border:'0.5px solid var(--border2)', borderRadius:7, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}>
-          <option value="">Any access</option>
-          {['Open','Invite'].map(v=><option key={v}>{v}</option>)}
+      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or description..."
+          style={{ flex:1, padding:'8px 12px', border:'0.5px solid var(--border)', borderRadius:8, background:'var(--surface2)', fontSize:13, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }} />
+        <select value={country} onChange={e=>setCountry(e.target.value)}
+          style={{ padding:'8px 10px', border:'0.5px solid var(--border)', borderRadius:8, background:'var(--surface2)', fontSize:13, color:'var(--text)', fontFamily:'var(--font)', outline:'none', maxWidth:160 }}>
+          <option value="">All countries</option>
+          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
-      <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:14 }}>
-        <span style={{ fontSize:11, color:'var(--text-muted)' }}>Trending:</span>
-        {['#COT','#Gold','#Bitcoin','#Futures','#Swing'].map(t=>(
-          <span key={t} onClick={()=>setSearch(t.slice(1))} style={{ fontSize:11, padding:'2px 8px', borderRadius:10, background:'var(--surface2)', color:'var(--text-muted)', border:'0.5px solid var(--border)', cursor:'pointer' }}>{t}</span>
-        ))}
-      </div>
-      {!search && !cat && !vis && (
-        <>
-          <div style={{ fontSize:10, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>Featured</div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
-            {BROWSE_GROUPS_DATA.filter(g=>g.featured).map(g=>(
-              <div key={g.name} onClick={()=>setExpanded(expanded===g.name?null:g.name)}
-                style={{ background:'var(--surface)', border:`0.5px solid ${expanded===g.name?PURPLE:'var(--border)'}`, borderRadius:10, padding:'10px 12px', cursor:'pointer', display:'flex', alignItems:'center', gap:9 }}>
-                <div style={{ width:36, height:36, borderRadius:8, background:g.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:500, color:'#fff', flexShrink:0 }}>{g.name[0]}</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:12, fontWeight:500, color:'var(--text)' }}>{g.name}</div>
-                  <div style={{ fontSize:11, color:'var(--text-muted)' }}>{g.members} members</div>
-                </div>
-                <button onClick={e=>{e.stopPropagation();onJoin();}} style={{ padding:'4px 10px', background:PURPLE, color:'#fff', border:'none', borderRadius:5, fontSize:11, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' }}>Join</button>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize:10, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>All groups</div>
-        </>
-      )}
-      {filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'24px', fontSize:13, color:'var(--text-muted)' }}>No groups found</div>
+
+      {loading ? (
+        <div style={{ textAlign:'center', padding:'32px', fontSize:13, color:'var(--text-muted)', fontFamily:'var(--font)' }}>Loading groups…</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'32px', fontSize:13, color:'var(--text-muted)', fontFamily:'var(--font)' }}>
+          {groups.length === 0 ? 'No public groups yet. Be the first to create one!' : 'No groups match your search.'}
+        </div>
       ) : (
-        filtered.map(g => <GroupRow key={g.name} g={g} />)
+        filtered.map(g => {
+          const isJoined = joined[g.id]
+          const isJoining = joining === g.id
+          const memberCount = g._count?.members ?? g.memberCount ?? 1
+          const color = getColor(g.name)
+          return (
+            <div key={g.id} style={{ background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:'12px 14px', marginBottom:8, display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:44, height:44, borderRadius:10, background:color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, fontWeight:700, color:'#fff', flexShrink:0 }}>
+                {(g.name||'G')[0].toUpperCase()}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+                  <span style={{ fontSize:13, fontWeight:600, color:'var(--text)', fontFamily:'var(--font)' }}>{g.name}</span>
+                  <span style={{ fontSize:10, padding:'2px 6px', borderRadius:8, background:'rgba(5,150,105,0.1)', color:'#059669', fontWeight:500 }}>
+                    {g.isPublic ? 'Open' : 'Invite'}
+                  </span>
+                </div>
+                {g.description && <div style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.description}</div>}
+                <div style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)' }}>
+                  {memberCount} member{memberCount !== 1 ? 's' : ''}
+                  {g.country ? ` · ${g.country}` : ''}
+                  {g.owner ? ` · by ${g.owner.displayName || g.owner.name || g.owner.username}` : ''}
+                </div>
+              </div>
+              <button onClick={() => !isJoined && handleJoin(g)} disabled={isJoined || isJoining}
+                style={{ padding:'6px 16px', background:isJoined?'#059669':PURPLE, color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:isJoined?'default':'pointer', fontFamily:'var(--font)', flexShrink:0, opacity:isJoining?0.7:1 }}>
+                {isJoined ? '✓ Joined' : isJoining ? '…' : 'Join'}
+              </button>
+            </div>
+          )
+        })
       )}
     </div>
   )
 }
 
+
+function ThreadPoll({ postId, initialPoll }) {
+  const [poll, setPoll] = React.useState(initialPoll);
+  const [voted, setVoted] = React.useState(null);
+  const total = poll.reduce((s, o) => s + (o.votes || 0), 0);
+  const handleVote = async (i) => {
+    if (voted !== null) return;
+    const updated = poll.map((o, idx) => idx === i ? { ...o, votes: (o.votes || 0) + 1 } : o);
+    setPoll(updated); setVoted(i);
+    try {
+      const res = await fetch('/api/social/posts/vote', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ postId, optionIndex: i }) });
+      const data = await res.json();
+      if (res.ok && data.poll) setPoll(data.poll);
+    } catch {}
+  };
+  return (
+    <div style={{ marginBottom:10 }}>
+      {poll.map((opt, i) => {
+        const pct = total > 0 ? Math.round(((opt.votes || 0) / total) * 100) : 0;
+        const isChosen = voted === i;
+        return (
+          <div key={i} onClick={() => handleVote(i)}
+            style={{ position:'relative', marginBottom:7, borderRadius:8, border:`1px solid ${isChosen ? PURPLE : 'var(--border)'}`, overflow:'hidden', cursor:voted===null?'pointer':'default', background:'var(--surface2)' }}>
+            {voted !== null && <div style={{ position:'absolute', inset:0, width:pct+'%', background:isChosen?PURPLE+'22':'var(--surface3)', transition:'width 0.4s' }} />}
+            <div style={{ position:'relative', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px' }}>
+              <span style={{ fontFamily:'var(--font)', fontSize:13, color:isChosen?PURPLE:'var(--text)', fontWeight:isChosen?600:400 }}>{opt.label}</span>
+              {voted !== null && <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', fontWeight:600 }}>{pct}%</span>}
+            </div>
+          </div>
+        );
+      })}
+      <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{total} vote{total !== 1 ? 's' : ''}</div>
+    </div>
+  );
+}
 
 function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
   const [showComments, setShowComments] = React.useState(false);
@@ -890,7 +908,10 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
           >Delete</button>
         )}
       </div>
-      <div style={{ fontSize:14, color:'var(--text)', marginBottom:10, lineHeight:1.5, fontFamily:'var(--font)' }}>{t.body}</div>
+      {t.body && <div style={{ fontSize:14, color:'var(--text)', marginBottom:10, lineHeight:1.5, fontFamily:'var(--font)' }}>{t.body}</div>}
+      {t.poll && Array.isArray(t.poll) && t.poll.length >= 2 && (
+        <ThreadPoll postId={t.id} initialPoll={t.poll} />
+      )}
       <div style={{ display:'flex', gap:14, alignItems:'center' }}>
         <button onClick={() => onVote(t.id)}
           style={{ all:'unset', cursor:'pointer', fontSize:12, color:t.liked?'#e11d48':'var(--text-muted)', display:'flex', alignItems:'center', gap:4, fontFamily:'var(--font)' }}
@@ -956,6 +977,7 @@ function ThreadsFeed({ onNewPost, currentUserId }) {
           likes: p.likes || 0,
           liked: p.liked || false,
           commentsCount: p.commentsCount || 0,
+          poll: p.poll || null,
         })));
       }
     } catch(e) {}
@@ -1086,8 +1108,8 @@ function PostComposer({ onClose, currentUserId, feedSection }) {
         <textarea
           value={text}
           onChange={e => setText(e.target.value.slice(0,280))}
-          placeholder="Share a trade idea, chart, or market insight..."
-          rows={4}
+          placeholder={showPoll ? "Add context for your poll (optional)..." : "Share a trade idea, chart, or market insight..."}
+          rows={showPoll ? 2 : 4}
           autoFocus
           style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:14, color:'var(--text)', resize:'none', outline:'none', lineHeight:1.6 }}
         />
