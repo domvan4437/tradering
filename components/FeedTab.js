@@ -54,6 +54,7 @@ function mapApiPost(p) {
     reposts: p.reposts || 0,
     liked: p.liked || false,
     reposted: p.reposted || false,
+    repostedBy: p.repostedBy || null,
     comments_data: [],
   };
 }
