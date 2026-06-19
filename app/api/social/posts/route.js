@@ -37,6 +37,10 @@ export async function GET(request) {
           where: { userId: session.user.id },
           select: { id: true },
         },
+        postReposts: {
+          where: { userId: session.user.id },
+          select: { id: true },
+        },
         _count: { select: { comments: true } },
       },
     })
@@ -58,6 +62,7 @@ export async function GET(request) {
         authorName: p.user?.username || p.user?.name || 'Trader',
         user: p.user,
         liked: p.postLikes.length > 0,
+        reposted: p.postReposts.length > 0,
         commentsCount: p._count.comments,
       })),
     })

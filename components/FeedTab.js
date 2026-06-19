@@ -53,7 +53,7 @@ function mapApiPost(p) {
     comments: p.commentsCount || 0,
     reposts: p.reposts || 0,
     liked: p.liked || false,
-    reposted: false,
+    reposted: p.reposted || false,
     comments_data: [],
   };
 }
@@ -362,16 +362,16 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
   };
 
   const handleRepost = async (id) => {
-    const post = posts.find(p => p.id === id);
-    if (!post) return;
-    const undoing = post.reposted;
-    setPosts(p => p.map(p2 => p2.id === id ? { ...p2, reposted: !p2.reposted, reposts: undoing ? p2.reposts - 1 : p2.reposts + 1 } : p2));
     try {
-      await fetch('/api/social/posts/repost', {
+      const res = await fetch('/api/social/posts/repost', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: id, action: undoing ? 'undo' : 'repost' }),
+        body: JSON.stringify({ postId: id }),
       });
+      const data = await res.json();
+      if (data.reposts !== undefined) {
+        setPosts(p => p.map(p2 => p2.id === id ? { ...p2, reposted: data.reposted, reposts: data.reposts } : p2));
+      }
     } catch(e) {}
   };
 
@@ -381,7 +381,7 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
   };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)' }}>
+    <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)', height:'100%', overflowY:'auto' }}>
       {loading ? (
         <div style={{ padding:'60px 20px', textAlign:'center' }}>
           <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading posts…</div>

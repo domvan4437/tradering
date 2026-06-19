@@ -73,6 +73,7 @@ model User {
   notes                Note[]
   positions            Position[]
   postLikes            PostLike[]
+  postReposts          PostRepost[]
   priceAlerts          PriceAlert[]
   propFirmReferrals    PropFirmReferral[]    @relation("PropFirmReferrals")
   screenerTemplates    ScreenerTemplate[]    @relation("UserScreeners")
@@ -343,9 +344,10 @@ model SocialPost {
   groupId   String?
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
-  postLikes PostLike[]
-  comments  SocialComment[]
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postLikes   PostLike[]
+  postReposts PostRepost[]
+  comments    SocialComment[]
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model SocialComment {
@@ -359,6 +361,17 @@ model SocialComment {
 }
 
 model PostLike {
+  id        String     @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime   @default(now())
+  post      SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model PostRepost {
   id        String     @id @default(cuid())
   postId    String
   userId    String
