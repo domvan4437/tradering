@@ -381,7 +381,7 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
   };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)', height:'100%', overflowY:'auto' }}>
+    <div style={{ display:'flex', flexDirection:'column', fontFamily:'var(--font)' }}>
       {loading ? (
         <div style={{ padding:'60px 20px', textAlign:'center' }}>
           <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading posts…</div>

@@ -1017,7 +1017,7 @@ function ThreadsFeed({ onNewPost, currentUserId }) {
   const myUserId = currentUserId;
 
   return (
-    <div style={{ height:'100%', overflowY:'auto', padding:16 }}>
+    <div style={{ padding:16 }}>
       {loading ? (
         <div style={{ textAlign:'center', padding:'40px 20px', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading threads…</div>
       ) : threads.length === 0 ? (
@@ -1244,7 +1244,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
                   
                   title="New post" onClick={()=>setShowPostModal(true)}>+</button>
               </div>
-              <div style={{ flex:1, overflow:'hidden', minHeight:0 }}>
+              <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
                 {(feedSection==='discover'||feedSection==='following') && <FeedTab currentUserId={currentUserId} activeTab={feedSection==='discover'?'Discover':'Following'} />}
                 {feedSection==='threads' && <ThreadsFeed onNewPost={()=>setShowPostModal(true)} currentUserId={currentUserId} />}
               </div>
