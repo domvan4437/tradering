@@ -1,56 +1,81 @@
 import { getSession } from '../../../lib/auth'
-
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const KEY = process.env.SUPABASE_SERVICE_KEY
-const db = {
-  get: (t, q='') => fetch(`${URL}/rest/v1/${t}${q}`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }).then(r => r.json()),
-}
+import { prisma } from '../../../lib/prisma'
 
 export async function GET(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'month'
+    const type = searchParams.get('type') || 'free' // 'free' | 'paid'
 
-    // Get all users
-    const users = await db.get('User', `?select=id,name,email&limit=100`)
-    
-    // Get trades for each user in time period
     const now = new Date()
-    const periodStart = period === 'week' ? new Date(now - 7*86400000) :
-                        period === 'month' ? new Date(now - 30*86400000) :
-                        new Date(now - 365*86400000)
+    const since = period === 'week' ? new Date(now - 7*86400000) :
+                  period === 'month' ? new Date(now - 30*86400000) :
+                  new Date(0)
 
-    const leaderboard = await Promise.all(users.map(async u => {
-      const trades = await db.get('Trade', `?userId=eq.${u.id}&select=pnl,createdAt`)
-      const periodTrades = trades.filter(t => new Date(t.createdAt) >= periodStart)
-      const totalPnl = periodTrades.reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0)
-      const wins = periodTrades.filter(t => parseFloat(t.pnl) > 0).length
-      const winRate = periodTrades.length ? Math.round(wins / periodTrades.length * 100) : 0
-      
-      // H2H record
-      const wins_h2h = await db.get('H2HMatch', `?winnerId=eq.${u.id}&status=eq.completed&select=id`)
-      const matches = await db.get('H2HMatch', `?or=(challengerId.eq.${u.id},opponentId.eq.${u.id})&status=eq.completed&select=id`)
-      
-      return {
-        id: u.id,
-        name: u.name || u.email?.split('@')[0] || 'Trader',
-        pnl: totalPnl,
-        trades: periodTrades.length,
-        winRate,
-        h2wWins: wins_h2h.length || 0,
-        h2hMatches: matches.length || 0,
-        isMe: u.id === session.user.id,
+    // H2H matches in period, filtered by paid/free
+    const matches = await prisma.h2HMatch.findMany({
+      where: {
+        status: 'completed',
+        createdAt: { gte: since },
+        tournament: type === 'paid' ? { buyIn: { gt: 0 } } : { buyIn: 0 },
+      },
+      include: {
+        challenger: { select: { id: true, name: true, username: true, displayName: true } },
+        opponent: { select: { id: true, name: true, username: true, displayName: true } },
+      },
+    })
+
+    const userMap = {}
+    const upsert = (u) => {
+      if (!u) return
+      if (!userMap[u.id]) {
+        userMap[u.id] = {
+          id: u.id,
+          name: u.displayName || u.name || u.username || 'Trader',
+          username: u.username || '',
+          wins: 0, losses: 0, matches: 0,
+          isMe: u.id === session.user.id,
+        }
       }
-    }))
+    }
 
-    leaderboard.sort((a, b) => b.pnl - a.pnl)
-    leaderboard.forEach((e, i) => { e.rank = i + 1 })
+    for (const m of matches) {
+      upsert(m.challenger)
+      upsert(m.opponent)
+      if (m.challengerId && userMap[m.challengerId]) {
+        userMap[m.challengerId].matches++
+        if (m.winnerId === m.challengerId) userMap[m.challengerId].wins++
+        else userMap[m.challengerId].losses++
+      }
+      if (m.opponentId && userMap[m.opponentId]) {
+        userMap[m.opponentId].matches++
+        if (m.winnerId === m.opponentId) userMap[m.opponentId].wins++
+        else userMap[m.opponentId].losses++
+      }
+    }
 
-    return Response.json({ leaderboard: leaderboard.filter(e => e.trades > 0 || e.isMe) })
-  } catch(e) {
+    // Always include self
+    if (!userMap[session.user.id]) {
+      const me = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { id: true, name: true, username: true, displayName: true },
+      })
+      if (me) upsert(me)
+    }
+
+    const leaderboard = Object.values(userMap)
+      .sort((a, b) => b.wins - a.wins || a.losses - b.losses)
+      .map((e, i) => ({
+        ...e,
+        rank: i + 1,
+        winRate: e.matches ? Math.round(e.wins / e.matches * 100) : 0,
+      }))
+
+    return Response.json({ leaderboard })
+  } catch (e) {
+    console.error('[GET /api/leaderboard]', e)
     return Response.json({ error: e.message }, { status: 500 })
   }
 }

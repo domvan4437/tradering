@@ -1,116 +1,112 @@
 import { getSession } from '../../../lib/auth'
+import { prisma } from '../../../lib/prisma'
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const KEY = process.env.SUPABASE_SERVICE_KEY
-const db = {
-  get: (t, q='') => fetch(`${URL}/rest/v1/${t}${q}`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }).then(r => r.json()),
-  post: (t, b) => fetch(`${URL}/rest/v1/${t}`, { method:'POST', headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' }, body: JSON.stringify(b) }).then(r => r.json()),
-  patch: (t, q, b) => fetch(`${URL}/rest/v1/${t}${q}`, { method:'PATCH', headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' }, body: JSON.stringify(b) }).then(r => r.json()),
+function parseDuration(d) {
+  if (!d) return 2592000000
+  const map = { '1 Day': 86400000, '3 Days': 259200000, '1 Week': 604800000, '2 Weeks': 1209600000, '1 Month': 2592000000, '3 Months': 7776000000 }
+  if (map[d]) return map[d]
+  const m = d.match(/^(\d+)\s+(day|days|week|weeks|month|months)$/)
+  if (m) {
+    const n = parseInt(m[1])
+    if (m[2].startsWith('day')) return n * 86400000
+    if (m[2].startsWith('week')) return n * 604800000
+    if (m[2].startsWith('month')) return n * 2592000000
+  }
+  return 2592000000
 }
 
-// GET — list active group contests + leaderboard
-export async function GET() {
+export async function GET(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const uid = session.user.id
 
-    const contests = await db.get('Tournament', `?type=eq.group&status=in.(open,active)&select=*&order=createdAt.desc&limit=20`)
-    
-    // For each contest get entries
-    const contestsWithEntries = await Promise.all((contests || []).map(async c => {
-      const entries = await db.get('TournamentEntry', `?tournamentId=eq.${c.id}&select=*`)
-      const userIds = entries.map(e => e.userId).filter(Boolean)
-      let users = []
-      if (userIds.length > 0) {
-        users = await db.get('User', `?id=in.(${userIds.join(',')})&select=id,name,email`)
-      }
-      const userMap = Object.fromEntries(users.map(u => [u.id, u.name || u.email?.split('@')[0] || 'Trader']))
-      
-      // Get journal P&L for each entrant
-      const entriesWithPnl = await Promise.all(entries.map(async e => {
-        const trades = await db.get('Trade', `?userId=eq.${e.userId}&select=pnl,createdAt`)
-        const start = new Date(c.startDate)
-        const end = new Date(c.endDate)
-        const pnl = trades.filter(t => { const d = new Date(t.createdAt); return d >= start && d <= end })
-          .reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0)
-        return { ...e, name: userMap[e.userId] || 'Trader', pnl }
-      }))
-      
-      entriesWithPnl.sort((a, b) => b.pnl - a.pnl)
-      return { ...c, entries: entriesWithPnl, entryCount: entries.length }
-    }))
+    const [allContests, myContests] = await Promise.all([
+      prisma.tournament.findMany({
+        where: { type: 'group', status: { in: ['open', 'active'] } },
+        include: {
+          creator: { select: { id: true, name: true, username: true, displayName: true } },
+          _count: { select: { entries: true } },
+          entries: { where: { userId: uid }, select: { id: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      }),
+      prisma.tournament.findMany({
+        where: { type: 'group', entries: { some: { userId: uid } } },
+        include: {
+          creator: { select: { id: true, name: true, username: true, displayName: true } },
+          _count: { select: { entries: true } },
+          entries: {
+            orderBy: { score: 'desc' },
+            take: 10,
+            include: { user: { select: { id: true, name: true, username: true, displayName: true } } },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ])
 
-    // My entries
-    const myEntries = await db.get('TournamentEntry', `?userId=eq.${session.user.id}&select=tournamentId`)
-    const myContestIds = myEntries.map(e => e.tournamentId)
+    const fmtContest = (c) => ({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      asset: c.assetClasses?.[0] || 'Any',
+      buyIn: c.buyIn,
+      status: c.status,
+      endDate: c.endDate,
+      memberCount: c._count?.entries ?? 0,
+      joined: (c.entries?.length ?? 0) > 0,
+      creatorName: c.creator?.displayName || c.creator?.name || c.creator?.username || 'Trader',
+    })
 
-    return Response.json({ contests: contestsWithEntries, myContestIds })
-  } catch(e) {
+    return Response.json({ contests: allContests.map(fmtContest), myContests: myContests.map(fmtContest) })
+  } catch (e) {
+    console.error('[GET /api/group-contests]', e)
     return Response.json({ error: e.message }, { status: 500 })
   }
 }
 
-// POST — create contest or join contest
 export async function POST(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const { action, contestId, name, description, asset, duration, buyIn, maxEntrants } = await request.json()
+    const { action, contestId, name, description, asset, duration, buyIn } = await request.json()
 
     if (action === 'join') {
-      // Check not already joined
-      const existing = await db.get('TournamentEntry', `?tournamentId=eq.${contestId}&userId=eq.${session.user.id}&select=id`)
-      if (existing && existing.length > 0) return Response.json({ error: 'Already joined' }, { status: 400 })
-      
-      await db.post('TournamentEntry', {
-        tournamentId: contestId,
-        userId: session.user.id,
-        score: 0,
-        rank: 0,
-        createdAt: new Date().toISOString(),
-      })
+      const existing = await prisma.tournamentEntry.findFirst({ where: { tournamentId: contestId, userId: session.user.id } })
+      if (existing) return Response.json({ error: 'Already joined' }, { status: 400 })
+      await prisma.tournamentEntry.create({ data: { tournamentId: contestId, userId: session.user.id, score: 0 } })
       return Response.json({ success: true })
     }
 
     if (action === 'create') {
       const now = new Date()
       const endDate = new Date(now.getTime() + parseDuration(duration))
-      
-      const tourney = await db.post('Tournament', {
-        creatorId: session.user.id,
-        name: name || 'Group Contest',
-        description: description || '',
-        type: 'group',
-        status: 'open',
-        assetClasses: [asset || 'Any'],
-        maxCallsPerDay: 99,
-        startDate: now.toISOString(),
-        endDate: endDate.toISOString(),
-        buyIn: parseFloat(buyIn) || 0,
-        prizePool: 0,
-        createdAt: now.toISOString(),
+
+      const tournament = await prisma.tournament.create({
+        data: {
+          creatorId: session.user.id,
+          name: name || 'Group Contest',
+          description: description || '',
+          type: 'group',
+          status: 'open',
+          assetClasses: [asset || 'Any'],
+          maxCallsPerDay: 99,
+          startDate: now,
+          endDate,
+          buyIn: parseFloat(buyIn) || 0,
+          prizePool: 0,
+        },
       })
-      
-      const t = Array.isArray(tourney) ? tourney[0] : tourney
-      
-      // Creator auto-joins
-      await db.post('TournamentEntry', {
-        tournamentId: t.id,
-        userId: session.user.id,
-        score: 0, rank: 0,
-        createdAt: new Date().toISOString(),
-      })
-      
-      return Response.json({ success: true, contestId: t.id })
+
+      await prisma.tournamentEntry.create({ data: { tournamentId: tournament.id, userId: session.user.id, score: 0 } })
+      return Response.json({ success: true, contestId: tournament.id })
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 })
-  } catch(e) {
+  } catch (e) {
+    console.error('[POST /api/group-contests]', e)
     return Response.json({ error: e.message }, { status: 500 })
   }
-}
-
-function parseDuration(d) {
-  const map = { '1 Day': 86400000, '3 Days': 259200000, '1 Week': 604800000, '2 Weeks': 1209600000, '1 Month': 2592000000 }
-  return map[d] || 604800000
 }

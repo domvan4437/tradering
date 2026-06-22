@@ -1,127 +1,138 @@
 import { getSession } from '../../../lib/auth'
+import { prisma } from '../../../lib/prisma'
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const KEY = process.env.SUPABASE_SERVICE_KEY
-const db = {
-  get: (t, q='') => fetch(`${URL}/rest/v1/${t}${q}`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }).then(r => r.json()),
-  post: (t, b) => fetch(`${URL}/rest/v1/${t}`, { method:'POST', headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' }, body: JSON.stringify(b) }).then(r => r.json()),
-  patch: (t, q, b) => fetch(`${URL}/rest/v1/${t}${q}`, { method:'PATCH', headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type':'application/json', Prefer:'return=representation' }, body: JSON.stringify(b) }).then(r => r.json()),
-  del: (t, q) => fetch(`${URL}/rest/v1/${t}${q}`, { method:'DELETE', headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }).then(r => r.status),
+function parseDuration(d) {
+  if (!d) return 604800000
+  const map = { '1 Day': 86400000, '3 Days': 259200000, '1 Week': 604800000, '2 Weeks': 1209600000, '1 Month': 2592000000 }
+  if (map[d]) return map[d]
+  const m = d.match(/^(\d+)\s+(day|days|week|weeks|month|months)$/)
+  if (m) {
+    const n = parseInt(m[1])
+    if (m[2].startsWith('day')) return n * 86400000
+    if (m[2].startsWith('week')) return n * 604800000
+    if (m[2].startsWith('month')) return n * 2592000000
+  }
+  return 604800000
 }
 
-// GET /api/challenges — list open H2H challenges + user's active matches
+function getTimeLeft(end) {
+  if (!end) return null
+  const diff = new Date(end) - new Date()
+  if (diff <= 0) return 'Ended'
+  const d = Math.floor(diff / 86400000)
+  const h = Math.floor((diff % 86400000) / 3600000)
+  return d > 0 ? `${d}d ${h}h` : `${h}h`
+}
+
+const MATCH_INCLUDE = {
+  challenger: { select: { id: true, name: true, username: true, displayName: true } },
+  opponent:   { select: { id: true, name: true, username: true, displayName: true } },
+  tournament: { select: { name: true, type: true, buyIn: true, endDate: true, assetClasses: true, description: true } },
+}
+
+const userName = (u) => u?.displayName || u?.name || u?.username || 'Trader'
+
 export async function GET(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const uid = session.user.id
 
-    // Open challenges (waiting for opponent)
-    const open = await db.get('Tournament', `?type=eq.h2h&status=eq.open&select=*&order=createdAt.desc&limit=20`)
-    
-    // My active matches
-    const myMatches = await db.get('H2HMatch', `?or=(challengerId.eq.${uid},opponentId.eq.${uid})&status=in.(active,waiting)&select=*&order=createdAt.desc`)
-    
-    // My invites (waiting, I'm opponent)
-    const invites = await db.get('H2HMatch', `?opponentId=eq.${uid}&status=eq.waiting&select=*&order=createdAt.desc`)
+    const [open, myMatches, invites, history] = await Promise.all([
+      prisma.h2HMatch.findMany({
+        where: { status: 'waiting', opponentId: null, challengerId: { not: uid } },
+        include: MATCH_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      }),
+      prisma.h2HMatch.findMany({
+        where: { status: { in: ['waiting', 'active'] }, OR: [{ challengerId: uid }, { opponentId: uid }] },
+        include: MATCH_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.h2HMatch.findMany({
+        where: { status: 'waiting', opponentId: uid },
+        include: MATCH_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.h2HMatch.findMany({
+        where: { status: 'completed', OR: [{ challengerId: uid }, { opponentId: uid }] },
+        include: MATCH_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+    ])
 
-    // Get user names for matches
-    const userIds = [...new Set([
-      ...myMatches.map(m => [m.challengerId, m.opponentId]).flat(),
-      ...invites.map(m => m.challengerId),
-      ...open.map(m => m.creatorId),
-    ].filter(Boolean))]
-
-    let users = []
-    if (userIds.length > 0) {
-      users = await db.get('User', `?id=in.(${userIds.join(',')})&select=id,name,email`)
-    }
-    const userMap = Object.fromEntries(users.map(u => [u.id, u.name || u.email?.split('@')[0] || 'Trader']))
-
-    // Get journal trades for P&L calculation
-    const journalTrades = await db.get('Trade', `?userId=eq.${uid}&select=*&order=createdAt.desc&limit=500`)
-
-    // Calculate P&L for each active match
-    const matchesWithPnl = myMatches.map(m => {
-      const start = m.startDate ? new Date(m.startDate) : null
-      const end = m.endDate ? new Date(m.endDate) : null
-      const myTrades = start ? journalTrades.filter(t => {
-        const d = new Date(t.createdAt)
-        return d >= start && (!end || d <= end)
-      }) : []
-      const myPnl = myTrades.reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0)
-      const isChallenger = m.challengerId === uid
-      return {
-        ...m,
-        challengerName: userMap[m.challengerId] || 'Trader',
-        opponentName: m.opponentId ? (userMap[m.opponentId] || 'Trader') : 'Waiting...',
-        myPnl: myPnl.toFixed(2),
-        myRole: isChallenger ? 'challenger' : 'opponent',
-        timeLeft: end ? getTimeLeft(end) : null,
-      }
+    const fmt = (m) => ({
+      id: m.id,
+      tournamentId: m.tournamentId,
+      status: m.status,
+      challengerName: userName(m.challenger),
+      opponentName: m.opponent ? userName(m.opponent) : 'Waiting…',
+      challengerId: m.challengerId,
+      opponentId: m.opponentId,
+      winnerId: m.winnerId,
+      challengerScore: m.challengerScore,
+      opponentScore: m.opponentScore,
+      timeLeft: getTimeLeft(m.endDate || m.tournament?.endDate),
+      buyIn: m.tournament?.buyIn || 0,
+      asset: m.tournament?.assetClasses?.[0] || 'Any',
+      description: m.tournament?.description || '',
+      myRole: m.challengerId === uid ? 'challenger' : 'opponent',
+      won: m.winnerId === uid,
+      createdAt: m.createdAt,
     })
 
-    return Response.json({
-      open: open.map(c => ({ ...c, creatorName: userMap[c.creatorId] || 'Trader' })),
-      myMatches: matchesWithPnl,
-      invites: invites.map(i => ({ ...i, challengerName: userMap[i.challengerId] || 'Trader' })),
-    })
-  } catch(e) {
-    console.error('Challenges GET error:', e.message)
+    return Response.json({ open: open.map(fmt), myMatches: myMatches.map(fmt), invites: invites.map(fmt), history: history.map(fmt) })
+  } catch (e) {
+    console.error('[GET /api/challenges]', e)
     return Response.json({ error: e.message }, { status: 500 })
   }
 }
 
-// POST /api/challenges — create a new challenge
 export async function POST(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const { type, asset, duration, stake, stakeType, description, inviteUserId } = await request.json()
+    const { type, asset, duration, stake, description, inviteUserId } = await request.json()
 
     const now = new Date()
     const endDate = new Date(now.getTime() + parseDuration(duration))
 
-    // Create tournament record
-    const tourney = await db.post('Tournament', {
-      creatorId: session.user.id,
-      name: `${session.user.name || 'Trader'} vs ${inviteUserId ? 'Invited' : 'Open'}`,
-      description: description || '',
-      type: 'h2h',
-      status: inviteUserId ? 'waiting' : 'open',
-      assetClasses: [asset],
-      maxCallsPerDay: 99,
-      startDate: now.toISOString(),
-      endDate: endDate.toISOString(),
-      buyIn: stakeType === 'real' ? parseFloat(stake) || 0 : 0,
-      prizePool: stakeType === 'real' ? (parseFloat(stake) || 0) * 2 : 0,
-      createdAt: now.toISOString(),
+    const tournament = await prisma.tournament.create({
+      data: {
+        creatorId: session.user.id,
+        name: 'H2H Challenge',
+        description: description || '',
+        type: 'h2h',
+        status: 'open',
+        assetClasses: [asset || 'Any'],
+        maxCallsPerDay: 99,
+        startDate: now,
+        endDate,
+        buyIn: type === 'paid' ? parseFloat(stake) || 0 : 0,
+        prizePool: type === 'paid' ? (parseFloat(stake) || 0) * 2 : 0,
+      },
     })
 
-    if (!tourney || tourney.error) throw new Error('Failed to create tournament')
-    const t = Array.isArray(tourney) ? tourney[0] : tourney
-
-    // Create H2H match
-    const match = await db.post('H2HMatch', {
-      tournamentId: t.id,
-      challengerId: session.user.id,
-      opponentId: inviteUserId || null,
-      status: inviteUserId ? 'waiting' : 'open',
-      challengerScore: 0,
-      opponentScore: 0,
-      startDate: now.toISOString(),
-      endDate: endDate.toISOString(),
-      createdAt: now.toISOString(),
+    const match = await prisma.h2HMatch.create({
+      data: {
+        tournamentId: tournament.id,
+        challengerId: session.user.id,
+        opponentId: inviteUserId || null,
+        status: 'waiting',
+        startDate: now,
+        endDate,
+      },
     })
 
-    return Response.json({ success: true, matchId: Array.isArray(match) ? match[0]?.id : match?.id })
-  } catch(e) {
-    console.error('Challenges POST error:', e.message)
+    return Response.json({ success: true, matchId: match.id })
+  } catch (e) {
+    console.error('[POST /api/challenges]', e)
     return Response.json({ error: e.message }, { status: 500 })
   }
 }
 
-// PATCH /api/challenges — accept/decline/resolve
 export async function PATCH(request) {
   try {
     const session = await getSession()
@@ -129,67 +140,30 @@ export async function PATCH(request) {
     const { matchId, action } = await request.json()
 
     if (action === 'accept') {
-      await db.patch('H2HMatch', `?id=eq.${matchId}`, {
-        opponentId: session.user.id,
-        status: 'active',
-        startDate: new Date().toISOString(),
+      await prisma.h2HMatch.update({
+        where: { id: matchId },
+        data: { opponentId: session.user.id, status: 'active', startDate: new Date() },
       })
       return Response.json({ success: true })
     }
 
     if (action === 'decline') {
-      await db.patch('H2HMatch', `?id=eq.${matchId}`, { status: 'cancelled' })
+      await prisma.h2HMatch.update({ where: { id: matchId }, data: { status: 'cancelled' } })
       return Response.json({ success: true })
     }
 
     if (action === 'resolve') {
-      // Get match
-      const matches = await db.get('H2HMatch', `?id=eq.${matchId}&select=*`)
-      const m = matches[0]
-      if (!m) return Response.json({ error: 'Match not found' }, { status: 404 })
-
-      // Get journal trades for both players during match window
-      const start = new Date(m.startDate)
-      const end = new Date(m.endDate)
-
-      const [cTrades, oTrades] = await Promise.all([
-        db.get('Trade', `?userId=eq.${m.challengerId}&select=pnl,createdAt`),
-        m.opponentId ? db.get('Trade', `?userId=eq.${m.opponentId}&select=pnl,createdAt`) : Promise.resolve([]),
-      ])
-
-      const calcPnl = trades => trades.filter(t => {
-        const d = new Date(t.createdAt); return d >= start && d <= end
-      }).reduce((s, t) => s + (parseFloat(t.pnl) || 0), 0)
-
-      const cPnl = calcPnl(cTrades)
-      const oPnl = calcPnl(oTrades)
-      const winnerId = cPnl > oPnl ? m.challengerId : cPnl < oPnl ? m.opponentId : null // null = tie
-
-      await db.patch('H2HMatch', `?id=eq.${matchId}`, {
-        status: 'completed',
-        winnerId,
-        challengerScore: cPnl,
-        opponentScore: oPnl,
-      })
-      return Response.json({ success: true, winnerId, challengerPnl: cPnl, opponentPnl: oPnl })
+      const match = await prisma.h2HMatch.findUnique({ where: { id: matchId } })
+      if (!match) return Response.json({ error: 'Not found' }, { status: 404 })
+      const ended = match.endDate && new Date() > new Date(match.endDate)
+      const winnerId = ended ? (match.challengerScore >= match.opponentScore ? match.challengerId : match.opponentId) : null
+      await prisma.h2HMatch.update({ where: { id: matchId }, data: { status: ended ? 'completed' : 'active', winnerId } })
+      return Response.json({ success: true })
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 })
-  } catch(e) {
-    console.error('Challenges PATCH error:', e.message)
+  } catch (e) {
+    console.error('[PATCH /api/challenges]', e)
     return Response.json({ error: e.message }, { status: 500 })
   }
-}
-
-function parseDuration(d) {
-  const map = { '1 Day': 86400000, '3 Days': 259200000, '1 Week': 604800000, '2 Weeks': 1209600000, '1 Month': 2592000000 }
-  return map[d] || 604800000
-}
-
-function getTimeLeft(end) {
-  const diff = new Date(end) - new Date()
-  if (diff <= 0) return 'Ended'
-  const d = Math.floor(diff / 86400000)
-  const h = Math.floor((diff % 86400000) / 3600000)
-  return d > 0 ? `${d}d ${h}h` : `${h}h`
 }

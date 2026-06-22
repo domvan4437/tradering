@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ASSET_CLASSES = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
@@ -64,6 +64,18 @@ const S = {
     cursor: 'pointer',
   },
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function timeAgo(date) {
+  if (!date) return ''
+  const diff = Date.now() - new Date(date).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -230,7 +242,6 @@ function WarnBox({ children }) {
   );
 }
 
-// ─── Modal overlay wrapper ────────────────────────────────────────────────────
 function Modal({ title, onClose, children }) {
   return (
     <div
@@ -271,8 +282,154 @@ function ModalFooter({ onCancel, onSubmit, submitLabel, disabled }) {
   );
 }
 
+// ─── Data cards ───────────────────────────────────────────────────────────────
+function ChallengeCard({ match, onAccept }) {
+  const [loading, setLoading] = useState(false);
+  const handleAccept = async () => {
+    setLoading(true);
+    await onAccept(match.id);
+    setLoading(false);
+  };
+  return (
+    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <i className="ti ti-swords" style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
+          {match.challengerName}
+          {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10, fontWeight: 500 }}>${match.buyIn} stake</span>}
+        </div>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+          {match.asset} · {match.timeLeft || 'Open'} · {timeAgo(match.createdAt)}
+        </div>
+        {match.description && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{match.description}</div>}
+      </div>
+      <button onClick={handleAccept} disabled={loading} style={{ ...S.primaryBtn, padding: '6px 14px', flexShrink: 0 }}>
+        {loading ? '…' : 'Accept'}
+      </button>
+    </div>
+  );
+}
+
+function MatchCard({ match, currentUserId }) {
+  const isChallenger = match.challengerId === currentUserId;
+  const myScore = isChallenger ? match.challengerScore : match.opponentScore;
+  const oppScore = isChallenger ? match.opponentScore : match.challengerScore;
+  const oppName = isChallenger ? match.opponentName : match.challengerName;
+  return (
+    <div style={{ ...S.card }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+          vs {oppName}
+          {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10 }}>${match.buyIn} stake</span>}
+        </div>
+        <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: match.status === 'active' ? '#059669' : '#d97706', fontWeight: 600 }}>
+          {match.status === 'active' ? '● Live' : '⏳ Waiting'}
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 6 }}>
+        <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>You</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: myScore >= 0 ? '#059669' : '#dc2626' }}>{myScore > 0 ? '+' : ''}{Number(myScore).toFixed(1)}</div>
+        </div>
+        <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>{oppName}</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: oppScore >= 0 ? '#059669' : '#dc2626' }}>{oppScore > 0 ? '+' : ''}{Number(oppScore).toFixed(1)}</div>
+        </div>
+      </div>
+      <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+        {match.asset} · {match.timeLeft || 'No end date'}
+      </div>
+    </div>
+  );
+}
+
+function InviteCard({ match, onAccept, onDecline }) {
+  const [loading, setLoading] = useState(false);
+  return (
+    <div style={{ ...S.card }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+          Challenge from {match.challengerName}
+          {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10 }}>${match.buyIn} stake</span>}
+        </div>
+        <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{timeAgo(match.createdAt)}</span>
+      </div>
+      <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+        {match.asset} · {match.timeLeft}
+        {match.description && ` · "${match.description}"`}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={async () => { setLoading(true); await onDecline(match.id); setLoading(false); }} style={{ ...S.ghostBtn, flex: 1 }}>Decline</button>
+        <button onClick={async () => { setLoading(true); await onAccept(match.id); setLoading(false); }} disabled={loading} style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center' }}>
+          {loading ? '…' : 'Accept challenge'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ContestCard({ contest, onJoin }) {
+  const [loading, setLoading] = useState(false);
+  return (
+    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <i className="ti ti-users" style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
+          {contest.name}
+          {contest.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10 }}>${contest.buyIn} entry</span>}
+        </div>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+          {contest.memberCount} member{contest.memberCount !== 1 ? 's' : ''} · {contest.asset} · by {contest.creatorName}
+        </div>
+      </div>
+      <button
+        onClick={async () => { setLoading(true); await onJoin(contest.id); setLoading(false); }}
+        disabled={loading || contest.joined}
+        style={{ ...S.primaryBtn, padding: '6px 14px', flexShrink: 0, background: contest.joined ? '#059669' : '#534AB7' }}
+      >
+        {loading ? '…' : contest.joined ? '✓ Joined' : 'Join'}
+      </button>
+    </div>
+  );
+}
+
+function HistoryCard({ match, currentUserId }) {
+  const won = match.winnerId === currentUserId;
+  const isTie = match.winnerId === null;
+  const isChallenger = match.challengerId === currentUserId;
+  const oppName = isChallenger ? match.opponentName : match.challengerName;
+  return (
+    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 8, background: isTie ? 'var(--surface2)' : won ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <i className={`ti ${isTie ? 'ti-minus' : won ? 'ti-trophy' : 'ti-x'}`} style={{ fontSize: 18, color: isTie ? 'var(--text-muted)' : won ? '#059669' : '#dc2626' }} aria-hidden="true" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
+          vs {oppName}
+          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: isTie ? 'var(--text-muted)' : won ? '#059669' : '#dc2626' }}>
+            {isTie ? 'Tie' : won ? 'Won' : 'Lost'}
+          </span>
+        </div>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+          {match.asset} · {timeAgo(match.createdAt)}
+          {match.buyIn > 0 && ` · $${match.buyIn} stake`}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+          {isChallenger ? match.challengerScore : match.opponentScore} – {isChallenger ? match.opponentScore : match.challengerScore}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Post Challenge Modal ─────────────────────────────────────────────────────
-function PostChallengeModal({ onClose }) {
+function PostChallengeModal({ onClose, onSuccess }) {
   const [type, setType] = useState('free');
   const [form, setForm] = useState({
     asset: 'Any',
@@ -284,38 +441,40 @@ function PostChallengeModal({ onClose }) {
     maxAccepts: 1,
     description: '',
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setDur = (patch) => setForm(p => ({ ...p, ...patch }));
 
   const handleSubmit = async () => {
+    setLoading(true); setError('');
     try {
       const duration = form.durationType === 'custom'
         ? `${form.durationCustom} ${form.durationUnit}`
         : form.durationPreset;
 
-      const body = {
-        challenge_type: type,
-        asset_class: form.asset,
-        duration,
-        stake: type === 'paid' ? form.stake : null,
-        max_accepts: form.maxAccepts,
-        description: form.description,
-      };
-
       const res = await fetch('/api/challenges', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          type,
+          asset: form.asset,
+          duration,
+          stake: form.stake,
+          description: form.description,
+        }),
       });
-
-      if (!res.ok) throw new Error('Failed to post challenge');
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Failed to post challenge'); setLoading(false); return; }
+      onSuccess?.();
       onClose();
     } catch (err) {
-      console.error(err);
+      setError('Network error — try again');
     }
+    setLoading(false);
   };
 
-  const valid = form.description.trim().length > 0;
+  const valid = form.description.trim().length > 0 && !loading;
 
   return (
     <Modal title="Post a challenge" onClose={onClose}>
@@ -344,14 +503,7 @@ function PostChallengeModal({ onClose }) {
             <label style={S.label}>Entry stake</label>
             <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
               <span style={{ padding: '8px 10px', background: 'var(--surface3)', color: 'var(--text-muted)', fontSize: 13, fontFamily: 'var(--font)', borderRight: '1px solid var(--border)' }}>$</span>
-              <input
-                type="number"
-                min="1"
-                placeholder="e.g. 25"
-                value={form.stake}
-                onChange={e => set('stake', e.target.value)}
-                style={{ ...S.input, borderRadius: 0, border: 'none', flex: 1 }}
-              />
+              <input type="number" min="1" placeholder="e.g. 25" value={form.stake} onChange={e => set('stake', e.target.value)} style={{ ...S.input, borderRadius: 0, border: 'none', flex: 1 }} />
             </div>
             <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Held in escrow until match ends</div>
           </div>
@@ -363,7 +515,7 @@ function PostChallengeModal({ onClose }) {
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <label style={S.label}>Challenge rules & description</label>
+        <label style={S.label}>Challenge rules & description *</label>
         <textarea
           value={form.description}
           onChange={e => set('description', e.target.value)}
@@ -373,19 +525,21 @@ function PostChallengeModal({ onClose }) {
         />
       </div>
 
+      {error && <div style={{ marginBottom: 10, padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{error}</div>}
+
       <WarnBox>
         {type === 'paid'
           ? 'Matched to your league tier (±1 league). Entry stakes held in escrow until match completion. Verified broker required.'
           : 'Matched to your league tier (±1 league). Results count toward the free leaderboard.'}
       </WarnBox>
 
-      <ModalFooter onCancel={onClose} onSubmit={handleSubmit} submitLabel="Post challenge" disabled={!valid} />
+      <ModalFooter onCancel={onClose} onSubmit={handleSubmit} submitLabel={loading ? 'Posting…' : 'Post challenge'} disabled={!valid} />
     </Modal>
   );
 }
 
 // ─── Create Group Contest Modal ───────────────────────────────────────────────
-function CreateGroupModal({ onClose }) {
+function CreateGroupModal({ onClose, onSuccess }) {
   const [type, setType] = useState('free');
   const [form, setForm] = useState({
     name: '',
@@ -400,6 +554,8 @@ function CreateGroupModal({ onClose }) {
     minTrades: 10,
     desc: '',
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setDur = (patch) => setForm(p => ({ ...p, ...patch }));
 
@@ -407,37 +563,35 @@ function CreateGroupModal({ onClose }) {
   const estimatedPool = feeNum * form.maxGroups;
 
   const handleSubmit = async () => {
+    setLoading(true); setError('');
     try {
       const duration = form.durationType === 'custom'
         ? `${form.durationCustom} ${form.durationUnit}`
         : form.durationPreset;
 
-      const body = {
-        contest_type: type,
-        name: form.name,
-        asset_class: form.asset,
-        duration,
-        entry_fee: type === 'paid' ? form.fee : null,
-        max_groups: form.maxGroups,
-        prize_structure: type === 'paid' ? form.structure : null,
-        min_trades: form.minTrades,
-        description: form.desc,
-      };
-
       const res = await fetch('/api/group-contests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          action: 'create',
+          name: form.name,
+          description: form.desc,
+          asset: form.asset,
+          duration,
+          buyIn: type === 'paid' ? form.fee : '0',
+        }),
       });
-
-      if (!res.ok) throw new Error('Failed to create contest');
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Failed to create contest'); setLoading(false); return; }
+      onSuccess?.();
       onClose();
     } catch (err) {
-      console.error(err);
+      setError('Network error — try again');
     }
+    setLoading(false);
   };
 
-  const valid = form.name.trim().length > 0;
+  const valid = form.name.trim().length > 0 && !loading;
 
   return (
     <Modal title="Create a group contest" onClose={onClose}>
@@ -445,7 +599,7 @@ function CreateGroupModal({ onClose }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={S.label}>Contest name</label>
+          <label style={S.label}>Contest name *</label>
           <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. COT Monthly Commodities Cup" style={S.input} />
         </div>
         <div>
@@ -470,14 +624,7 @@ function CreateGroupModal({ onClose }) {
             <label style={S.label}>Entry fee / group</label>
             <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
               <span style={{ padding: '8px 10px', background: 'var(--surface3)', color: 'var(--text-muted)', fontSize: 13, fontFamily: 'var(--font)', borderRight: '1px solid var(--border)' }}>$</span>
-              <input
-                type="number"
-                min="1"
-                placeholder="e.g. 50"
-                value={form.fee}
-                onChange={e => set('fee', e.target.value)}
-                style={{ ...S.input, borderRadius: 0, border: 'none', flex: 1 }}
-              />
+              <input type="number" min="1" placeholder="e.g. 50" value={form.fee} onChange={e => set('fee', e.target.value)} style={{ ...S.input, borderRadius: 0, border: 'none', flex: 1 }} />
             </div>
           </div>
         )}
@@ -515,25 +662,41 @@ function CreateGroupModal({ onClose }) {
         </div>
       )}
 
+      {error && <div style={{ marginBottom: 10, padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{error}</div>}
+
       <WarnBox>
         {type === 'paid'
           ? 'Entry fees held in escrow. Paid contest results appear on the paid leaderboard.'
           : 'Free contest — no entry fee. Results appear on the free leaderboard.'}
       </WarnBox>
 
-      <ModalFooter onCancel={onClose} onSubmit={handleSubmit} submitLabel="Create contest" disabled={!valid} />
+      <ModalFooter onCancel={onClose} onSubmit={handleSubmit} submitLabel={loading ? 'Creating…' : 'Create contest'} disabled={!valid} />
     </Modal>
   );
 }
 
 // ─── HOME TAB ─────────────────────────────────────────────────────────────────
-function HomeTab({ setActiveTab }) {
+function HomeTab({ setActiveTab, currentUserId }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/challenges')
+      .then(r => r.json())
+      .then(d => setData(d))
+      .catch(() => {});
+  }, []);
+
+  const activeMatches = data?.myMatches?.length ?? 0;
+  const history = data?.history ?? [];
+  const wins = history.filter(m => m.won).length;
+  const winRate = history.length ? Math.round(wins / history.length * 100) : null;
+
   return (
     <div style={{ padding: 18 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
-        <StatCard label="Active matches" value="0" sub="Start your first challenge" />
-        <StatCard label="Win rate" value="—" sub="No matches yet" />
-        <StatCard label="Total P&L" value="—" sub="Connect broker to track" />
+        <StatCard label="Active matches" value={activeMatches} sub={activeMatches === 0 ? 'Start your first challenge' : `${activeMatches} ongoing`} />
+        <StatCard label="Win rate" value={winRate !== null ? `${winRate}%` : '—'} sub={history.length ? `${wins}W / ${history.length - wins}L` : 'No matches yet'} />
+        <StatCard label="Total matches" value={history.length || '—'} sub={history.length ? 'All time' : 'Connect broker to track'} />
       </div>
 
       <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 10 }}>Quick actions</div>
@@ -563,28 +726,55 @@ function HomeTab({ setActiveTab }) {
       </div>
 
       <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 10 }}>Recent activity</div>
-      <EmptyState icon="ti-activity" title="No activity yet" sub="Your matches and results will appear here" />
+      {history.length === 0
+        ? <EmptyState icon="ti-activity" title="No activity yet" sub="Your matches and results will appear here" />
+        : history.slice(0, 3).map(m => <HistoryCard key={m.id} match={m} currentUserId={currentUserId} />)
+      }
     </div>
   );
 }
 
 // ─── H2H TAB ──────────────────────────────────────────────────────────────────
-function H2HTab() {
+function H2HTab({ currentUserId }) {
   const [inner, setInner] = useState('browse');
   const [search, setSearch] = useState('');
   const [assetFilter, setAssetFilter] = useState('Any');
   const [showModal, setShowModal] = useState(false);
+  const [data, setData] = useState({ open: [], myMatches: [], invites: [] });
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(() => {
+    setLoading(true);
+    fetch('/api/challenges')
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleAccept = async (matchId) => {
+    await fetch('/api/challenges', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId, action: 'accept' }) });
+    fetchData();
+  };
+
+  const handleDecline = async (matchId) => {
+    await fetch('/api/challenges', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId, action: 'decline' }) });
+    fetchData();
+  };
+
+  const filteredOpen = (data.open || []).filter(m => {
+    const matchAsset = assetFilter === 'Any' || m.asset === assetFilter || m.asset === 'Any';
+    const matchSearch = !search || m.challengerName.toLowerCase().includes(search.toLowerCase()) || m.description.toLowerCase().includes(search.toLowerCase());
+    return matchAsset && matchSearch;
+  });
 
   return (
     <div style={{ padding: 18 }}>
-      {showModal && <PostChallengeModal onClose={() => setShowModal(false)} />}
+      {showModal && <PostChallengeModal onClose={() => setShowModal(false)} onSuccess={fetchData} />}
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-        <SearchBar
-          placeholder="Search by trader name or @username..."
-          value={search}
-          onChange={setSearch}
-        />
+        <SearchBar placeholder="Search by trader name or @username..." value={search} onChange={setSearch} />
         <button onClick={() => setShowModal(true)} style={S.primaryBtn}>
           <i className="ti ti-plus" aria-hidden="true" /> Post challenge
         </button>
@@ -592,7 +782,7 @@ function H2HTab() {
       <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>Search by trader name or @username</div>
 
       <InnerTabs
-        tabs={[['browse', 'Browse'], ['mymatches', 'My matches'], ['invites', 'Invites']]}
+        tabs={[['browse', `Browse${data.open?.length ? ` (${data.open.length})` : ''}`], ['mymatches', `My matches${data.myMatches?.length ? ` (${data.myMatches.length})` : ''}`], ['invites', `Invites${data.invites?.length ? ` (${data.invites.length})` : ''}`]]}
         active={inner}
         onChange={setInner}
       />
@@ -600,42 +790,75 @@ function H2HTab() {
       {inner === 'browse' && (
         <>
           <AssetPills active={assetFilter} onChange={setAssetFilter} />
-          <EmptyState
-            icon="ti-swords"
-            title="No open challenges"
-            sub="Be the first — post a challenge above"
-            btnLabel="Post challenge"
-            onBtnClick={() => setShowModal(true)}
-          />
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+          ) : filteredOpen.length === 0 ? (
+            <EmptyState icon="ti-swords" title="No open challenges" sub="Be the first — post a challenge above" btnLabel="Post challenge" onBtnClick={() => setShowModal(true)} />
+          ) : (
+            filteredOpen.map(m => <ChallengeCard key={m.id} match={m} onAccept={handleAccept} />)
+          )}
         </>
       )}
+
       {inner === 'mymatches' && (
-        <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />
+        loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+        ) : (data.myMatches || []).length === 0 ? (
+          <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />
+        ) : (
+          (data.myMatches || []).map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} />)
+        )
       )}
+
       {inner === 'invites' && (
-        <EmptyState icon="ti-bell" title="No invites" sub="When traders challenge you, they appear here" />
+        loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+        ) : (data.invites || []).length === 0 ? (
+          <EmptyState icon="ti-bell" title="No invites" sub="When traders challenge you, they appear here" />
+        ) : (
+          (data.invites || []).map(m => <InviteCard key={m.id} match={m} onAccept={handleAccept} onDecline={handleDecline} />)
+        )
       )}
     </div>
   );
 }
 
 // ─── GROUP TAB ────────────────────────────────────────────────────────────────
-function GroupTab() {
+function GroupTab({ currentUserId }) {
   const [inner, setInner] = useState('browse');
   const [search, setSearch] = useState('');
   const [assetFilter, setAssetFilter] = useState('Any');
   const [showModal, setShowModal] = useState(false);
+  const [data, setData] = useState({ contests: [], myContests: [] });
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(() => {
+    setLoading(true);
+    fetch('/api/group-contests')
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleJoin = async (contestId) => {
+    await fetch('/api/group-contests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId }) });
+    fetchData();
+  };
+
+  const filteredContests = (data.contests || []).filter(c => {
+    const matchAsset = assetFilter === 'Any' || c.asset === assetFilter || c.asset === 'Any';
+    const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.creatorName.toLowerCase().includes(search.toLowerCase());
+    return matchAsset && matchSearch;
+  });
 
   return (
     <div style={{ padding: 18 }}>
-      {showModal && <CreateGroupModal onClose={() => setShowModal(false)} />}
+      {showModal && <CreateGroupModal onClose={() => setShowModal(false)} onSuccess={fetchData} />}
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-        <SearchBar
-          placeholder="Search by contest name or @creator..."
-          value={search}
-          onChange={setSearch}
-        />
+        <SearchBar placeholder="Search by contest name or @creator..." value={search} onChange={setSearch} />
         <button onClick={() => setShowModal(true)} style={S.primaryBtn}>
           <i className="ti ti-plus" aria-hidden="true" /> Create contest
         </button>
@@ -643,7 +866,7 @@ function GroupTab() {
       <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>Search by contest name or @creator username</div>
 
       <InnerTabs
-        tabs={[['browse', 'Browse'], ['mycontests', 'My contests']]}
+        tabs={[['browse', `Browse${data.contests?.length ? ` (${data.contests.length})` : ''}`], ['mycontests', `My contests${data.myContests?.length ? ` (${data.myContests.length})` : ''}`]]}
         active={inner}
         onChange={setInner}
       />
@@ -651,26 +874,83 @@ function GroupTab() {
       {inner === 'browse' && (
         <>
           <AssetPills active={assetFilter} onChange={setAssetFilter} />
-          <EmptyState
-            icon="ti-users"
-            title="No open contests"
-            sub="Create one or wait for others to post"
-            btnLabel="Create contest"
-            onBtnClick={() => setShowModal(true)}
-          />
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+          ) : filteredContests.length === 0 ? (
+            <EmptyState icon="ti-users" title="No open contests" sub="Create one or wait for others to post" btnLabel="Create contest" onBtnClick={() => setShowModal(true)} />
+          ) : (
+            filteredContests.map(c => <ContestCard key={c.id} contest={c} onJoin={handleJoin} />)
+          )}
         </>
       )}
+
       {inner === 'mycontests' && (
-        <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />
+        loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+        ) : (data.myContests || []).length === 0 ? (
+          <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />
+        ) : (
+          (data.myContests || []).map(c => <ContestCard key={c.id} contest={c} onJoin={handleJoin} />)
+        )
       )}
     </div>
   );
 }
 
 // ─── LEADERBOARD TAB ──────────────────────────────────────────────────────────
-function LeaderboardTab() {
-  const [timePeriod, setTimePeriod] = useState('all');
+function LeaderboardTab({ currentUserId }) {
+  const [timePeriod, setTimePeriod] = useState('month');
   const [metric, setMetric] = useState('pnl');
+  const [freeBoard, setFreeBoard] = useState([]);
+  const [paidBoard, setPaidBoard] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      fetch(`/api/leaderboard?period=${timePeriod}&type=free`).then(r => r.json()),
+      fetch(`/api/leaderboard?period=${timePeriod}&type=paid`).then(r => r.json()),
+    ]).then(([free, paid]) => {
+      setFreeBoard(free.leaderboard || []);
+      setPaidBoard(paid.leaderboard || []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [timePeriod]);
+
+  const renderBoard = (board, label, color, emptyIcon, emptyMsg) => (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{label}</div>
+        <span style={{ background: color.bg, color: color.text, fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>{color.label}</span>
+      </div>
+      <div style={{ display: 'flex', padding: '6px 14px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ width: 24, fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>#</div>
+        <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Trader</div>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>W/L</div>
+      </div>
+      {loading ? (
+        <div style={{ padding: '24px', textAlign: 'center', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+      ) : board.length === 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '24px 14px', textAlign: 'center' }}>
+          <i className={`ti ${emptyIcon}`} style={{ fontSize: 26, color: '#AFA9EC' }} aria-hidden="true" />
+          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>{emptyMsg}</div>
+        </div>
+      ) : (
+        board.slice(0, 10).map((e, i) => (
+          <div key={e.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid var(--border)', background: e.isMe ? '#EEEDFE' : 'transparent' }}>
+            <div style={{ width: 24, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: i < 3 ? '#534AB7' : 'var(--text-muted)' }}>{e.rank}</div>
+            <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text)', fontWeight: e.isMe ? 600 : 400 }}>
+              {e.name}
+              {e.isMe && <span style={{ marginLeft: 6, fontSize: 10, color: '#534AB7', fontWeight: 500 }}>you</span>}
+            </div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+              {e.wins}W / {e.losses}L
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
 
   return (
     <div style={{ padding: 18 }}>
@@ -688,41 +968,8 @@ function LeaderboardTab() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        {/* Free leaderboard */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Free leaderboard</div>
-            <span style={{ background: 'var(--green-bg, #EAF3DE)', color: 'var(--green, #27500A)', fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>Free</span>
-          </div>
-          <div style={{ display: 'flex', padding: '6px 14px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ width: 24, fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>#</div>
-            <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Trader</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>P&L %</div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '24px 14px', textAlign: 'center' }}>
-            <i className="ti ti-gift" style={{ fontSize: 26, color: '#AFA9EC' }} aria-hidden="true" />
-            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>No free matches yet</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', maxWidth: 150, lineHeight: 1.5, opacity: 0.7 }}>Complete a free challenge to appear here</div>
-          </div>
-        </div>
-
-        {/* Paid leaderboard */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Paid leaderboard</div>
-            <span style={{ background: '#EEEDFE', color: '#3C3489', fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>Paid</span>
-          </div>
-          <div style={{ display: 'flex', padding: '6px 14px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ width: 24, fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>#</div>
-            <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Trader</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>P&L %</div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '24px 14px', textAlign: 'center' }}>
-            <i className="ti ti-currency-dollar" style={{ fontSize: 26, color: '#AFA9EC' }} aria-hidden="true" />
-            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>No paid matches yet</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', maxWidth: 150, lineHeight: 1.5, opacity: 0.7 }}>Complete a paid challenge to appear here</div>
-          </div>
-        </div>
+        {renderBoard(freeBoard, 'Free leaderboard', { bg: 'var(--green-bg, #EAF3DE)', text: 'var(--green, #27500A)', label: 'Free' }, 'ti-gift', 'No free matches yet')}
+        {renderBoard(paidBoard, 'Paid leaderboard', { bg: '#EEEDFE', text: '#3C3489', label: 'Paid' }, 'ti-currency-dollar', 'No paid matches yet')}
       </div>
 
       <div style={{ marginTop: 14, padding: '11px 14px', background: '#EEEDFE', borderRadius: 8, fontFamily: 'var(--font)', fontSize: 13, color: '#3C3489', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -734,10 +981,30 @@ function LeaderboardTab() {
 }
 
 // ─── HISTORY TAB ──────────────────────────────────────────────────────────────
-function HistoryTab() {
+function HistoryTab({ currentUserId }) {
   const [typeFilter, setTypeFilter] = useState('all');
   const [outcomeFilter, setOutcomeFilter] = useState('all');
   const [paidFilter, setPaidFilter] = useState('all');
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/challenges')
+      .then(r => r.json())
+      .then(d => { setHistory(d.history || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const filtered = history.filter(m => {
+    if (outcomeFilter === 'win' && !m.won) return false;
+    if (outcomeFilter === 'loss' && (m.won || m.winnerId === null)) return false;
+    if (paidFilter === 'free' && m.buyIn > 0) return false;
+    if (paidFilter === 'paid' && m.buyIn === 0) return false;
+    return true;
+  });
+
+  const wins = history.filter(m => m.won).length;
+  const winRate = history.length ? Math.round(wins / history.length * 100) : null;
 
   return (
     <div style={{ padding: 18 }}>
@@ -760,12 +1027,18 @@ function HistoryTab() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
-        <StatCard label="Matches played" value="0" />
-        <StatCard label="Wins" value="0" />
-        <StatCard label="Win rate" value="—" />
+        <StatCard label="Matches played" value={history.length || '0'} />
+        <StatCard label="Wins" value={wins || '0'} />
+        <StatCard label="Win rate" value={winRate !== null ? `${winRate}%` : '—'} />
       </div>
 
-      <EmptyState icon="ti-history" title="No match history" sub="Complete your first challenge to see your history here" />
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon="ti-history" title="No match history" sub="Complete your first challenge to see your history here" />
+      ) : (
+        filtered.map(m => <HistoryCard key={m.id} match={m} currentUserId={currentUserId} />)
+      )}
     </div>
   );
 }
@@ -790,10 +1063,7 @@ const TAB_META = {
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
 export default function CompeteTab({ currentUserId, externalTab }) {
   const [activeTab, setActiveTab] = useState(externalTab || 'home');
-
-  // Allow parent to change tab via externalTab prop
   const resolvedTab = externalTab || activeTab;
-
   const meta = TAB_META[resolvedTab];
 
   return (
@@ -814,7 +1084,6 @@ export default function CompeteTab({ currentUserId, externalTab }) {
               color: resolvedTab === t.key ? '#fff' : 'var(--text-muted)',
               fontSize: 19,
               transition: 'all .15s',
-              position: 'relative',
             }}
             onMouseEnter={e => { if (resolvedTab !== t.key) { e.currentTarget.style.background = '#EEEDFE'; e.currentTarget.style.color = '#534AB7'; } }}
             onMouseLeave={e => { if (resolvedTab !== t.key) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; } }}
@@ -839,11 +1108,11 @@ export default function CompeteTab({ currentUserId, externalTab }) {
 
         {/* Tab content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} />}
-          {resolvedTab === 'h2h'         && <H2HTab />}
-          {resolvedTab === 'group'       && <GroupTab />}
-          {resolvedTab === 'leaderboard' && <LeaderboardTab />}
-          {resolvedTab === 'history'     && <HistoryTab />}
+          {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
+          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} />}
+          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} />}
+          {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} />}
+          {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
         </div>
       </div>
     </div>
