@@ -60,6 +60,7 @@ export async function GET(request) {
       memberCount: c._count?.entries ?? 0,
       joined: (c.entries?.length ?? 0) > 0,
       creatorName: c.creator?.displayName || c.creator?.name || c.creator?.username || 'Trader',
+      creatorUsername: c.creator?.username,
     })
 
     return Response.json({ contests: allContests.map(fmtContest), myContests: myContests.map(fmtContest) })

@@ -306,7 +306,13 @@ function H2HPreviewModal({ match, onAccept, onClose }) {
             </div>
             <div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>1v1 Challenge</div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>from {match.challengerName}</div>
+              {match.challengerUsername ? (
+                <a href={`/p/${match.challengerUsername}`} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  {match.challengerName} <i className="ti ti-external-link" style={{ fontSize: 11 }} />
+                </a>
+              ) : (
+                <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>{match.challengerName}</div>
+              )}
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>×</button>
@@ -374,7 +380,13 @@ function GroupPreviewModal({ contest, onJoin, onClose }) {
             </div>
             <div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{contest.name}</div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>by {contest.creatorName}</div>
+              {contest.creatorUsername ? (
+                <a href={`/p/${contest.creatorUsername}`} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  by {contest.creatorName} <i className="ti ti-external-link" style={{ fontSize: 11 }} />
+                </a>
+              ) : (
+                <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>by {contest.creatorName}</div>
+              )}
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>×</button>
@@ -461,7 +473,10 @@ function ChallengeCard({ match, onAccept }) {
   return (
     <>
       {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} />}
-      <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div onClick={() => setPreview(true)} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
+        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+      >
         <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <i className="ti ti-swords" style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
         </div>
@@ -475,9 +490,7 @@ function ChallengeCard({ match, onAccept }) {
           </div>
           {match.description && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{match.description}</div>}
         </div>
-        <button onClick={() => setPreview(true)} style={{ ...S.primaryBtn, padding: '6px 14px', flexShrink: 0 }}>
-          Preview
-        </button>
+        <i className="ti ti-chevron-right" style={{ fontSize: 16, color: '#534AB7', flexShrink: 0 }} />
       </div>
     </>
   );
@@ -528,7 +541,11 @@ function InviteCard({ match, onAccept, onDecline }) {
   return (
     <>
       {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} />}
-      <div style={{ ...S.card }}>
+      <div style={{ ...S.card, cursor: 'pointer' }}
+        onClick={() => setPreview(true)}
+        onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
+        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+      >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
             Challenge from {match.challengerName}
@@ -540,10 +557,10 @@ function InviteCard({ match, onAccept, onDecline }) {
           {match.asset} · {match.timeLeft}
           {match.description && ` · "${match.description}"`}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
           <button onClick={async () => { setDeclining(true); await onDecline(match.id); setDeclining(false); }} disabled={declining} style={{ ...S.ghostBtn, flex: 1 }}>{declining ? '…' : 'Decline'}</button>
           <button onClick={() => setPreview(true)} style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center' }}>
-            <i className="ti ti-eye" /> Preview &amp; Accept
+            View &amp; Accept
           </button>
         </div>
       </div>
@@ -556,7 +573,10 @@ function ContestCard({ contest, onJoin }) {
   return (
     <>
       {preview && <GroupPreviewModal contest={contest} onJoin={onJoin} onClose={() => setPreview(false)} />}
-      <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div onClick={() => setPreview(true)} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
+        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+      >
         <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <i className="ti ti-users" style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
         </div>
@@ -569,12 +589,7 @@ function ContestCard({ contest, onJoin }) {
             {contest.memberCount} member{contest.memberCount !== 1 ? 's' : ''} · {contest.asset} · by {contest.creatorName}
           </div>
         </div>
-        <button
-          onClick={() => setPreview(true)}
-          style={{ ...S.primaryBtn, padding: '6px 14px', flexShrink: 0, background: contest.joined ? '#059669' : '#534AB7' }}
-        >
-          {contest.joined ? '✓ Joined' : 'Preview'}
-        </button>
+        <i className="ti ti-chevron-right" style={{ fontSize: 16, color: contest.joined ? '#059669' : '#534AB7', flexShrink: 0 }} />
       </div>
     </>
   );
