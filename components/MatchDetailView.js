@@ -614,9 +614,6 @@ export default function MatchDetailView({ matchId, onBack }) {
           </div>
         )}
 
-        {/* Connection panel */}
-        <ConnectionPanel connections={myConnections} matchId={matchId} onSynced={fetchData} />
-
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 14 }}>
           {[
@@ -645,7 +642,7 @@ export default function MatchDetailView({ matchId, onBack }) {
               <i className="ti ti-plug-connected" style={{ fontSize: 30, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }} />
               <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>No trades synced yet</div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', maxWidth: 260, margin: '0 auto', lineHeight: 1.5 }}>
-                Connect a platform above — Alpaca, OANDA, Binance, Bybit, or OKX. Every trade you place will appear here automatically.
+                Connect a platform below — Alpaca, OANDA, Binance, Bybit, or OKX. Every trade you place will appear here automatically.
               </div>
             </div>
           ) : (
@@ -682,6 +679,11 @@ export default function MatchDetailView({ matchId, onBack }) {
             }
           </div>
         )}
+
+        {/* Connection panel */}
+        <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+          <ConnectionPanel connections={myConnections} matchId={matchId} onSynced={fetchData} />
+        </div>
       </div>
     </div>
   )
