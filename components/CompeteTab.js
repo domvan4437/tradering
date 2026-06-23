@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import MatchDetailView from './MatchDetailView';
+import ProfilePopup from './ProfilePopup';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ASSET_CLASSES = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
@@ -284,7 +285,7 @@ function ModalFooter({ onCancel, onSubmit, submitLabel, disabled }) {
 }
 
 // ─── H2H Preview Modal ────────────────────────────────────────────────────────
-function H2HPreviewModal({ match, onAccept, onClose }) {
+function H2HPreviewModal({ match, onAccept, onClose, onOpenProfile }) {
   const [loading, setLoading] = useState(false);
 
   const rows = [
@@ -307,9 +308,9 @@ function H2HPreviewModal({ match, onAccept, onClose }) {
             <div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>1v1 Challenge</div>
               {match.challengerSlug ? (
-                <a href={`/p/${match.challengerSlug}`} onClick={e => e.stopPropagation()} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <button onClick={e => { e.stopPropagation(); onOpenProfile(match.challengerSlug); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', padding: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
                   {match.challengerName} <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
-                </a>
+                </button>
               ) : (
                 <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>{match.challengerName}</div>
               )}
@@ -352,7 +353,7 @@ function H2HPreviewModal({ match, onAccept, onClose }) {
 }
 
 // ─── Group Preview Modal ───────────────────────────────────────────────────────
-function GroupPreviewModal({ contest, onJoin, onClose }) {
+function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile }) {
   const [loading, setLoading] = useState(false);
   const [joining, setJoining] = useState(false);
   const [detail, setDetail] = useState(null);
@@ -381,9 +382,9 @@ function GroupPreviewModal({ contest, onJoin, onClose }) {
             <div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{contest.name}</div>
               {contest.creatorSlug ? (
-                <a href={`/p/${contest.creatorSlug}`} onClick={e => e.stopPropagation()} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <button onClick={e => { e.stopPropagation(); onOpenProfile(contest.creatorSlug); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', padding: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
                   by {contest.creatorName} <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
-                </a>
+                </button>
               ) : (
                 <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>by {contest.creatorName}</div>
               )}
@@ -468,11 +469,11 @@ function GroupPreviewModal({ contest, onJoin, onClose }) {
 }
 
 // ─── Data cards ───────────────────────────────────────────────────────────────
-function ChallengeCard({ match, onAccept }) {
+function ChallengeCard({ match, onAccept, onOpenProfile }) {
   const [preview, setPreview] = useState(false);
   return (
     <>
-      {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} />}
+      {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} onOpenProfile={onOpenProfile} />}
       <div onClick={() => setPreview(true)} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
         onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
         onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
@@ -535,12 +536,12 @@ function MatchCard({ match, currentUserId, onClick }) {
   );
 }
 
-function InviteCard({ match, onAccept, onDecline }) {
+function InviteCard({ match, onAccept, onDecline, onOpenProfile }) {
   const [preview, setPreview] = useState(false);
   const [declining, setDeclining] = useState(false);
   return (
     <>
-      {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} />}
+      {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} onOpenProfile={onOpenProfile} />}
       <div style={{ ...S.card, cursor: 'pointer' }}
         onClick={() => setPreview(true)}
         onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
@@ -568,11 +569,11 @@ function InviteCard({ match, onAccept, onDecline }) {
   );
 }
 
-function ContestCard({ contest, onJoin }) {
+function ContestCard({ contest, onJoin, onOpenProfile }) {
   const [preview, setPreview] = useState(false);
   return (
     <>
-      {preview && <GroupPreviewModal contest={contest} onJoin={onJoin} onClose={() => setPreview(false)} />}
+      {preview && <GroupPreviewModal contest={contest} onJoin={onJoin} onClose={() => setPreview(false)} onOpenProfile={onOpenProfile} />}
       <div onClick={() => setPreview(true)} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
         onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
         onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
@@ -936,7 +937,7 @@ function HomeTab({ setActiveTab, currentUserId }) {
 }
 
 // ─── H2H TAB ──────────────────────────────────────────────────────────────────
-function H2HTab({ currentUserId }) {
+function H2HTab({ currentUserId, onOpenProfile }) {
   const [inner, setInner] = useState('browse');
   const [search, setSearch] = useState('');
   const [assetFilter, setAssetFilter] = useState('Any');
@@ -1002,7 +1003,7 @@ function H2HTab({ currentUserId }) {
           ) : filteredOpen.length === 0 ? (
             <EmptyState icon="ti-swords" title="No open challenges" sub="Be the first — post a challenge above" btnLabel="Post challenge" onBtnClick={() => setShowModal(true)} />
           ) : (
-            filteredOpen.map(m => <ChallengeCard key={m.id} match={m} onAccept={handleAccept} />)
+            filteredOpen.map(m => <ChallengeCard key={m.id} match={m} onAccept={handleAccept} onOpenProfile={onOpenProfile} />)
           )}
         </>
       )}
@@ -1023,7 +1024,7 @@ function H2HTab({ currentUserId }) {
         ) : (data.invites || []).length === 0 ? (
           <EmptyState icon="ti-bell" title="No invites" sub="When traders challenge you, they appear here" />
         ) : (
-          (data.invites || []).map(m => <InviteCard key={m.id} match={m} onAccept={handleAccept} onDecline={handleDecline} />)
+          (data.invites || []).map(m => <InviteCard key={m.id} match={m} onAccept={handleAccept} onDecline={handleDecline} onOpenProfile={onOpenProfile} />)
         )
       )}
     </div>
@@ -1031,7 +1032,7 @@ function H2HTab({ currentUserId }) {
 }
 
 // ─── GROUP TAB ────────────────────────────────────────────────────────────────
-function GroupTab({ currentUserId }) {
+function GroupTab({ currentUserId, onOpenProfile }) {
   const [inner, setInner] = useState('browse');
   const [search, setSearch] = useState('');
   const [assetFilter, setAssetFilter] = useState('Any');
@@ -1086,7 +1087,7 @@ function GroupTab({ currentUserId }) {
           ) : filteredContests.length === 0 ? (
             <EmptyState icon="ti-users" title="No open contests" sub="Create one or wait for others to post" btnLabel="Create contest" onBtnClick={() => setShowModal(true)} />
           ) : (
-            filteredContests.map(c => <ContestCard key={c.id} contest={c} onJoin={handleJoin} />)
+            filteredContests.map(c => <ContestCard key={c.id} contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />)
           )}
         </>
       )}
@@ -1097,7 +1098,7 @@ function GroupTab({ currentUserId }) {
         ) : (data.myContests || []).length === 0 ? (
           <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />
         ) : (
-          (data.myContests || []).map(c => <ContestCard key={c.id} contest={c} onJoin={handleJoin} />)
+          (data.myContests || []).map(c => <ContestCard key={c.id} contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />)
         )
       )}
     </div>
@@ -1275,11 +1276,13 @@ const TAB_META = {
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
 export default function CompeteTab({ currentUserId, externalTab }) {
   const [activeTab, setActiveTab] = useState(externalTab || 'home');
+  const [profilePopupSlug, setProfilePopupSlug] = useState(null);
   const resolvedTab = externalTab || activeTab;
   const meta = TAB_META[resolvedTab];
 
   return (
     <div style={{ display: 'flex', height: '100%', fontFamily: 'var(--font)' }}>
+      {profilePopupSlug && <ProfilePopup slug={profilePopupSlug} onClose={() => setProfilePopupSlug(null)} />}
       {/* Sidebar */}
       <div style={{ width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 4, borderRight: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
         {SIDEBAR_TABS.map(t => (
@@ -1321,8 +1324,8 @@ export default function CompeteTab({ currentUserId, externalTab }) {
         {/* Tab content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
-          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} />}
-          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} />}
+          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={setProfilePopupSlug} />}
+          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={setProfilePopupSlug} />}
           {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} />}
           {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
         </div>
