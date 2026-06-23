@@ -296,8 +296,8 @@ function H2HPreviewModal({ match, onAccept, onClose }) {
   ];
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
-      <div style={{ background: 'var(--surface)', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 480, padding: 20, paddingBottom: 32 }} onClick={e => e.stopPropagation()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+      <div style={{ background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 420, padding: 24 }} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -307,7 +307,7 @@ function H2HPreviewModal({ match, onAccept, onClose }) {
             <div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>1v1 Challenge</div>
               {match.challengerUsername ? (
-                <a href={`/p/${match.challengerUsername}`} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <a href={`/p/${match.challengerUsername}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
                   {match.challengerName} <i className="ti ti-external-link" style={{ fontSize: 11 }} />
                 </a>
               ) : (
@@ -370,8 +370,8 @@ function GroupPreviewModal({ contest, onJoin, onClose }) {
     : null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
-      <div style={{ background: 'var(--surface)', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 480, padding: 20, paddingBottom: 32, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+      <div style={{ background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 420, padding: 24, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -381,7 +381,7 @@ function GroupPreviewModal({ contest, onJoin, onClose }) {
             <div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{contest.name}</div>
               {contest.creatorUsername ? (
-                <a href={`/p/${contest.creatorUsername}`} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <a href={`/p/${contest.creatorUsername}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
                   by {contest.creatorName} <i className="ti ti-external-link" style={{ fontSize: 11 }} />
                 </a>
               ) : (
