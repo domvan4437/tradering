@@ -283,33 +283,203 @@ function ModalFooter({ onCancel, onSubmit, submitLabel, disabled }) {
   );
 }
 
+// ─── H2H Preview Modal ────────────────────────────────────────────────────────
+function H2HPreviewModal({ match, onAccept, onClose }) {
+  const [loading, setLoading] = useState(false);
+
+  const rows = [
+    { label: 'Posted by', value: match.challengerName },
+    { label: 'Asset class', value: match.asset || 'Any' },
+    { label: 'Duration', value: match.timeLeft || 'Open' },
+    { label: 'Buy-in', value: match.buyIn > 0 ? `$${match.buyIn}` : 'Free' },
+    { label: 'Posted', value: timeAgo(match.createdAt) },
+  ];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
+      <div style={{ background: 'var(--surface)', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 480, padding: 20, paddingBottom: 32 }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 9, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="ti ti-swords" style={{ fontSize: 18, color: '#534AB7' }} />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>1v1 Challenge</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>from {match.challengerName}</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>×</button>
+        </div>
+
+        {/* Description */}
+        {match.description && (
+          <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', marginBottom: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>
+            "{match.description}"
+          </div>
+        )}
+
+        {/* Details */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+          {rows.map(({ label, value }) => (
+            <div key={label} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ ...S.ghostBtn, flex: 1 }}>Cancel</button>
+          <button
+            disabled={loading}
+            onClick={async () => { setLoading(true); await onAccept(match.id); onClose(); }}
+            style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center' }}
+          >
+            {loading ? '…' : <><i className="ti ti-swords" /> Accept challenge</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Group Preview Modal ───────────────────────────────────────────────────────
+function GroupPreviewModal({ contest, onJoin, onClose }) {
+  const [loading, setLoading] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [detail, setDetail] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/group-contests/preview?id=${contest.id}`)
+      .then(r => r.json())
+      .then(d => { setDetail(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [contest.id]);
+
+  const spotsLeft = detail?.maxParticipants
+    ? detail.maxParticipants - (detail.memberCount || 0)
+    : null;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
+      <div style={{ background: 'var(--surface)', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 480, padding: 20, paddingBottom: 32, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 9, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="ti ti-users" style={{ fontSize: 18, color: '#534AB7' }} />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{contest.name}</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>by {contest.creatorName}</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>×</button>
+        </div>
+
+        {/* Description */}
+        {contest.description && (
+          <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', marginBottom: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>
+            "{contest.description}"
+          </div>
+        )}
+
+        {/* Stats row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+          {[
+            { label: 'Asset', value: contest.asset || 'Any' },
+            { label: 'Buy-in', value: contest.buyIn > 0 ? `$${contest.buyIn}` : 'Free' },
+            { label: 'Prize', value: detail?.prizeStructure || 'Winner Takes All' },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 12px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Members */}
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Joined ({detail?.memberCount ?? contest.memberCount})
+            </div>
+            {spotsLeft !== null && (
+              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: spotsLeft === 0 ? '#ef4444' : '#059669', fontWeight: 600 }}>
+                {spotsLeft === 0 ? 'Full' : `${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`}
+              </div>
+            )}
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 20, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading members…</div>
+          ) : detail?.members?.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 16, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', background: 'var(--surface2)', borderRadius: 9 }}>
+              No one joined yet — be the first!
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {(detail?.members || []).map((m, i) => (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', borderRadius: 9, padding: '9px 12px' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#534AB7', flexShrink: 0 }}>
+                    {i + 1}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{m.name}</div>
+                  {m.score != null && m.score !== 0 && (
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: m.score >= 0 ? '#059669' : '#dc2626' }}>
+                      {m.score > 0 ? '+' : ''}{Number(m.score).toFixed(1)}R
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ ...S.ghostBtn, flex: 1 }}>Cancel</button>
+          <button
+            disabled={joining || contest.joined || spotsLeft === 0}
+            onClick={async () => { setJoining(true); await onJoin(contest.id); onClose(); }}
+            style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center', background: contest.joined ? '#059669' : spotsLeft === 0 ? 'var(--surface2)' : '#534AB7', color: spotsLeft === 0 && !contest.joined ? 'var(--text-muted)' : '#fff' }}
+          >
+            {joining ? '…' : contest.joined ? '✓ Already joined' : spotsLeft === 0 ? 'Contest full' : <><i className="ti ti-users" /> Join contest</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Data cards ───────────────────────────────────────────────────────────────
 function ChallengeCard({ match, onAccept }) {
-  const [loading, setLoading] = useState(false);
-  const handleAccept = async () => {
-    setLoading(true);
-    await onAccept(match.id);
-    setLoading(false);
-  };
+  const [preview, setPreview] = useState(false);
   return (
-    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <i className="ti ti-swords" style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
-          {match.challengerName}
-          {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10, fontWeight: 500 }}>${match.buyIn} stake</span>}
+    <>
+      {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} />}
+      <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <i className="ti ti-swords" style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
         </div>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
-          {match.asset} · {match.timeLeft || 'Open'} · {timeAgo(match.createdAt)}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
+            {match.challengerName}
+            {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10, fontWeight: 500 }}>${match.buyIn} stake</span>}
+          </div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+            {match.asset} · {match.timeLeft || 'Open'} · {timeAgo(match.createdAt)}
+          </div>
+          {match.description && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{match.description}</div>}
         </div>
-        {match.description && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{match.description}</div>}
+        <button onClick={() => setPreview(true)} style={{ ...S.primaryBtn, padding: '6px 14px', flexShrink: 0 }}>
+          Preview
+        </button>
       </div>
-      <button onClick={handleAccept} disabled={loading} style={{ ...S.primaryBtn, padding: '6px 14px', flexShrink: 0 }}>
-        {loading ? '…' : 'Accept'}
-      </button>
-    </div>
+    </>
   );
 }
 
@@ -353,54 +523,60 @@ function MatchCard({ match, currentUserId, onClick }) {
 }
 
 function InviteCard({ match, onAccept, onDecline }) {
-  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const [declining, setDeclining] = useState(false);
   return (
-    <div style={{ ...S.card }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-          Challenge from {match.challengerName}
-          {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10 }}>${match.buyIn} stake</span>}
+    <>
+      {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} />}
+      <div style={{ ...S.card }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+            Challenge from {match.challengerName}
+            {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10 }}>${match.buyIn} stake</span>}
+          </div>
+          <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{timeAgo(match.createdAt)}</span>
         </div>
-        <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{timeAgo(match.createdAt)}</span>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+          {match.asset} · {match.timeLeft}
+          {match.description && ` · "${match.description}"`}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={async () => { setDeclining(true); await onDecline(match.id); setDeclining(false); }} disabled={declining} style={{ ...S.ghostBtn, flex: 1 }}>{declining ? '…' : 'Decline'}</button>
+          <button onClick={() => setPreview(true)} style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center' }}>
+            <i className="ti ti-eye" /> Preview &amp; Accept
+          </button>
+        </div>
       </div>
-      <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-        {match.asset} · {match.timeLeft}
-        {match.description && ` · "${match.description}"`}
-      </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={async () => { setLoading(true); await onDecline(match.id); setLoading(false); }} style={{ ...S.ghostBtn, flex: 1 }}>Decline</button>
-        <button onClick={async () => { setLoading(true); await onAccept(match.id); setLoading(false); }} disabled={loading} style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center' }}>
-          {loading ? '…' : 'Accept challenge'}
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 
 function ContestCard({ contest, onJoin }) {
-  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState(false);
   return (
-    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <i className="ti ti-users" style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
-          {contest.name}
-          {contest.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10 }}>${contest.buyIn} entry</span>}
+    <>
+      {preview && <GroupPreviewModal contest={contest} onJoin={onJoin} onClose={() => setPreview(false)} />}
+      <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <i className="ti ti-users" style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
         </div>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
-          {contest.memberCount} member{contest.memberCount !== 1 ? 's' : ''} · {contest.asset} · by {contest.creatorName}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
+            {contest.name}
+            {contest.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10 }}>${contest.buyIn} entry</span>}
+          </div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+            {contest.memberCount} member{contest.memberCount !== 1 ? 's' : ''} · {contest.asset} · by {contest.creatorName}
+          </div>
         </div>
+        <button
+          onClick={() => setPreview(true)}
+          style={{ ...S.primaryBtn, padding: '6px 14px', flexShrink: 0, background: contest.joined ? '#059669' : '#534AB7' }}
+        >
+          {contest.joined ? '✓ Joined' : 'Preview'}
+        </button>
       </div>
-      <button
-        onClick={async () => { setLoading(true); await onJoin(contest.id); setLoading(false); }}
-        disabled={loading || contest.joined}
-        style={{ ...S.primaryBtn, padding: '6px 14px', flexShrink: 0, background: contest.joined ? '#059669' : '#534AB7' }}
-      >
-        {loading ? '…' : contest.joined ? '✓ Joined' : 'Join'}
-      </button>
-    </div>
+    </>
   );
 }
 
