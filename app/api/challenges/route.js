@@ -1,6 +1,8 @@
 import { getSession } from '../../../lib/auth'
 import { prisma } from '../../../lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 function parseDuration(d) {
   if (!d) return 604800000
   const map = { '1 Day': 86400000, '3 Days': 259200000, '1 Week': 604800000, '2 Weeks': 1209600000, '1 Month': 2592000000 }
