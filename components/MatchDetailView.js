@@ -88,135 +88,242 @@ function ScoreBar({ myPnL, theirPnL, theirName }) {
   )
 }
 
-// ─── Connection Panel ─────────────────────────────────────────────────────────
-function ConnectionPanel({ connections, matchId, onSynced }) {
-  const [webhook, setWebhook] = useState(null)
-  const [showGuide, setShowGuide] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [syncing, setSyncing] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/broker/webhook/setup')
-      .then(r => r.json())
-      .then(d => setWebhook(d))
-      .catch(() => {})
-  }, [])
-
-  const copyUrl = () => {
-    if (!webhook?.webhookUrl) return
-    navigator.clipboard.writeText(webhook.webhookUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const syncPlaid = async () => {
-    setSyncing(true)
-    try {
-      await fetch('/api/broker/sync', { method: 'POST' })
-      onSynced?.()
-    } catch {}
-    setSyncing(false)
-  }
-
-  const hasPlaid = connections?.some(c => c.broker === 'plaid')
-  const hasWebhook = connections?.some(c => c.broker === 'webhook')
-  const webhookConn = connections?.find(c => c.broker === 'webhook')
-
+// ─── Platform connect form (shared) ──────────────────────────────────────────
+function PlatformForm({ fields, onConnect, connecting, error, signupUrl, signupLabel, helpText }) {
+  const [values, setValues] = useState(() => Object.fromEntries(fields.map(f => [f.key, ''])))
+  const set = (k, v) => setValues(prev => ({ ...prev, [k]: v }))
   return (
-    <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 14 }}>
-      <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
-        Trade Sources
-      </div>
-
-      {/* Plaid / real broker row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'var(--surface)', borderRadius: 9, border: '1px solid var(--border)' }}>
-        <i className="ti ti-building-bank" style={{ fontSize: 18, color: hasPlaid ? '#22c55e' : 'var(--text-muted)', flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-            Real Broker (Plaid)
-          </div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
-            {hasPlaid ? `Connected · last synced ${timeAgo(connections.find(c=>c.broker==='plaid')?.lastSynced)}` : 'Robinhood, Fidelity, Schwab, Coinbase & more'}
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+      {helpText && (
+        <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          {helpText}
         </div>
-        {hasPlaid ? (
-          <button
-            onClick={syncPlaid}
-            disabled={syncing}
-            style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-          >
-            <i className={`ti ti-refresh${syncing ? ' animate-spin' : ''}`} /> {syncing ? 'Syncing…' : 'Sync Now'}
-          </button>
-        ) : (
-          <a href="/app?section=account&tab=broker" style={{ padding: '6px 12px', background: '#534AB7', color: '#fff', border: 'none', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-            Connect
+      )}
+      {fields.map(f => (
+        <input
+          key={f.key}
+          value={values[f.key]}
+          onChange={e => set(f.key, e.target.value)}
+          type={f.secret ? 'password' : 'text'}
+          placeholder={f.label}
+          style={{ padding: '9px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'monospace', fontSize: 12, color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+        />
+      ))}
+      {error && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#ef4444' }}>{error}</div>}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={() => onConnect(values)}
+          disabled={connecting}
+          style={{ flex: 1, padding: '9px 14px', background: connecting ? 'var(--surface2)' : '#534AB7', color: '#fff', border: 'none', borderRadius: 8, fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+        >
+          {connecting
+            ? <><i className="ti ti-loader-2 animate-spin" /> Connecting…</>
+            : <><i className="ti ti-plug-connected" /> Connect</>}
+        </button>
+        {signupUrl && (
+          <a href={signupUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '9px 12px', background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'var(--font)', fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <i className="ti ti-external-link" style={{ fontSize: 13 }} /> {signupLabel || 'Sign Up'}
           </a>
         )}
       </div>
+    </div>
+  )
+}
 
-      {/* TradingView / Webhook row */}
-      <div style={{ background: 'var(--surface)', borderRadius: 9, border: '1px solid var(--border)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
-          <i className="ti ti-chart-candle" style={{ fontSize: 18, color: '#2962FF', flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-              TradingView / Any Platform
-            </div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
-              {webhookConn ? `Active · last trade ${timeAgo(webhookConn.lastSynced)}` : 'Paper trades, TradingView alerts, custom scripts'}
-            </div>
-          </div>
-          <button
-            onClick={() => setShowGuide(g => !g)}
-            style={{ padding: '6px 12px', background: showGuide ? '#534AB7' : 'transparent', color: showGuide ? '#fff' : 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, cursor: 'pointer' }}
-          >
-            {showGuide ? 'Hide guide' : 'Setup guide'}
-          </button>
-        </div>
+// ─── Connection Panel ─────────────────────────────────────────────────────────
+function ConnectionPanel({ connections, onSynced }) {
+  const [expanded, setExpanded] = useState(null)   // which platform card is open
+  const [connecting, setConnecting] = useState(null)
+  const [syncing, setSyncing]   = useState(null)
+  const [errors, setErrors]     = useState({})
 
-        {showGuide && webhook && (
-          <div style={{ padding: '0 12px 14px', borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', marginTop: 12, marginBottom: 10, fontWeight: 600 }}>
-              Your Webhook URL
-            </div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-              <div style={{ flex: 1, padding: '8px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'monospace', fontSize: 11, color: 'var(--text)', wordBreak: 'break-all' }}>
-                {webhook.webhookUrl}
+  const conn = (broker) => connections?.find(c => c.broker === broker)
+  const has  = (broker) => !!conn(broker)
+
+  const setErr = (id, msg) => setErrors(prev => ({ ...prev, [id]: msg }))
+
+  // ── Connect helpers ────────────────────────────────────────────────
+  const connectAndSync = async (id, connectUrl, syncUrl, body) => {
+    setConnecting(id); setErr(id, '')
+    try {
+      const res  = await fetch(connectUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const data = await res.json()
+      if (!res.ok) { setErr(id, data.error || 'Connection failed'); setConnecting(null); return }
+      await fetch(syncUrl, { method: 'POST' })
+      onSynced?.()
+      setExpanded(null)
+    } catch { setErr(id, 'Network error') }
+    setConnecting(null)
+  }
+
+  const syncBroker = async (id, syncUrl) => {
+    setSyncing(id)
+    try { await fetch(syncUrl, { method: 'POST' }); onSynced?.() } catch {}
+    setSyncing(null)
+  }
+
+  // ── Platform definitions ───────────────────────────────────────────
+  const PLATFORMS = [
+    {
+      id: 'alpaca_paper',
+      name: 'Alpaca',
+      subtitle: 'Stocks · ETFs · Crypto',
+      icon: 'ti-chart-line',
+      color: '#FFBE00',
+      bg: '#1a1500',
+      border: '#FFBE0033',
+      signupUrl: 'https://app.alpaca.markets/paper-trading/overview',
+      signupLabel: 'Free Account',
+      helpText: 'Get a free paper trading account at alpaca.markets → go to API Keys → generate a key pair.',
+      fields: [
+        { key: 'keyId',     label: 'API Key ID   (starts with PK…)' },
+        { key: 'secretKey', label: 'Secret Key', secret: true },
+      ],
+      onConnect: (v) => connectAndSync('alpaca_paper', '/api/broker/alpaca/connect', '/api/broker/alpaca/sync',
+        { keyId: v.keyId, secretKey: v.secretKey, paper: true }),
+      onSync: () => syncBroker('alpaca_paper', '/api/broker/alpaca/sync'),
+    },
+    {
+      id: 'oanda_practice',
+      name: 'OANDA',
+      subtitle: 'Forex · Commodities · Indices',
+      icon: 'ti-currency-dollar',
+      color: '#E85D26',
+      bg: '#1a0f00',
+      border: '#E85D2633',
+      signupUrl: 'https://www.oanda.com/us-en/trading/try-free-demo/',
+      signupLabel: 'Free Demo',
+      helpText: 'Create a free OANDA practice account → go to My Account → API Access → generate token. Your Account ID is shown in the top-left of the dashboard.',
+      fields: [
+        { key: 'token',     label: 'API Token' },
+        { key: 'accountId', label: 'Account ID   (e.g. 001-001-XXXXXXX-001)' },
+      ],
+      onConnect: (v) => connectAndSync('oanda_practice', '/api/broker/oanda/connect', '/api/broker/oanda/sync',
+        { token: v.token, accountId: v.accountId }),
+      onSync: () => syncBroker('oanda_practice', '/api/broker/oanda/sync'),
+    },
+    {
+      id: 'tradovate_demo',
+      name: 'Tradovate',
+      subtitle: 'Futures · Options on Futures',
+      icon: 'ti-chart-candle',
+      color: '#1E88E5',
+      bg: '#00101a',
+      border: '#1E88E533',
+      signupUrl: 'https://trader.tradovate.com/welcome',
+      signupLabel: 'Free Demo',
+      helpText: 'Create a free Tradovate demo account then enter your username and password below. Trade futures (ES, NQ, CL, GC, etc.) as normal — all trades sync here automatically.',
+      fields: [
+        { key: 'username', label: 'Tradovate Username' },
+        { key: 'password', label: 'Password', secret: true },
+      ],
+      onConnect: (v) => connectAndSync('tradovate_demo', '/api/broker/tradovate/connect', '/api/broker/tradovate/sync',
+        { username: v.username, password: v.password }),
+      onSync: () => syncBroker('tradovate_demo', '/api/broker/tradovate/sync'),
+    },
+    {
+      id: 'plaid',
+      name: 'Real Broker',
+      subtitle: 'Robinhood · Fidelity · Coinbase · Schwab…',
+      icon: 'ti-building-bank',
+      color: '#534AB7',
+      bg: 'var(--surface2)',
+      border: 'var(--border)',
+      signupUrl: null,
+      helpText: null,
+      fields: [],
+      isPlaid: true,
+      onSync: () => syncBroker('plaid', '/api/broker/sync'),
+    },
+  ]
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+        Connect your trading account
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {PLATFORMS.map(p => {
+          const isConnected = has(p.id)
+          const c = conn(p.id)
+          const isExpanded = expanded === p.id
+          const isSyncing  = syncing === p.id
+          const isConnecting = connecting === p.id
+
+          return (
+            <div
+              key={p.id}
+              style={{
+                background: isConnected ? 'var(--surface2)' : p.bg,
+                border: `1px solid ${isConnected ? p.color + '44' : p.border}`,
+                borderRadius: 11,
+                overflow: 'hidden',
+                transition: 'border-color 0.2s',
+              }}
+            >
+              {/* Row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 9, background: p.color + '18', border: `1px solid ${p.color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className={`ti ${p.icon}`} style={{ fontSize: 18, color: p.color }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {p.name}
+                    {isConnected && (
+                      <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>● Connected</span>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                    {isConnected
+                      ? `Last sync: ${timeAgo(c?.lastSynced)}`
+                      : p.subtitle}
+                  </div>
+                </div>
+
+                {isConnected ? (
+                  <button
+                    onClick={() => p.onSync()}
+                    disabled={isSyncing}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    <i className={`ti ti-refresh${isSyncing ? ' animate-spin' : ''}`} />
+                    {isSyncing ? 'Syncing…' : 'Sync'}
+                  </button>
+                ) : p.isPlaid ? (
+                  <a
+                    href="/app?section=account&tab=broker"
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: p.color, color: '#fff', border: 'none', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}
+                  >
+                    <i className="ti ti-plug-connected" /> Connect
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => setExpanded(isExpanded ? null : p.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: isExpanded ? p.color : 'transparent', color: isExpanded ? '#fff' : p.color, border: `1px solid ${p.color}55`, borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    {isExpanded ? 'Cancel' : 'Connect'}
+                  </button>
+                )}
               </div>
-              <button onClick={copyUrl} style={{ padding: '8px 12px', background: copied ? '#22c55e' : '#534AB7', color: '#fff', border: 'none', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
-                {copied ? '✓ Copied' : 'Copy'}
-              </button>
-            </div>
 
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>
-              TradingView Setup (3 steps)
+              {/* Expand form */}
+              {!p.isPlaid && isExpanded && !isConnected && (
+                <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
+                  <PlatformForm
+                    fields={p.fields}
+                    onConnect={p.onConnect}
+                    connecting={isConnecting}
+                    error={errors[p.id]}
+                    signupUrl={p.signupUrl}
+                    signupLabel={p.signupLabel}
+                    helpText={p.helpText}
+                  />
+                </div>
+              )}
             </div>
-            {[
-              ['1', 'Open TradingView → Alerts → Create Alert'],
-              ['2', 'In the "Notifications" tab, check "Webhook URL" and paste the URL above'],
-              ['3', 'Set the alert message to:'],
-            ].map(([n, text]) => (
-              <div key={n} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#534AB7', color: '#fff', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</div>
-                <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>{text}</div>
-              </div>
-            ))}
-
-            {/* Alert message examples */}
-            <div style={{ background: '#0f172a', borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontFamily: 'monospace', fontSize: 11, color: '#94a3b8', lineHeight: 1.7 }}>
-              <div style={{ color: '#64748b', marginBottom: 4 }}>{'// For strategy-based alerts:'}</div>
-              <div>{`{"symbol":"{{ticker}}","action":"{{strategy.order.action}}","price":"{{strategy.order.price}}","qty":"{{strategy.order.contracts}}"}`}</div>
-              <div style={{ color: '#64748b', marginTop: 8, marginBottom: 4 }}>{'// For manual alerts (fill in your values):'}</div>
-              <div>{`{"symbol":"AAPL","action":"buy","price":"195.20","qty":"10"}`}</div>
-              <div style={{ color: '#64748b', marginTop: 8, marginBottom: 4 }}>{'// To close a position:'}</div>
-              <div>{`{"symbol":"AAPL","action":"sell","price":"200.00","qty":"10"}`}</div>
-            </div>
-
-            <div style={{ padding: '8px 12px', background: '#EEEDFE', borderRadius: 8, fontFamily: 'var(--font)', fontSize: 11, color: '#3C3489' }}>
-              <strong>Works with any platform</strong> that supports webhooks or HTTP POST — TradingView, ThinkOrSwim, NinjaTrader scripts, or custom bots.
-            </div>
-          </div>
-        )}
+          )
+        })}
       </div>
     </div>
   )
