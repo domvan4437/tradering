@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import MatchDetailView from './MatchDetailView';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ASSET_CLASSES = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
@@ -312,34 +313,40 @@ function ChallengeCard({ match, onAccept }) {
   );
 }
 
-function MatchCard({ match, currentUserId }) {
+function MatchCard({ match, currentUserId, onClick }) {
   const isChallenger = match.challengerId === currentUserId;
   const myScore = isChallenger ? match.challengerScore : match.opponentScore;
   const oppScore = isChallenger ? match.opponentScore : match.challengerScore;
   const oppName = isChallenger ? match.opponentName : match.challengerName;
   return (
-    <div style={{ ...S.card }}>
+    <div onClick={onClick} style={{ ...S.card, cursor: 'pointer', transition: 'border-color 0.15s' }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
           vs {oppName}
           {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10 }}>${match.buyIn} stake</span>}
         </div>
-        <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: match.status === 'active' ? '#059669' : '#d97706', fontWeight: 600 }}>
-          {match.status === 'active' ? '● Live' : '⏳ Waiting'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: match.status === 'active' ? '#059669' : '#d97706', fontWeight: 600 }}>
+            {match.status === 'active' ? '● Live' : '⏳ Waiting'}
+          </span>
+          <i className="ti ti-chevron-right" style={{ fontSize: 14, color: '#534AB7' }} />
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 6 }}>
         <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
           <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>You</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: myScore >= 0 ? '#059669' : '#dc2626' }}>{myScore > 0 ? '+' : ''}{Number(myScore).toFixed(1)}</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: myScore >= 0 ? '#059669' : '#dc2626' }}>{myScore > 0 ? '+' : ''}{Number(myScore).toFixed(1)}R</div>
         </div>
         <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
           <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>{oppName}</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: oppScore >= 0 ? '#059669' : '#dc2626' }}>{oppScore > 0 ? '+' : ''}{Number(oppScore).toFixed(1)}</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: oppScore >= 0 ? '#059669' : '#dc2626' }}>{oppScore > 0 ? '+' : ''}{Number(oppScore).toFixed(1)}R</div>
         </div>
       </div>
       <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
-        {match.asset} · {match.timeLeft || 'No end date'}
+        {match.asset} · {match.timeLeft || 'No end date'} · Tap to view &amp; trade
       </div>
     </div>
   );
@@ -397,13 +404,16 @@ function ContestCard({ contest, onJoin }) {
   );
 }
 
-function HistoryCard({ match, currentUserId }) {
+function HistoryCard({ match, currentUserId, onClick }) {
   const won = match.winnerId === currentUserId;
   const isTie = match.winnerId === null;
   const isChallenger = match.challengerId === currentUserId;
   const oppName = isChallenger ? match.opponentName : match.challengerName;
   return (
-    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div onClick={onClick} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+    >
       <div style={{ width: 38, height: 38, borderRadius: 8, background: isTie ? 'var(--surface2)' : won ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <i className={`ti ${isTie ? 'ti-minus' : won ? 'ti-trophy' : 'ti-x'}`} style={{ fontSize: 18, color: isTie ? 'var(--text-muted)' : won ? '#059669' : '#dc2626' }} aria-hidden="true" />
       </div>
@@ -742,6 +752,7 @@ function H2HTab({ currentUserId }) {
   const [showModal, setShowModal] = useState(false);
   const [data, setData] = useState({ open: [], myMatches: [], invites: [] });
   const [loading, setLoading] = useState(true);
+  const [selectedMatchId, setSelectedMatchId] = useState(null);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -752,6 +763,11 @@ function H2HTab({ currentUserId }) {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Show match detail view if one is selected
+  if (selectedMatchId) {
+    return <MatchDetailView matchId={selectedMatchId} onBack={() => { setSelectedMatchId(null); fetchData(); }} />;
+  }
 
   const handleAccept = async (matchId) => {
     await fetch('/api/challenges', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId, action: 'accept' }) });
@@ -806,7 +822,7 @@ function H2HTab({ currentUserId }) {
         ) : (data.myMatches || []).length === 0 ? (
           <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />
         ) : (
-          (data.myMatches || []).map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} />)
+          (data.myMatches || []).map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} />)
         )
       )}
 
@@ -987,6 +1003,7 @@ function HistoryTab({ currentUserId }) {
   const [paidFilter, setPaidFilter] = useState('all');
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMatchId, setSelectedMatchId] = useState(null);
 
   useEffect(() => {
     fetch('/api/challenges')
@@ -994,6 +1011,10 @@ function HistoryTab({ currentUserId }) {
       .then(d => { setHistory(d.history || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  if (selectedMatchId) {
+    return <MatchDetailView matchId={selectedMatchId} onBack={() => setSelectedMatchId(null)} />;
+  }
 
   const filtered = history.filter(m => {
     if (outcomeFilter === 'win' && !m.won) return false;
@@ -1037,7 +1058,7 @@ function HistoryTab({ currentUserId }) {
       ) : filtered.length === 0 ? (
         <EmptyState icon="ti-history" title="No match history" sub="Complete your first challenge to see your history here" />
       ) : (
-        filtered.map(m => <HistoryCard key={m.id} match={m} currentUserId={currentUserId} />)
+        filtered.map(m => <HistoryCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} />)
       )}
     </div>
   );

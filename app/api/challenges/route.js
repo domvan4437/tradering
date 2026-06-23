@@ -128,6 +128,11 @@ export async function POST(request) {
       },
     })
 
+    // Create TournamentEntry for challenger
+    await prisma.tournamentEntry.create({
+      data: { tournamentId: tournament.id, userId: session.user.id, score: 0 }
+    })
+
     return Response.json({ success: true, matchId: match.id })
   } catch (e) {
     console.error('[POST /api/challenges]', e)
@@ -142,9 +147,15 @@ export async function PATCH(request) {
     const { matchId, action } = await request.json()
 
     if (action === 'accept') {
-      await prisma.h2HMatch.update({
+      const accepting = await prisma.h2HMatch.update({
         where: { id: matchId },
         data: { opponentId: session.user.id, status: 'active', startDate: new Date() },
+      })
+      // Create TournamentEntry for opponent (upsert to be safe)
+      await prisma.tournamentEntry.upsert({
+        where: { tournamentId_userId: { tournamentId: accepting.tournamentId, userId: session.user.id } },
+        create: { tournamentId: accepting.tournamentId, userId: session.user.id, score: 0 },
+        update: {},
       })
       return Response.json({ success: true })
     }
