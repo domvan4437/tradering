@@ -15,7 +15,34 @@ export async function GET(req, { params }) {
   });
 
   if (!user) return Response.json({ error: 'Profile not found' }, { status: 404 });
-  if (user.profileVisibility === 'private') return Response.json({ error: 'This profile is private' }, { status: 403 });
+
+  // Private profiles: return name + bio only, no content
+  if (user.profileVisibility === 'private') {
+    return Response.json({
+      profile: {
+        id: user.id,
+        displayName: user.displayName || user.name || user.email?.split('@')[0],
+        bio: user.bio,
+        tradingStyle: user.tradingStyle,
+        profileSlug: user.profileSlug,
+        verifiedBadge: user.verifiedBadge,
+        followerCount: user._count.followers,
+        followingCount: user._count.following,
+        profileVisibility: 'private',
+      },
+      isPrivate: true,
+      isFollowing: false,
+      stats: null,
+      posts: [],
+      tradeCalls: [],
+      competitionResults: [],
+      ownedGroups: [],
+      memberGroups: [],
+      followers: [],
+      following: [],
+      leaderboardPositions: [],
+    });
+  }
 
   // Check if current user is following this profile
   let isFollowing = false;

@@ -93,19 +93,19 @@ export default function PublicProfileView({ slug }) {
 
   if (error) return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', fontFamily:'var(--font)', textAlign:'center', padding:24 }}>
-      <div style={{ fontSize:48, marginBottom:16 }}>{'\uD83D\uDC64'}</div>
+      <div style={{ fontSize:48, marginBottom:16 }}>\uD83D\uDC64</div>
       <div style={{ fontSize:20, fontWeight:700, color:'var(--text)', marginBottom:8 }}>Profile Not Found</div>
       <div style={{ fontSize:14, color:'var(--text-muted)' }}>{error}</div>
     </div>
   );
 
-  const { profile, stats, posts, tradeCalls, competitionResults, ownedGroups, memberGroups, followers, following: followingList, leaderboardPositions } = data;
+  const { profile, stats, posts, tradeCalls, competitionResults, ownedGroups, memberGroups, followers, following: followingList, leaderboardPositions, isPrivate } = data;
   const assets = profile.primaryAssets || [];
   const allGroups = [...(ownedGroups||[]), ...(memberGroups||[])];
 
-  const TABS = [
+  const TABS = isPrivate ? [] : [
     { id:'posts',       label:'Posts ('+(posts?.length||0)+')' },
-    { id:'trades',      label:'Trade Record ('+(stats.totalVerifiedTrades||0)+')' },
+    { id:'trades',      label:'Trade Record ('+(stats?.totalVerifiedTrades||0)+')' },
     { id:'tournaments', label:'Tournaments ('+(competitionResults?.length||0)+')' },
     { id:'groups',      label:'Groups ('+(allGroups.length)+')' },
     { id:'screeners',   label:'Screeners ('+(profile.publicScreeners?.length||0)+')' },
@@ -165,6 +165,15 @@ export default function PublicProfileView({ slug }) {
           </div>
         </div>
       </div>
+      {/* Private account wall */}
+      {isPrivate ? (
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:'64px 24px', textAlign:'center' }}>
+          <div style={{ fontSize:48, marginBottom:16 }}>&#x1F512;</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:17, fontWeight:700, color:'var(--text)', marginBottom:8 }}>This account is private</div>
+          <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Follow to see their trades and posts</div>
+        </div>
+      ) : (
+      <>
       {/* Stats Bar */}
       <div style={{ display:'flex', gap:10, marginBottom:20 }}>
         <StatBox label='Verified Trades' value={stats.totalVerifiedTrades||'--'} color='var(--text)'/>
@@ -355,6 +364,8 @@ export default function PublicProfileView({ slug }) {
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );
