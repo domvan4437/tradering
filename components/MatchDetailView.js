@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { usePlaidLink } from 'react-plaid-link'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function timeLeft(end) {
@@ -127,6 +128,55 @@ function PlatformForm({ fields, onConnect, connecting, error, signupUrl, signupL
         )}
       </div>
     </div>
+  )
+}
+
+// ─── Plaid Connect Button ─────────────────────────────────────────────────────
+function PlaidConnectButton({ onSuccess }) {
+  const [linkToken, setLinkToken] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/plaid/create-link-token', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => { if (d.link_token) setLinkToken(d.link_token) })
+      .catch(() => {})
+  }, [])
+
+  const onPlaidSuccess = useCallback(async (public_token, metadata) => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/plaid/exchange-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          public_token,
+          institution_name: metadata.institution?.name,
+          institution_id: metadata.institution?.institution_id,
+          accounts: metadata.accounts,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) onSuccess?.()
+      else alert('Connection failed: ' + (data.error || 'Unknown error'))
+    } catch (e) {
+      alert('Connection failed: ' + e.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [onSuccess])
+
+  const { open, ready } = usePlaidLink({ token: linkToken, onSuccess: onPlaidSuccess })
+
+  return (
+    <button
+      onClick={() => open()}
+      disabled={!ready || loading}
+      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: '#534AB7', color: '#fff', border: 'none', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: (!ready || loading) ? 'not-allowed' : 'pointer', opacity: (!ready || loading) ? 0.6 : 1, flexShrink: 0 }}
+    >
+      <i className="ti ti-plug-connected" />
+      {loading ? 'Connecting…' : 'Connect'}
+    </button>
   )
 }
 
@@ -293,12 +343,7 @@ function ConnectionPanel({ connections, onSynced }) {
                     {isSyncing ? 'Syncing…' : 'Sync'}
                   </button>
                 ) : p.isPlaid ? (
-                  <a
-                    href="/app?section=account&tab=broker"
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: p.color, color: '#fff', border: 'none', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}
-                  >
-                    <i className="ti ti-plug-connected" /> Connect
-                  </a>
+                  <PlaidConnectButton onSuccess={() => { onSynced?.() }} />
                 ) : (
                   <button
                     onClick={() => setExpanded(isExpanded ? null : p.id)}
