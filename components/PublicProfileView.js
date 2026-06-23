@@ -36,8 +36,9 @@ function FollowListModal({ title, users, onClose }) {
           {users.length === 0 ? (
             <div style={{ padding:'40px 20px', textAlign:'center', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>No users yet</div>
           ) : users.map(u => (
-            <a key={u.id} href={'/p/'+(u.profileSlug||u.id)} target='_blank' rel='noreferrer'
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 20px', borderBottom:'1px solid var(--border)', textDecoration:'none', transition:'background 0.1s' }}
+            <div key={u.id}
+              onClick={() => { if (window.__goToProfile) window.__goToProfile(u.profileSlug||u.id); onClose(); }}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 20px', borderBottom:'1px solid var(--border)', cursor:'pointer', transition:'background 0.1s' }}
               onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
               onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
               <Avatar name={u.displayName||u.name} size={38}/>
@@ -49,7 +50,7 @@ function FollowListModal({ title, users, onClose }) {
                 {u.tradingStyle && <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)', textTransform:'capitalize' }}>{u.tradingStyle}</div>}
               </div>
               <span style={{ fontSize:12, color:'var(--text-muted)' }}>{'\u2192'}</span>
-            </a>
+            </div>
           ))}
         </div>
       </div>

@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import MatchDetailView from './MatchDetailView';
-import ProfilePopup from './ProfilePopup';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ASSET_CLASSES = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
@@ -1274,15 +1273,17 @@ const TAB_META = {
 };
 
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
+function openProfile(slug) {
+  if (slug && typeof window !== 'undefined' && window.__goToProfile) window.__goToProfile(slug);
+}
+
 export default function CompeteTab({ currentUserId, externalTab }) {
   const [activeTab, setActiveTab] = useState(externalTab || 'home');
-  const [profilePopupSlug, setProfilePopupSlug] = useState(null);
   const resolvedTab = externalTab || activeTab;
   const meta = TAB_META[resolvedTab];
 
   return (
     <div style={{ display: 'flex', height: '100%', fontFamily: 'var(--font)' }}>
-      {profilePopupSlug && <ProfilePopup slug={profilePopupSlug} onClose={() => setProfilePopupSlug(null)} />}
       {/* Sidebar */}
       <div style={{ width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 4, borderRight: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
         {SIDEBAR_TABS.map(t => (
@@ -1324,8 +1325,8 @@ export default function CompeteTab({ currentUserId, externalTab }) {
         {/* Tab content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
-          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={setProfilePopupSlug} />}
-          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={setProfilePopupSlug} />}
+          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
           {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} />}
           {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
         </div>

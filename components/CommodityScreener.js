@@ -43,7 +43,7 @@ import CommunityLayout from './CommunityLayout'
 import CompeteLayout from './CompeteLayout'
 import CreatorStudioTab from './CreatorStudioTab'
 import BrokerTab from './BrokerTab'
-import PublicProfileView from './PublicProfileView'
+import ProfilePopup from './ProfilePopup'
 import SettingsTab from './SettingsTab'
 import FloatingAICoach from './FloatingAICoach'
 import CompetitionBanner from './CompetitionBanner'
@@ -740,21 +740,7 @@ export default function App() {
           </>
         )}
       </div>
-      {/* Profile overlay - shows when viewing a trader's profile */}
-      {viewingProfile && (
-        <div style={{ position:'fixed', inset:0, background:'var(--bg)', zIndex:400, overflowY:'auto' }}>
-          <div style={{ maxWidth:900, margin:'0 auto', padding:'60px 24px 40px' }}>
-            {/* Back button */}
-            <button onClick={()=>setViewingProfile(null)}
-              style={{ display:'flex', alignItems:'center', gap:8, background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:14, fontWeight:600, marginBottom:20, padding:0 }}
-              onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
-              onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
-              {'← Back'}
-            </button>
-            <PublicProfileView slug={viewingProfile} />
-          </div>
-        </div>
-      )}
+      {viewingProfile && <ProfilePopup slug={viewingProfile} onClose={() => setViewingProfile(null)} />}
       <FloatingAICoach />
       {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} currentPlan={plan} feature={upgradeFeature} />}
     </div>
