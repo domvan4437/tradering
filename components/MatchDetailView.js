@@ -164,74 +164,76 @@ function ConnectionPanel({ connections, onSynced }) {
 
   // ── Platform definitions ───────────────────────────────────────────
   const PLATFORMS = [
+    // ── Stocks & ETFs ──
     {
-      id: 'alpaca_paper',
-      name: 'Alpaca',
-      subtitle: 'Stocks · ETFs · Crypto',
-      icon: 'ti-chart-line',
-      color: '#FFBE00',
-      bg: '#1a1500',
-      border: '#FFBE0033',
-      signupUrl: 'https://app.alpaca.markets/paper-trading/overview',
-      signupLabel: 'Free Account',
-      helpText: 'Get a free paper trading account at alpaca.markets → go to API Keys → generate a key pair.',
+      id: 'alpaca_paper', name: 'Alpaca', tag: 'Stocks · ETFs · Crypto',
+      icon: 'ti-chart-line', color: '#FFBE00',
+      signupUrl: 'https://app.alpaca.markets/paper-trading/overview', signupLabel: 'Free Account',
+      helpText: 'alpaca.markets → Paper Trading → API Keys → Generate Key',
       fields: [
-        { key: 'keyId',     label: 'API Key ID   (starts with PK…)' },
+        { key: 'keyId',     label: 'API Key ID  (starts with PK…)' },
         { key: 'secretKey', label: 'Secret Key', secret: true },
       ],
-      onConnect: (v) => connectAndSync('alpaca_paper', '/api/broker/alpaca/connect', '/api/broker/alpaca/sync',
-        { keyId: v.keyId, secretKey: v.secretKey, paper: true }),
+      onConnect: (v) => connectAndSync('alpaca_paper', '/api/broker/alpaca/connect', '/api/broker/alpaca/sync', { keyId: v.keyId, secretKey: v.secretKey, paper: true }),
       onSync: () => syncBroker('alpaca_paper', '/api/broker/alpaca/sync'),
     },
+    // ── Forex & Commodities ──
     {
-      id: 'oanda_practice',
-      name: 'OANDA',
-      subtitle: 'Forex · Commodities · Indices',
-      icon: 'ti-currency-dollar',
-      color: '#E85D26',
-      bg: '#1a0f00',
-      border: '#E85D2633',
-      signupUrl: 'https://www.oanda.com/us-en/trading/try-free-demo/',
-      signupLabel: 'Free Demo',
-      helpText: 'Create a free OANDA practice account → go to My Account → API Access → generate token. Your Account ID is shown in the top-left of the dashboard.',
+      id: 'oanda_practice', name: 'OANDA', tag: 'Forex · Gold · Oil · Indices',
+      icon: 'ti-currency-dollar', color: '#E85D26',
+      signupUrl: 'https://www.oanda.com/us-en/trading/try-free-demo/', signupLabel: 'Free Demo',
+      helpText: 'oanda.com → My Account → Manage API Access → Generate token. Account ID is in top-left of dashboard.',
       fields: [
         { key: 'token',     label: 'API Token' },
-        { key: 'accountId', label: 'Account ID   (e.g. 001-001-XXXXXXX-001)' },
+        { key: 'accountId', label: 'Account ID  (e.g. 001-001-XXXXXXX-001)' },
       ],
-      onConnect: (v) => connectAndSync('oanda_practice', '/api/broker/oanda/connect', '/api/broker/oanda/sync',
-        { token: v.token, accountId: v.accountId }),
+      onConnect: (v) => connectAndSync('oanda_practice', '/api/broker/oanda/connect', '/api/broker/oanda/sync', { token: v.token, accountId: v.accountId }),
       onSync: () => syncBroker('oanda_practice', '/api/broker/oanda/sync'),
     },
+    // ── Crypto Spot ──
     {
-      id: 'tradovate_demo',
-      name: 'Tradovate',
-      subtitle: 'Futures · Options on Futures',
-      icon: 'ti-chart-candle',
-      color: '#1E88E5',
-      bg: '#00101a',
-      border: '#1E88E533',
-      signupUrl: 'https://trader.tradovate.com/welcome',
-      signupLabel: 'Free Demo',
-      helpText: 'Create a free Tradovate demo account then enter your username and password below. Trade futures (ES, NQ, CL, GC, etc.) as normal — all trades sync here automatically.',
+      id: 'binance_testnet', name: 'Binance Testnet', tag: 'Crypto Spot',
+      icon: 'ti-currency-bitcoin', color: '#F3BA2F',
+      signupUrl: 'https://testnet.binance.vision/', signupLabel: 'Get Keys',
+      helpText: 'Go to testnet.binance.vision → Log in with GitHub → Generate HMAC key. No email or deposit needed.',
       fields: [
-        { key: 'username', label: 'Tradovate Username' },
-        { key: 'password', label: 'Password', secret: true },
+        { key: 'apiKey', label: 'API Key' },
+        { key: 'secret', label: 'Secret Key', secret: true },
       ],
-      onConnect: (v) => connectAndSync('tradovate_demo', '/api/broker/tradovate/connect', '/api/broker/tradovate/sync',
-        { username: v.username, password: v.password }),
-      onSync: () => syncBroker('tradovate_demo', '/api/broker/tradovate/sync'),
+      onConnect: (v) => connectAndSync('binance_testnet', '/api/broker/binance/connect', '/api/broker/binance/sync', { apiKey: v.apiKey, secret: v.secret }),
+      onSync: () => syncBroker('binance_testnet', '/api/broker/binance/sync'),
     },
+    // ── Crypto + Futures ──
     {
-      id: 'plaid',
-      name: 'Real Broker',
-      subtitle: 'Robinhood · Fidelity · Coinbase · Schwab…',
-      icon: 'ti-building-bank',
-      color: '#534AB7',
-      bg: 'var(--surface2)',
-      border: 'var(--border)',
-      signupUrl: null,
-      helpText: null,
-      fields: [],
+      id: 'bybit_testnet', name: 'Bybit Testnet', tag: 'Crypto · Perp Futures · Inverse',
+      icon: 'ti-chart-bar', color: '#F7A600',
+      signupUrl: 'https://testnet.bybit.com/', signupLabel: 'Free Testnet',
+      helpText: 'testnet.bybit.com → Account & Security → API Management → Create Key (enable Read + Trade).',
+      fields: [
+        { key: 'apiKey', label: 'API Key' },
+        { key: 'secret', label: 'API Secret', secret: true },
+      ],
+      onConnect: (v) => connectAndSync('bybit_testnet', '/api/broker/bybit/connect', '/api/broker/bybit/sync', { apiKey: v.apiKey, secret: v.secret }),
+      onSync: () => syncBroker('bybit_testnet', '/api/broker/bybit/sync'),
+    },
+    // ── Crypto + Options + Futures ──
+    {
+      id: 'okx_demo', name: 'OKX Demo', tag: 'Crypto · Options · Futures · Spot',
+      icon: 'ti-circle-letter-o', color: '#000000',
+      signupUrl: 'https://www.okx.com/account/users/personal-center/demo-trading/create-api-key', signupLabel: 'Demo API Keys',
+      helpText: 'okx.com → Demo Trading mode → Account → API Management → Create API Key (set passphrase). Must use Demo Trading API keys, not live keys.',
+      fields: [
+        { key: 'apiKey',     label: 'API Key' },
+        { key: 'secret',     label: 'Secret Key', secret: true },
+        { key: 'passphrase', label: 'Passphrase', secret: true },
+      ],
+      onConnect: (v) => connectAndSync('okx_demo', '/api/broker/okx/connect', '/api/broker/okx/sync', { apiKey: v.apiKey, secret: v.secret, passphrase: v.passphrase }),
+      onSync: () => syncBroker('okx_demo', '/api/broker/okx/sync'),
+    },
+    // ── Real brokers ──
+    {
+      id: 'plaid', name: 'Real Broker Account', tag: 'Robinhood · Fidelity · Coinbase · Schwab & more',
+      icon: 'ti-building-bank', color: '#534AB7',
       isPlaid: true,
       onSync: () => syncBroker('plaid', '/api/broker/sync'),
     },
@@ -255,8 +257,8 @@ function ConnectionPanel({ connections, onSynced }) {
             <div
               key={p.id}
               style={{
-                background: isConnected ? 'var(--surface2)' : p.bg,
-                border: `1px solid ${isConnected ? p.color + '44' : p.border}`,
+                background: 'var(--surface2)',
+                border: `1px solid ${isConnected ? p.color + '44' : 'var(--border)'}`,
                 borderRadius: 11,
                 overflow: 'hidden',
                 transition: 'border-color 0.2s',
@@ -277,7 +279,7 @@ function ConnectionPanel({ connections, onSynced }) {
                   <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
                     {isConnected
                       ? `Last sync: ${timeAgo(c?.lastSynced)}`
-                      : p.subtitle}
+                      : p.tag}
                   </div>
                 </div>
 
@@ -576,7 +578,7 @@ export default function MatchDetailView({ matchId, onBack }) {
               <i className="ti ti-plug-connected" style={{ fontSize: 30, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }} />
               <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>No trades synced yet</div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', maxWidth: 260, margin: '0 auto', lineHeight: 1.5 }}>
-                Connect one of the platforms above — Alpaca, OANDA, or Tradovate. Once connected, every trade you place will appear here automatically.
+                Connect a platform above — Alpaca, OANDA, Binance, Bybit, or OKX. Every trade you place will appear here automatically.
               </div>
             </div>
           ) : (
