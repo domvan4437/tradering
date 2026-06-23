@@ -576,7 +576,7 @@ export default function MatchDetailView({ matchId, onBack }) {
               <i className="ti ti-plug-connected" style={{ fontSize: 30, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }} />
               <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>No trades synced yet</div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', maxWidth: 260, margin: '0 auto', lineHeight: 1.5 }}>
-                Connect your broker via Plaid or set up the TradingView webhook above. Trades you place on your platform will appear here automatically.
+                Connect one of the platforms above — Alpaca, OANDA, or Tradovate. Once connected, every trade you place will appear here automatically.
               </div>
             </div>
           ) : (
