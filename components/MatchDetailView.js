@@ -186,6 +186,19 @@ function ConnectionPanel({ connections, onSynced }) {
   const [connecting, setConnecting] = useState(null)
   const [syncing, setSyncing]   = useState(null)
   const [errors, setErrors]     = useState({})
+  const [demoing, setDemoing]   = useState(false)
+
+  const hasDemo = connections?.some(c => c.broker === 'demo')
+
+  const loadDemo = async () => {
+    setDemoing(true)
+    try {
+      await fetch('/api/broker/demo', { method: hasDemo ? 'DELETE' : 'POST' })
+      if (!hasDemo) await fetch('/api/broker/demo', { method: 'POST' })
+      onSynced?.()
+    } catch {}
+    setDemoing(false)
+  }
 
   const conn = (broker) => connections?.find(c => c.broker === broker)
   const has  = (broker) => !!conn(broker)
@@ -291,8 +304,17 @@ function ConnectionPanel({ connections, onSynced }) {
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-        Connect your trading account
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Connect your trading account
+        </div>
+        <button
+          onClick={loadDemo}
+          disabled={demoing}
+          style={{ padding: '4px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 11, color: hasDemo ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer' }}
+        >
+          {demoing ? '…' : hasDemo ? 'Clear Demo' : '✦ Try Demo'}
+        </button>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
