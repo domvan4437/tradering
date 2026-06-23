@@ -27,8 +27,8 @@ function getTimeLeft(end) {
 }
 
 const MATCH_INCLUDE = {
-  challenger: { select: { id: true, name: true, username: true, displayName: true } },
-  opponent:   { select: { id: true, name: true, username: true, displayName: true } },
+  challenger: { select: { id: true, name: true, username: true, displayName: true, profileSlug: true } },
+  opponent:   { select: { id: true, name: true, username: true, displayName: true, profileSlug: true } },
   tournament: { select: { name: true, type: true, buyIn: true, endDate: true, assetClasses: true, description: true } },
 }
 
@@ -70,9 +70,9 @@ export async function GET(request) {
       tournamentId: m.tournamentId,
       status: m.status,
       challengerName: userName(m.challenger),
-      challengerUsername: m.challenger?.username,
+      challengerSlug: m.challenger?.profileSlug || m.challenger?.id,
       opponentName: m.opponent ? userName(m.opponent) : 'Waiting…',
-      opponentUsername: m.opponent?.username,
+      opponentSlug: m.opponent ? (m.opponent?.profileSlug || m.opponent?.id) : null,
       challengerId: m.challengerId,
       opponentId: m.opponentId,
       winnerId: m.winnerId,

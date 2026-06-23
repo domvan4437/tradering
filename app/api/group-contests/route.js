@@ -27,7 +27,7 @@ export async function GET(request) {
       prisma.tournament.findMany({
         where: { type: 'group', status: { in: ['open', 'active'] } },
         include: {
-          creator: { select: { id: true, name: true, username: true, displayName: true } },
+          creator: { select: { id: true, name: true, username: true, displayName: true, profileSlug: true } },
           _count: { select: { entries: true } },
           entries: { where: { userId: uid }, select: { id: true } },
         },
@@ -37,7 +37,7 @@ export async function GET(request) {
       prisma.tournament.findMany({
         where: { type: 'group', entries: { some: { userId: uid } } },
         include: {
-          creator: { select: { id: true, name: true, username: true, displayName: true } },
+          creator: { select: { id: true, name: true, username: true, displayName: true, profileSlug: true } },
           _count: { select: { entries: true } },
           entries: {
             orderBy: { score: 'desc' },
@@ -60,7 +60,7 @@ export async function GET(request) {
       memberCount: c._count?.entries ?? 0,
       joined: (c.entries?.length ?? 0) > 0,
       creatorName: c.creator?.displayName || c.creator?.name || c.creator?.username || 'Trader',
-      creatorUsername: c.creator?.username,
+      creatorSlug: c.creator?.profileSlug || c.creator?.id,
     })
 
     return Response.json({ contests: allContests.map(fmtContest), myContests: myContests.map(fmtContest) })

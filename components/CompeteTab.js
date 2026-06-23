@@ -306,9 +306,9 @@ function H2HPreviewModal({ match, onAccept, onClose }) {
             </div>
             <div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>1v1 Challenge</div>
-              {match.challengerUsername ? (
-                <a href={`/p/${match.challengerUsername}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  {match.challengerName} <i className="ti ti-external-link" style={{ fontSize: 11 }} />
+              {match.challengerSlug ? (
+                <a href={`/p/${match.challengerSlug}`} onClick={e => e.stopPropagation()} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  {match.challengerName} <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
                 </a>
               ) : (
                 <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>{match.challengerName}</div>
@@ -380,9 +380,9 @@ function GroupPreviewModal({ contest, onJoin, onClose }) {
             </div>
             <div>
               <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{contest.name}</div>
-              {contest.creatorUsername ? (
-                <a href={`/p/${contest.creatorUsername}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  by {contest.creatorName} <i className="ti ti-external-link" style={{ fontSize: 11 }} />
+              {contest.creatorSlug ? (
+                <a href={`/p/${contest.creatorSlug}`} onClick={e => e.stopPropagation()} style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  by {contest.creatorName} <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
                 </a>
               ) : (
                 <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>by {contest.creatorName}</div>
