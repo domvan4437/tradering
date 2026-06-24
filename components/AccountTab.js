@@ -969,7 +969,7 @@ function MonetizationTab() {
 }
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
-const SETTINGS_SECTIONS = ['Account', 'Appearance', 'Notifications', 'Privacy', 'Broker', 'Billing', 'Danger zone']
+const SETTINGS_SECTIONS = ['Account', 'Appearance', 'Notifications', 'Privacy', 'Broker', 'Billing', 'Delete my account']
 
 function SettingsContent({ section, user }) {
   return (
@@ -1081,7 +1081,7 @@ function SettingsContent({ section, user }) {
           </div>
         )}
 
-        {section === 'Danger zone' && (
+        {section === 'Delete my account' && (
           <div style={{ padding: '12px', background: 'rgba(220,38,38,0.05)', border: '0.5px solid rgba(220,38,38,0.3)', borderRadius: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: '#dc2626', marginBottom: 4 }}>Delete account</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Permanently delete your TradeZar account. This cannot be undone.</div>
@@ -1157,7 +1157,7 @@ function SettingsTab({ user }) { return null }
 const SETTINGS_ICONS = {
   'Account': 'ti-user', 'Appearance': 'ti-palette', 'Notifications': 'ti-bell',
   'Privacy': 'ti-lock', 'Broker': 'ti-plug-connected', 'Billing': 'ti-credit-card',
-  'Danger zone': 'ti-trash'
+  'Delete my account': 'ti-trash'
 }
 
 const ACCOUNT_TABS = [
@@ -1175,7 +1175,7 @@ export default function AccountTab({ user }) {
   const meta = ACCOUNT_TABS.find(t => t.key === activeTab) || ACCOUNT_TABS[0]
 
   return (
-    <div style={{ fontFamily: 'var(--font)', display: 'flex', height: '100%' }}>
+    <div style={{ fontFamily: 'var(--font)', display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
       {/* ── SIDEBAR — 56px fixed, matches Community/Compete ── */}
       <div style={{ width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 4, borderRight: '0.5px solid var(--border)', background: 'var(--surface)', flexShrink: 0, alignSelf: 'stretch' }}>
@@ -1211,10 +1211,10 @@ export default function AccountTab({ user }) {
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 18px', gap: 20, borderBottom: '0.5px solid var(--border)', flexShrink: 0, height: 44, overflowX: 'auto' }}>
             {SETTINGS_SECTIONS.map(sec => (
               <span key={sec} onClick={() => setSettingsSection(sec)}
-                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: settingsSection === sec ? 600 : 400, color: sec === 'Danger zone' ? (settingsSection === sec ? '#dc2626' : '#dc262699') : settingsSection === sec ? 'var(--text)' : 'var(--text-muted)', position: 'relative', height: 44, display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: settingsSection === sec ? 600 : 400, color: settingsSection === sec ? 'var(--text)' : 'var(--text-muted)', position: 'relative', height: 44, display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
                 <i className={`ti ${SETTINGS_ICONS[sec] || 'ti-circle'}`} style={{ fontSize: 14 }} aria-hidden="true" />
                 {sec}
-                {settingsSection === sec && <span style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: sec === 'Danger zone' ? '#dc2626' : '#534AB7', borderRadius: 1 }} />}
+                {settingsSection === sec && <span style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: '#534AB7', borderRadius: 1 }} />}
               </span>
             ))}
           </div>
