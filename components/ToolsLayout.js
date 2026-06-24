@@ -218,91 +218,100 @@ function Playbook({trades}){
   </div>)
 }
 
-const TOOLS_TABS_DEF = [
-  {key:'Journal',label:'Journal',icon:'ti-notebook',color:'#4B44C8'},
-  {key:'Trade Plan Builder',label:'Trade plan builder',icon:'ti-clipboard-list',color:'#059669'},
-  {key:'COT Alerts',label:'COT alerts',icon:'ti-bell-ringing',color:'#d97706'},
-  {key:'Strategy Backtest',label:'Strategy backtest',icon:'ti-chart-line',color:'#7c3aed'},
-  {key:'Screener',label:'Custom screener',icon:'ti-filter',color:'#0891b2'},
-  {key:'Import',label:'Import data',icon:'ti-file-import',color:'#dc2626'},
+const TOOLS_TABS = [
+  { key:'Journal',    label:'Journal',        sub:'Track & review your trades', icon:'ti-notebook'    },
+  { key:'COT Alerts', label:'COT alerts',     sub:'Commitment of traders data',  icon:'ti-bell-ringing'},
+  { key:'Screener',   label:'Custom screener',sub:'Build your own screeners',    icon:'ti-filter'      },
+  { key:'Import',     label:'Import data',    sub:'Import trades & history',     icon:'ti-file-import' },
 ]
 
-const JOURNAL_SUBTABS_DEF = [
-  {key:'dashboard',label:'Dashboard',icon:'ti-layout-dashboard'},
-  {key:'tradelog',label:'Trade Log',icon:'ti-list-details'},
-  {key:'daily',label:'Daily Journal',icon:'ti-pencil'},
-  {key:'reports',label:'Reports',icon:'ti-chart-bar'},
-  {key:'playbook',label:'Playbook',icon:'ti-book-2'},
+const JOURNAL_SUBTABS = [
+  { key:'dashboard', label:'Dashboard',    icon:'ti-layout-dashboard' },
+  { key:'tradelog',  label:'Trade log',    icon:'ti-list-details'     },
+  { key:'daily',     label:'Daily journal',icon:'ti-pencil'           },
+  { key:'reports',   label:'Reports',      icon:'ti-chart-bar'        },
+  { key:'playbook',  label:'Playbook',     icon:'ti-book-2'           },
 ]
 
-export default function ToolsLayout({tab,setTab,userInfo}){
-  const[sidebarOpen,setSidebarOpen]=useState(false);const[sidebarPinned,setSidebarPinned]=useState(false);
-  const[journalTab,setJournalTab]=useState('dashboard');
-  const[trades,setTrades]=useState(()=>load(STORAGE_KEY+'_trades',[]));
-  const[journals,setJournals]=useState(()=>load(STORAGE_KEY+'_journals',[]));
-  const hoverTimer=useRef(null);const isOpen=sidebarOpen||sidebarPinned;
+export default function ToolsLayout({tab, setTab, userInfo}){
+  const [journalTab, setJournalTab] = useState('dashboard');
+  const [trades,   setTrades]   = useState(() => load(STORAGE_KEY+'_trades',   []));
+  const [journals, setJournals] = useState(() => load(STORAGE_KEY+'_journals', []));
 
-  React.useEffect(()=>{if(!tab)setTab('Journal')},[]);
+  React.useEffect(() => { if (!tab) setTab('Journal'); }, []);
 
-  // Lazy-load heavy tool components
-  const[TradePlanTab,setTradePlanTab]=useState(null);
-  const[BacktestTab,setBacktestTab]=useState(null);
-  const[COTAlertsTab,setCOTAlertsTab]=useState(null);
-  const[ScreenerBuilder,setScreenerBuilder]=useState(null);
-  const[ImportTab,setImportTab]=useState(null);
+  // Lazy-load heavy components
+  const [COTAlertsTab,   setCOTAlertsTab]   = useState(null);
+  const [ScreenerBuilder, setScreenerBuilder] = useState(null);
+  const [ImportTab,       setImportTab]       = useState(null);
 
-  React.useEffect(()=>{
-    if(tab==='Trade Plan Builder'&&!TradePlanTab)import('./TradePlanTab').then(m=>setTradePlanTab(()=>m.default)).catch(()=>{});
-    if(tab==='Strategy Backtest'&&!BacktestTab)import('./BacktestTab').then(m=>setBacktestTab(()=>m.default)).catch(()=>{});
-    if(tab==='COT Alerts'&&!COTAlertsTab)import('./COTAlertsTab').then(m=>setCOTAlertsTab(()=>m.default)).catch(()=>{});
-    if(tab==='Screener'&&!ScreenerBuilder)import('./ScreenerBuilder').then(m=>setScreenerBuilder(()=>m.default)).catch(()=>{});
-    if(tab==='Import'&&!ImportTab)import('./ImportTab').then(m=>setImportTab(()=>m.default)).catch(()=>{});
-  },[tab]);
+  React.useEffect(() => {
+    if (tab === 'COT Alerts' && !COTAlertsTab) import('./COTAlertsTab').then(m => setCOTAlertsTab(() => m.default)).catch(() => {});
+    if (tab === 'Screener'&& !ScreenerBuilder) import('./ScreenerBuilder').then(m => setScreenerBuilder(() => m.default)).catch(() => {});
+    if (tab === 'Import'  && !ImportTab)       import('./ImportTab').then(m => setImportTab(()          => m.default)).catch(() => {});
+  }, [tab]);
 
-  return(
-    <div style={{display:'flex',minHeight:'calc(100vh - 82px)',fontFamily:'var(--font)'}}>
-      {/* SIDEBAR */}
-      <div onMouseEnter={()=>{clearTimeout(hoverTimer.current);setSidebarOpen(true)}} onMouseLeave={()=>{hoverTimer.current=setTimeout(()=>{if(!sidebarPinned)setSidebarOpen(false)},180)}}
-        style={{width:isOpen?200:54,minWidth:isOpen?200:54,borderRight:'0.5px solid var(--border)',background:'var(--surface2)',display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'10px 6px',transition:'width 0.18s ease, min-width 0.18s ease',overflow:'hidden',flexShrink:0,zIndex:20}}>
-        <div onClick={()=>setSidebarPinned(p=>!p)} style={{width:42,height:38,background:PURPLE,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,marginBottom:8}}>
-          <i className="ti ti-menu-2" style={{fontSize:20,color:'#fff'}} aria-hidden="true"/>
-        </div>
-        {TOOLS_TABS_DEF.map(t=>{
-          const isActive=tab===t.key;
-          return(<React.Fragment key={t.key}>
-            <button onClick={()=>setTab(t.key)} title={!isOpen?t.label:undefined}
-              style={{display:'flex',alignItems:'center',gap:isOpen?8:0,padding:'8px',borderRadius:8,background:isActive?'rgba(75,68,200,0.1)':'transparent',border:'none',cursor:'pointer',fontFamily:'var(--font)',width:isOpen?'100%':42,justifyContent:isOpen?'flex-start':'center',position:'relative',flexShrink:0}}>
-              {isActive&&<div style={{position:'absolute',left:0,top:'50%',transform:'translateY(-50%)',width:3,height:22,background:PURPLE,borderRadius:'0 3px 3px 0'}}/>}
-              <i className={`ti ${t.icon}`} style={{fontSize:19,color:isActive?t.color:'var(--text-muted)',flexShrink:0}} aria-hidden="true"/>
-              {isOpen&&<span style={{fontSize:12,color:isActive?'#3C3489':'var(--text-muted)',fontWeight:isActive?500:400,whiteSpace:'nowrap'}}>{t.label}</span>}
-            </button>
-            {t.key==='Journal'&&isActive&&isOpen&&(
-              <div style={{width:'100%',paddingLeft:8,display:'flex',flexDirection:'column',gap:1,marginBottom:4}}>
-                {JOURNAL_SUBTABS_DEF.map(s=>(
-                  <button key={s.key} onClick={()=>setJournalTab(s.key)}
-                    style={{display:'flex',alignItems:'center',gap:7,padding:'5px 8px',borderRadius:5,background:journalTab===s.key?'rgba(75,68,200,0.08)':'transparent',border:'none',cursor:'pointer',fontFamily:'var(--font)',width:'100%',textAlign:'left'}}>
-                    <i className={`ti ${s.icon}`} style={{fontSize:13,color:journalTab===s.key?PURPLE:'var(--text-muted)',flexShrink:0}} aria-hidden="true"/>
-                    <span style={{fontSize:11,color:journalTab===s.key?'#3C3489':'var(--text-muted)',fontWeight:journalTab===s.key?500:400,whiteSpace:'nowrap'}}>{s.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </React.Fragment>)
+  const meta = TOOLS_TABS.find(t => t.key === tab) || TOOLS_TABS[0];
+
+  return (
+    <div style={{ display:'flex', height:'100%', fontFamily:'var(--font)' }}>
+
+      {/* ── Sidebar ── matches Community/Compete exactly ── */}
+      <div style={{ width:56, display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 0', gap:4, borderRight:'0.5px solid var(--border)', background:'var(--surface)', flexShrink:0, alignSelf:'stretch' }}>
+        {TOOLS_TABS.map(t => {
+          const isActive = tab === t.key;
+          return (
+            <div key={t.key} title={t.label} onClick={() => setTab(t.key)}
+              style={{ width:38, height:38, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background:isActive?'#534AB7':'transparent', color:isActive?'#fff':'var(--text-muted)', fontSize:19, transition:'all .15s', flexShrink:0 }}
+              onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background='#EEEDFE'; e.currentTarget.style.color='#534AB7'; } }}
+              onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; } }}
+            >
+              <i className={`ti ${t.icon}`} aria-hidden="true" />
+            </div>
+          );
         })}
       </div>
-      {/* CONTENT */}
-      <div style={{flex:1,overflowY:'auto',padding:'16px 24px'}}>
-        {tab==='Journal'&&journalTab==='dashboard'&&<Dashboard trades={trades} journals={journals}/>}
-        {tab==='Journal'&&journalTab==='tradelog'&&<TradeLog trades={trades} setTrades={setTrades}/>}
-        {tab==='Journal'&&journalTab==='daily'&&<DailyJournal journals={journals} setJournals={setJournals}/>}
-        {tab==='Journal'&&journalTab==='reports'&&<Reports trades={trades} journals={journals}/>}
-        {tab==='Journal'&&journalTab==='playbook'&&<Playbook trades={trades}/>}
-        {tab==='Trade Plan Builder'&&(TradePlanTab?<TradePlanTab/>:<div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
-        {tab==='Strategy Backtest'&&(BacktestTab?<BacktestTab/>:<div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
-        {tab==='COT Alerts'&&(COTAlertsTab?<COTAlertsTab/>:<div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
-        {tab==='Screener'&&(ScreenerBuilder?<ScreenerBuilder user={userInfo}/>:<div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
-        {tab==='Import'&&(ImportTab?<ImportTab/>:<div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
+
+      {/* ── Main content ── */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
+
+        {/* Purple topbar — same as Community/Compete */}
+        <div style={{ background:'#534AB7', padding:'12px 18px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+          <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <i className={`ti ${meta.icon}`} style={{ fontSize:17, color:'#fff' }} aria-hidden="true" />
+          </div>
+          <div>
+            <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:500, color:'#fff' }}>{meta.label}</div>
+            <div style={{ fontFamily:'var(--font)', fontSize:12, color:'#CECBF6', marginTop:1 }}>{meta.sub}</div>
+          </div>
+        </div>
+
+        {/* Journal horizontal subtab strip */}
+        {tab === 'Journal' && (
+          <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:24, borderBottom:'0.5px solid var(--border)', flexShrink:0, height:44 }}>
+            {JOURNAL_SUBTABS.map(s => (
+              <span key={s.key} onClick={() => setJournalTab(s.key)}
+                style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:journalTab===s.key?600:400, color:journalTab===s.key?'var(--text)':'var(--text-muted)', position:'relative', height:44, display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
+                <i className={`ti ${s.icon}`} style={{ fontSize:14 }} aria-hidden="true" />
+                {s.label}
+                {journalTab===s.key && <span style={{ position:'absolute', bottom:-1, left:0, right:0, height:2, background:'#534AB7', borderRadius:1 }} />}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Scrollable content */}
+        <div style={{ flex:1, overflowY:'auto', padding:'16px 24px' }}>
+          {tab==='Journal' && journalTab==='dashboard' && <Dashboard trades={trades} journals={journals}/>}
+          {tab==='Journal' && journalTab==='tradelog'  && <TradeLog  trades={trades} setTrades={setTrades}/>}
+          {tab==='Journal' && journalTab==='daily'     && <DailyJournal journals={journals} setJournals={setJournals}/>}
+          {tab==='Journal' && journalTab==='reports'   && <Reports   trades={trades} journals={journals}/>}
+          {tab==='Journal' && journalTab==='playbook'  && <Playbook  trades={trades}/>}
+          {tab==='COT Alerts'&&(COTAlertsTab    ? <COTAlertsTab/>                       : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
+          {tab==='Screener'&& (ScreenerBuilder ? <ScreenerBuilder user={userInfo}/>    : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
+          {tab==='Import'  && (ImportTab       ? <ImportTab/>                          : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
+        </div>
       </div>
     </div>
-  )
+  );
 }

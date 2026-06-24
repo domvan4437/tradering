@@ -90,7 +90,7 @@ const SECTION_TABS = {
   compete:     ['Home','H2H','Group Contests','Leaderboard','History'],
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','News'],
   charts:      ['Workspace'],
-  tools2:      ['Journal','Trade Calc','Trade Plan Builder','Strategy Backtest','COT Alerts','Screener','Import'],
+  tools2:      ['Journal','COT Alerts','Screener','Import'],
   journal:     ['Journal'],
   account:     ['Overview'],
 }
