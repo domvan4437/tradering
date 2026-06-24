@@ -1,5 +1,6 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
+import { usePlaidLink } from 'react-plaid-link'
 
 const PURPLE = '#4B44C8'
 
@@ -52,6 +53,166 @@ function BtnP({ children, onClick, style }) {
 }
 function BtnS({ children, onClick, style }) {
   return <button onClick={onClick} style={{ padding: '6px 12px', background: 'transparent', color: 'var(--text-muted)', border: '0.5px solid var(--border2)', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)', ...style }}>{children}</button>
+}
+
+// ─── BROKER HELPERS ───────────────────────────────────────────────────────────
+function timeAgo(date) {
+  if (!date) return ''
+  const diff = Date.now() - new Date(date).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
+function PlatformForm({ fields, onConnect, connecting, error, signupUrl, signupLabel, helpText }) {
+  const [values, setValues] = React.useState(() => Object.fromEntries(fields.map(f => [f.key, ''])))
+  const set = (k, v) => setValues(prev => ({ ...prev, [k]: v }))
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+      {helpText && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>{helpText}</div>}
+      {fields.map(f => (
+        <input key={f.key} value={values[f.key]} onChange={e => set(f.key, e.target.value)}
+          type={f.secret ? 'password' : 'text'} placeholder={f.label}
+          style={{ padding: '9px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'monospace', fontSize: 12, color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+        />
+      ))}
+      {error && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#ef4444' }}>{error}</div>}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={() => onConnect(values)} disabled={connecting}
+          style={{ flex: 1, padding: '9px 14px', background: connecting ? 'var(--surface2)' : '#534AB7', color: '#fff', border: 'none', borderRadius: 8, fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          {connecting ? <><i className="ti ti-loader-2 animate-spin" /> Connecting…</> : <><i className="ti ti-plug-connected" /> Connect</>}
+        </button>
+        {signupUrl && (
+          <a href={signupUrl} target="_blank" rel="noopener noreferrer"
+            style={{ padding: '9px 12px', background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'var(--font)', fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <i className="ti ti-external-link" style={{ fontSize: 13 }} /> {signupLabel || 'Sign Up'}
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PlaidConnectButton({ onSuccess }) {
+  const [linkToken, setLinkToken] = React.useState(null)
+  const [loading, setLoading] = React.useState(false)
+  React.useEffect(() => {
+    fetch('/api/plaid/create-link-token', { method: 'POST' })
+      .then(r => r.json()).then(d => { if (d.link_token) setLinkToken(d.link_token) }).catch(() => {})
+  }, [])
+  const onPlaidSuccess = useCallback(async (public_token, metadata) => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/plaid/exchange-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ public_token, institution_name: metadata.institution?.name, institution_id: metadata.institution?.institution_id, accounts: metadata.accounts }) })
+      const data = await res.json()
+      if (data.success) onSuccess?.()
+      else alert('Connection failed: ' + (data.error || 'Unknown error'))
+    } catch (e) { alert('Connection failed: ' + e.message) }
+    setLoading(false)
+  }, [onSuccess])
+  const { open, ready } = usePlaidLink({ token: linkToken, onSuccess: onPlaidSuccess })
+  return (
+    <button onClick={() => open()} disabled={!ready || loading}
+      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: '#534AB7', color: '#fff', border: 'none', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: (!ready || loading) ? 'not-allowed' : 'pointer', opacity: (!ready || loading) ? 0.6 : 1, flexShrink: 0 }}>
+      <i className="ti ti-plug-connected" />
+      {loading ? 'Connecting…' : 'Connect'}
+    </button>
+  )
+}
+
+function ConnectionPanel({ connections, onSynced }) {
+  const [expanded, setExpanded] = React.useState(null)
+  const [connecting, setConnecting] = React.useState(null)
+  const [syncing, setSyncing] = React.useState(null)
+  const [errors, setErrors] = React.useState({})
+  const [demoing, setDemoing] = React.useState(false)
+  const hasDemo = connections?.some(c => c.broker === 'demo')
+  const loadDemo = async () => {
+    setDemoing(true)
+    try {
+      await fetch('/api/broker/demo', { method: hasDemo ? 'DELETE' : 'POST' })
+      if (!hasDemo) await fetch('/api/broker/demo', { method: 'POST' })
+      onSynced?.()
+    } catch {}
+    setDemoing(false)
+  }
+  const conn = (broker) => connections?.find(c => c.broker === broker)
+  const has  = (broker) => !!conn(broker)
+  const setErr = (id, msg) => setErrors(prev => ({ ...prev, [id]: msg }))
+  const connectAndSync = async (id, connectUrl, syncUrl, body) => {
+    setConnecting(id); setErr(id, '')
+    try {
+      const res  = await fetch(connectUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const data = await res.json()
+      if (!res.ok) { setErr(id, data.error || 'Connection failed'); setConnecting(null); return }
+      await fetch(syncUrl, { method: 'POST' })
+      onSynced?.(); setExpanded(null)
+    } catch { setErr(id, 'Network error') }
+    setConnecting(null)
+  }
+  const syncBroker = async (id, syncUrl) => {
+    setSyncing(id)
+    try { await fetch(syncUrl, { method: 'POST' }); onSynced?.() } catch {}
+    setSyncing(null)
+  }
+  const PLATFORMS = [
+    { id: 'alpaca_paper', name: 'Alpaca', tag: 'Stocks · ETFs · Crypto', icon: 'ti-chart-line', color: '#FFBE00', signupUrl: 'https://app.alpaca.markets/paper-trading/overview', signupLabel: 'Free Account', helpText: 'alpaca.markets → Paper Trading → API Keys → Generate Key', fields: [{ key: 'keyId', label: 'API Key ID  (starts with PK…)' }, { key: 'secretKey', label: 'Secret Key', secret: true }], onConnect: (v) => connectAndSync('alpaca_paper', '/api/broker/alpaca/connect', '/api/broker/alpaca/sync', { keyId: v.keyId, secretKey: v.secretKey, paper: true }), onSync: () => syncBroker('alpaca_paper', '/api/broker/alpaca/sync') },
+    { id: 'oanda_practice', name: 'OANDA', tag: 'Forex · Gold · Oil · Indices', icon: 'ti-currency-dollar', color: '#E85D26', signupUrl: 'https://www.oanda.com/us-en/trading/try-free-demo/', signupLabel: 'Free Demo', helpText: 'oanda.com → My Account → Manage API Access → Generate token.', fields: [{ key: 'token', label: 'API Token' }, { key: 'accountId', label: 'Account ID  (e.g. 001-001-XXXXXXX-001)' }], onConnect: (v) => connectAndSync('oanda_practice', '/api/broker/oanda/connect', '/api/broker/oanda/sync', { token: v.token, accountId: v.accountId }), onSync: () => syncBroker('oanda_practice', '/api/broker/oanda/sync') },
+    { id: 'binance_testnet', name: 'Binance Testnet', tag: 'Crypto Spot', icon: 'ti-currency-bitcoin', color: '#F3BA2F', signupUrl: 'https://testnet.binance.vision/', signupLabel: 'Get Keys', helpText: 'Go to testnet.binance.vision → Log in with GitHub → Generate HMAC key.', fields: [{ key: 'apiKey', label: 'API Key' }, { key: 'secret', label: 'Secret Key', secret: true }], onConnect: (v) => connectAndSync('binance_testnet', '/api/broker/binance/connect', '/api/broker/binance/sync', { apiKey: v.apiKey, secret: v.secret }), onSync: () => syncBroker('binance_testnet', '/api/broker/binance/sync') },
+    { id: 'bybit_testnet', name: 'Bybit Testnet', tag: 'Crypto · Perp Futures · Inverse', icon: 'ti-chart-bar', color: '#F7A600', signupUrl: 'https://testnet.bybit.com/', signupLabel: 'Free Testnet', helpText: 'testnet.bybit.com → Account & Security → API Management → Create Key.', fields: [{ key: 'apiKey', label: 'API Key' }, { key: 'secret', label: 'API Secret', secret: true }], onConnect: (v) => connectAndSync('bybit_testnet', '/api/broker/bybit/connect', '/api/broker/bybit/sync', { apiKey: v.apiKey, secret: v.secret }), onSync: () => syncBroker('bybit_testnet', '/api/broker/bybit/sync') },
+    { id: 'okx_demo', name: 'OKX Demo', tag: 'Crypto · Options · Futures · Spot', icon: 'ti-circle-letter-o', color: '#000000', signupUrl: 'https://www.okx.com/account/users/personal-center/demo-trading/create-api-key', signupLabel: 'Demo API Keys', helpText: 'okx.com → Demo Trading mode → Account → API Management → Create API Key.', fields: [{ key: 'apiKey', label: 'API Key' }, { key: 'secret', label: 'Secret Key', secret: true }, { key: 'passphrase', label: 'Passphrase', secret: true }], onConnect: (v) => connectAndSync('okx_demo', '/api/broker/okx/connect', '/api/broker/okx/sync', { apiKey: v.apiKey, secret: v.secret, passphrase: v.passphrase }), onSync: () => syncBroker('okx_demo', '/api/broker/okx/sync') },
+    { id: 'plaid', name: 'Real Broker Account', tag: 'Robinhood · Fidelity · Coinbase · Schwab & more', icon: 'ti-building-bank', color: '#534AB7', isPlaid: true, onSync: () => syncBroker('plaid', '/api/broker/sync') },
+  ]
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Connect your trading account</div>
+        <button onClick={loadDemo} disabled={demoing}
+          style={{ padding: '4px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 11, color: hasDemo ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer' }}>
+          {demoing ? '…' : hasDemo ? 'Clear Demo' : '✦ Try Demo'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {PLATFORMS.map(p => {
+          const isConnected = has(p.id); const c = conn(p.id); const isExpanded = expanded === p.id; const isSyncing = syncing === p.id; const isConnecting = connecting === p.id
+          return (
+            <div key={p.id} style={{ background: 'var(--surface2)', border: `1px solid ${isConnected ? p.color + '44' : 'var(--border)'}`, borderRadius: 11, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 9, background: p.color + '18', border: `1px solid ${p.color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className={`ti ${p.icon}`} style={{ fontSize: 18, color: p.color }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {p.name}{isConnected && <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>● Connected</span>}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{isConnected ? `Last sync: ${timeAgo(c?.lastSynced)}` : p.tag}</div>
+                </div>
+                {isConnected ? (
+                  <button onClick={() => p.onSync()} disabled={isSyncing} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', cursor: 'pointer', flexShrink: 0 }}>
+                    <i className={`ti ti-refresh${isSyncing ? ' animate-spin' : ''}`} />{isSyncing ? 'Syncing…' : 'Sync'}
+                  </button>
+                ) : p.isPlaid ? (
+                  <PlaidConnectButton onSuccess={() => { onSynced?.() }} />
+                ) : (
+                  <button onClick={() => setExpanded(isExpanded ? null : p.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: isExpanded ? p.color : 'transparent', color: isExpanded ? '#fff' : p.color, border: `1px solid ${p.color}55`, borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                    {isExpanded ? 'Cancel' : 'Connect'}
+                  </button>
+                )}
+              </div>
+              {!p.isPlaid && isExpanded && !isConnected && (
+                <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
+                  <PlatformForm fields={p.fields} onConnect={p.onConnect} connecting={isConnecting} error={errors[p.id]} signupUrl={p.signupUrl} signupLabel={p.signupLabel} helpText={p.helpText} />
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 // ─── OVERVIEW ────────────────────────────────────────────────────────────────
@@ -693,61 +854,30 @@ function AnalyticsCommunityTab() {
 
 // ─── BROKER TAB ───────────────────────────────────────────────
 function BrokerTab() {
-  const [connected, setConnected] = React.useState(null)
-  const brokers = [
-    { name: 'Interactive Brokers', desc: 'Stocks, futures, forex, options' },
-    { name: 'TD Ameritrade',       desc: 'Stocks, ETFs, options, futures' },
-    { name: 'TradeStation',        desc: 'Futures, stocks, options' },
-    { name: 'Tradovate',           desc: 'Futures and options on futures' },
-    { name: 'OANDA',               desc: 'Forex and CFDs' },
-    { name: 'Alpaca',              desc: 'Stocks and crypto' },
-  ]
+  const [connections, setConnections] = React.useState([])
+  React.useEffect(() => {
+    fetch('/api/broker/sync').then(r => r.json()).then(d => { if (d.connections) setConnections(d.connections) }).catch(() => {})
+  }, [])
+  const reload = () => {
+    fetch('/api/broker/sync').then(r => r.json()).then(d => { if (d.connections) setConnections(d.connections) }).catch(() => {})
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <Card>
-        <SH>Connected broker</SH>
-        {connected ? (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', borderRadius:8, background:'rgba(22,163,74,0.08)', border:'0.5px solid rgba(22,163,74,0.2)' }}>
-            <div>
-              <div style={{ fontSize:13, fontWeight:500, color:'var(--text)', marginBottom:2 }}>{connected}</div>
-              <div style={{ fontSize:11, color:'#16a34a' }}>✓ Connected · Read-only access</div>
-            </div>
-            <BtnS style={{ fontSize:11 }} onClick={() => setConnected(null)}>Disconnect</BtnS>
-          </div>
-        ) : (
-          <div style={{ padding:'10px 12px', borderRadius:8, background:'rgba(220,38,38,0.05)', border:'0.5px solid rgba(220,38,38,0.15)', fontSize:12, color:'#dc2626', marginBottom:4 }}>
-            No broker connected. Connect one to auto-import trades and verify your track record.
-          </div>
-        )}
+        <ConnectionPanel connections={connections} onSynced={reload} />
       </Card>
-
-      <Card>
-        <SH>Available brokers</SH>
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          {brokers.map(b => (
-            <div key={b.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', borderRadius:8, border:'0.5px solid var(--border)', background:'var(--surface2)' }}>
-              <div>
-                <div style={{ fontSize:13, fontWeight:500, color:'var(--text)', marginBottom:1 }}>{b.name}</div>
-                <div style={{ fontSize:11, color:'var(--text-muted)' }}>{b.desc}</div>
-              </div>
-              <BtnP style={{ fontSize:11, padding:'5px 14px' }} onClick={() => setConnected(b.name)}>Connect</BtnP>
-            </div>
-          ))}
-        </div>
-      </Card>
-
       <Card>
         <SH>What broker sync does</SH>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
-            { icon:'ti-download', text:'Auto-imports all your trades directly from your broker' },
-            { icon:'ti-shield-check', text:'Verifies your track record with a trusted badge on your profile' },
-            { icon:'ti-map-pin', text:'Featured in the Local Traders tab as a verified trader' },
-            { icon:'ti-building', text:'Discoverable by prop firms looking for funded trader candidates' },
-            { icon:'ti-lock', text:'Read-only access only — we can never place or modify trades' },
+            { icon: 'ti-download', text: 'Auto-imports all your trades directly from your broker' },
+            { icon: 'ti-shield-check', text: 'Verifies your track record with a trusted badge on your profile' },
+            { icon: 'ti-map-pin', text: 'Featured in the Local Traders tab as a verified trader' },
+            { icon: 'ti-building', text: 'Discoverable by prop firms looking for funded trader candidates' },
+            { icon: 'ti-lock', text: 'Read-only access only — we can never place or modify trades' },
           ].map((item, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, fontSize:12, color:'var(--text-muted)' }}>
-              <i className={`ti ${item.icon}`} style={{ fontSize:14, color:'#4B44C8', marginTop:1, flexShrink:0 }} aria-hidden="true" />
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: 'var(--text-muted)' }}>
+              <i className={`ti ${item.icon}`} style={{ fontSize: 14, color: '#4B44C8', marginTop: 1, flexShrink: 0 }} aria-hidden="true" />
               {item.text}
             </div>
           ))}
@@ -834,30 +964,6 @@ function MonetizationTab() {
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No payouts yet. Earnings are paid out on the 1st of each month once you've connected a payout method and reached the $25 minimum threshold.</div>
       </Card>
 
-      <Card>
-        <SH>Connect broker</SH>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
-          Connect your broker to automatically import trades, verify your track record, and unlock the verified trader badge. Verified traders are featured in the Local Traders tab and can be discovered by prop firms.
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-          {[
-            { name: 'Interactive Brokers', status: 'Available' },
-            { name: 'TD Ameritrade', status: 'Available' },
-            { name: 'TradeStation', status: 'Available' },
-            { name: 'Tradovate', status: 'Available' },
-            { name: 'OANDA', status: 'Available' },
-            { name: 'Alpaca', status: 'Available' },
-          ].map(b => (
-            <div key={b.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', fontSize:12 }}>
-              <span style={{ fontWeight:500, color:'var(--text)' }}>{b.name}</span>
-              <BtnS style={{ fontSize:10, padding:'3px 10px' }}>Connect</BtnS>
-            </div>
-          ))}
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderRadius: 6, background: 'rgba(75,68,200,0.06)', border: '0.5px solid rgba(75,68,200,0.15)' }}>
-          🔒 TradeZar uses read-only access. We can never place or modify trades on your behalf.
-        </div>
-      </Card>
     </div>
   )
 }
@@ -1055,130 +1161,73 @@ const SETTINGS_ICONS = {
 }
 
 const ACCOUNT_TABS = [
-  { key: 'overview',     label: 'Profile',               icon: 'ti-user' },
-  { key: 'analytics',    label: 'Analytics & Community', icon: 'ti-chart-bar' },
-  { key: 'monetization', label: 'Monetization',          icon: 'ti-currency-dollar' },
-  { key: 'broker',       label: 'Connect Broker',        icon: 'ti-building-bank' },
-  { key: 'settings',     label: 'Settings',              icon: 'ti-settings' },
+  { key: 'overview',     label: 'Profile',               sub: 'Edit your public profile',    icon: 'ti-user'            },
+  { key: 'analytics',    label: 'Analytics',             sub: 'Performance & community',     icon: 'ti-chart-bar'       },
+  { key: 'monetization', label: 'Monetization',          sub: 'Earnings & payouts',          icon: 'ti-currency-dollar' },
+  { key: 'broker',       label: 'Connect Broker',        sub: 'Sync your trading accounts',  icon: 'ti-building-bank'   },
+  { key: 'settings',     label: 'Settings',              sub: 'Account & preferences',       icon: 'ti-settings'        },
 ]
 
 export default function AccountTab({ user }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [settingsSection, setSettingsSection] = useState('Account')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarPinned, setSidebarPinned] = useState(false)
-  const hoverTimer = React.useRef(null)
-  const isOpen = sidebarOpen || sidebarPinned
 
-  function handleMouseEnter() {
-    clearTimeout(hoverTimer.current)
-    setSidebarOpen(true)
-  }
-  function handleMouseLeave() {
-    hoverTimer.current = setTimeout(() => { if (!sidebarPinned) setSidebarOpen(false) }, 180)
-  }
+  const meta = ACCOUNT_TABS.find(t => t.key === activeTab) || ACCOUNT_TABS[0]
 
   return (
-    <div style={{ fontFamily: 'var(--font)', display: 'flex', minHeight: 'calc(100vh - 82px)' }}>
+    <div style={{ fontFamily: 'var(--font)', display: 'flex', height: '100%' }}>
 
-      {/* ── SIDEBAR ── */}
-      <div
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        style={{
-          width: isOpen ? 200 : 54,
-          minWidth: isOpen ? 200 : 54,
-          borderRight: '0.5px solid var(--border)',
-          background: 'var(--surface2)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 2,
-          padding: '10px 6px',
-          transition: 'width 0.18s ease, min-width 0.18s ease',
-          overflow: 'hidden',
-          flexShrink: 0,
-          zIndex: 20,
-        }}>
-
-        {/* Hamburger */}
-        <div onClick={() => setSidebarPinned(p => !p)}
-          style={{ width: 42, height: 38, background: PURPLE, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, marginBottom: 8 }}>
-          <i className="ti ti-menu-2" style={{ fontSize: 20, color: '#fff' }} aria-hidden="true" />
-        </div>
-
-        {/* Main nav tabs */}
+      {/* ── SIDEBAR — 56px fixed, matches Community/Compete ── */}
+      <div style={{ width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 4, borderRight: '0.5px solid var(--border)', background: 'var(--surface)', flexShrink: 0, alignSelf: 'stretch' }}>
         {ACCOUNT_TABS.map(t => {
           const isActive = activeTab === t.key
           return (
-            <React.Fragment key={t.key}>
-              <button onClick={() => setActiveTab(t.key)}
-                title={!isOpen ? t.label : undefined}
-                style={{
-                  display: 'flex', alignItems: 'center',
-                  gap: isOpen ? 8 : 0,
-                  padding: '8px',
-                  borderRadius: 8,
-                  background: isActive ? 'rgba(75,68,200,0.1)' : 'transparent',
-                  border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
-                  width: isOpen ? '100%' : 42,
-                  justifyContent: isOpen ? 'flex-start' : 'center',
-                  position: 'relative', flexShrink: 0,
-                }}>
-                {isActive && <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 22, background: PURPLE, borderRadius: '0 3px 3px 0' }} />}
-                <i className={`ti ${t.icon}`} style={{ fontSize: 19, color: isActive ? PURPLE : 'var(--text-muted)', flexShrink: 0 }} aria-hidden="true" />
-                {isOpen && <span style={{ fontSize: 12, color: isActive ? '#3C3489' : 'var(--text-muted)', fontWeight: isActive ? 500 : 400, whiteSpace: 'nowrap' }}>{t.label}</span>}
-              </button>
-
-              {/* Settings subtabs — shown inline when settings is active and sidebar open */}
-              {t.key === 'settings' && isActive && isOpen && (
-                <div style={{ width: '100%', paddingLeft: 8, display: 'flex', flexDirection: 'column', gap: 1, marginBottom: 4 }}>
-                  {SETTINGS_SECTIONS.map(sec => (
-                    <button key={sec} onClick={() => setSettingsSection(sec)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 7,
-                        padding: '6px 8px', borderRadius: 6,
-                        background: settingsSection === sec ? 'rgba(75,68,200,0.08)' : 'transparent',
-                        border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
-                        width: '100%', textAlign: 'left',
-                      }}>
-                      <i className={`ti ${SETTINGS_ICONS[sec] || 'ti-circle'}`}
-                        style={{ fontSize: 14, color: sec === 'Danger zone' ? '#dc2626' : settingsSection === sec ? PURPLE : 'var(--text-muted)', flexShrink: 0 }} aria-hidden="true" />
-                      <span style={{ fontSize: 11, color: sec === 'Danger zone' ? '#dc2626' : settingsSection === sec ? '#3C3489' : 'var(--text-muted)', fontWeight: settingsSection === sec ? 500 : 400, whiteSpace: 'nowrap' }}>
-                        {sec}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </React.Fragment>
+            <div key={t.key} title={t.label} onClick={() => setActiveTab(t.key)}
+              style={{ width: 38, height: 38, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: isActive ? '#534AB7' : 'transparent', color: isActive ? '#fff' : 'var(--text-muted)', fontSize: 19, transition: 'all .15s', flexShrink: 0 }}
+              onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#EEEDFE'; e.currentTarget.style.color = '#534AB7' } }}
+              onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' } }}>
+              <i className={`ti ${t.icon}`} aria-hidden="true" />
+            </div>
           )
         })}
-
-        {/* User info — only when open */}
-        {isOpen && (
-          <div style={{ marginTop: 'auto', padding: '10px', background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 8, width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: PURPLE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: '#fff', flexShrink: 0 }}>
-                {(user?.name || 'U')[0].toUpperCase()}
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)' }}>{user?.name || 'User'}</div>
-                <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Free plan</div>
-              </div>
-            </div>
-            <BtnP style={{ width: '100%', fontSize: 10, padding: '6px' }}>Upgrade to Pro</BtnP>
-          </div>
-        )}
       </div>
 
-      {/* ── CONTENT ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: activeTab === 'settings' ? '16px 24px' : '16px 24px' }}>
-        {activeTab === 'overview'     && <OverviewTab user={user} />}
-        {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
-        {activeTab === 'monetization' && <MonetizationTab />}
-        {activeTab === 'broker' && <BrokerTab />}
-        {activeTab === 'settings'     && <SettingsContent section={settingsSection} user={user} />}
+      {/* ── MAIN CONTENT ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+
+        {/* Purple topbar */}
+        <div style={{ background: '#534AB7', padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <i className={`ti ${meta.icon}`} style={{ fontSize: 17, color: '#fff' }} aria-hidden="true" />
+          </div>
+          <div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, color: '#fff' }}>{meta.label}</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#CECBF6', marginTop: 1 }}>{meta.sub}</div>
+          </div>
+        </div>
+
+        {/* Settings horizontal subtab strip */}
+        {activeTab === 'settings' && (
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 18px', gap: 20, borderBottom: '0.5px solid var(--border)', flexShrink: 0, height: 44, overflowX: 'auto' }}>
+            {SETTINGS_SECTIONS.map(sec => (
+              <span key={sec} onClick={() => setSettingsSection(sec)}
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: settingsSection === sec ? 600 : 400, color: sec === 'Danger zone' ? (settingsSection === sec ? '#dc2626' : '#dc262699') : settingsSection === sec ? 'var(--text)' : 'var(--text-muted)', position: 'relative', height: 44, display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                <i className={`ti ${SETTINGS_ICONS[sec] || 'ti-circle'}`} style={{ fontSize: 14 }} aria-hidden="true" />
+                {sec}
+                {settingsSection === sec && <span style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: sec === 'Danger zone' ? '#dc2626' : '#534AB7', borderRadius: 1 }} />}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+          {activeTab === 'overview'     && <OverviewTab user={user} />}
+          {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
+          {activeTab === 'monetization' && <MonetizationTab />}
+          {activeTab === 'broker'       && <BrokerTab />}
+          {activeTab === 'settings'     && <SettingsContent section={settingsSection} user={user} />}
+        </div>
       </div>
     </div>
   )
