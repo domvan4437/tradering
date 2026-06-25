@@ -1220,7 +1220,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
     <div style={{ display:'flex', flexDirection:'row', height:'100%', fontFamily:'var(--font)', overflow:'hidden', alignItems:'stretch' }}>
       <CommSidebar tab={tab} setTab={(t)=>setTab(t)} />
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
-        <div style={{ background:'#534AB7', padding:'12px 18px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+        <div style={{ background:'#6C5CE7', padding:'12px 18px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
           <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <i className={`ti ${meta.icon}`} style={{ fontSize:17, color:'#fff' }} aria-hidden="true" />
           </div>

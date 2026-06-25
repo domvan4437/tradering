@@ -488,7 +488,7 @@ export default function App() {
     <div style={{ height:'100vh', overflow:'hidden', display:'flex', flexDirection:'column', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontSize:13 }}>
 
       {/* ── Navbar — TradingView style ── */}
-      <div data-community-nav="true" style={{ background:'#4B44C8', position:'sticky', top:0, zIndex:300, borderBottom:'none' }}>
+      <div data-community-nav="true" style={{ background:'#1e1b2e', position:'sticky', top:0, zIndex:300, borderBottom:'none' }}>
         <div style={{ display:'flex', alignItems:'center', height:46, padding:'0 16px', gap:0, overflow:'visible' }}>
 
           {/* Logo with ring */}
