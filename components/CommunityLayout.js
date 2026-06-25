@@ -1017,20 +1017,22 @@ function ThreadsFeed({ onNewPost, currentUserId }) {
   const myUserId = currentUserId;
 
   return (
-    <div style={{ padding:16 }}>
-      {loading ? (
-        <div style={{ textAlign:'center', padding:'40px 20px', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading threads…</div>
-      ) : threads.length === 0 ? (
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, minHeight:160, textAlign:'center' }}>
-          <i className="ti ti-messages" style={{ fontSize:34, color:'#AFA9EC' }} aria-hidden="true" />
-          <div style={{ fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No threads yet</div>
-          <div style={{ fontSize:12, color:'var(--text-muted)', maxWidth:220, lineHeight:1.5, fontFamily:'var(--font)' }}>Be the first to start a conversation above.</div>
-        </div>
-      ) : (
-        threads.map(t => (
-          <ThreadCard key={t.id} thread={t} myUserId={myUserId} onDelete={handleDelete} onVote={handleVote} />
-        ))
-      )}
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
+      <div style={{ flex:1, overflowY:'auto', padding:16 }}>
+        {loading ? (
+          <div style={{ textAlign:'center', padding:'40px 20px', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading threads…</div>
+        ) : threads.length === 0 ? (
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, minHeight:300, textAlign:'center' }}>
+            <i className="ti ti-messages" style={{ fontSize:34, color:'#AFA9EC' }} aria-hidden="true" />
+            <div style={{ fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No threads yet</div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', maxWidth:220, lineHeight:1.5, fontFamily:'var(--font)' }}>Be the first to start a conversation above.</div>
+          </div>
+        ) : (
+          threads.map(t => (
+            <ThreadCard key={t.id} thread={t} myUserId={myUserId} onDelete={handleDelete} onVote={handleVote} />
+          ))
+        )}
+      </div>
     </div>
   );
 }
