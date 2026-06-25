@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 
 const PURPLE = '#534AB7'
 
@@ -53,9 +53,11 @@ const IconIG      = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="
 const IconYT      = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22.54 6.42A2.78 2.78 0 0 0 20.6 4.46C18.88 4 12 4 12 4s-6.88 0-8.6.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.4 19.54C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="currentColor" stroke="none"/></svg>
 const IconWeb     = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
 const IconPin     = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+const IconCamera  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
 
 // ── Edit View ────────────────────────────────────────────────────
-function EditView({ profile, setProfile, onSave, onCancel, saved, toggleAsset }) {
+function EditView({ profile, setProfile, avatarUrl, onAvatarChange, onSave, onCancel, saved, toggleAsset }) {
+  const fileRef = useRef(null)
   const inp = { width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box' }
   const lbl = { fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }
   const card = { background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginBottom: 14 }
@@ -68,6 +70,26 @@ function EditView({ profile, setProfile, onSave, onCancel, saved, toggleAsset })
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onCancel} style={{ padding: '7px 16px', borderRadius: 8, border: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }}>Cancel</button>
           <button onClick={onSave} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: saved ? '#16a34a' : PURPLE, color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', transition: 'background 0.2s' }}>{saved ? '✓ Saved' : 'Save'}</button>
+        </div>
+      </div>
+
+      {/* Avatar upload in edit view */}
+      <div style={card}>
+        <div style={sec}>Profile photo</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ position: 'relative', width: 64, height: 64, cursor: 'pointer', flexShrink: 0 }} onClick={() => fileRef.current?.click()}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: avatarUrl ? 'transparent' : 'linear-gradient(135deg,#534AB7,#7c3aed)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 500, color: '#fff', border: '2px solid var(--border)' }}>
+              {avatarUrl ? <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (profile.displayName?.[0] || 'T').toUpperCase()}
+            </div>
+            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+              <IconCamera />
+            </div>
+          </div>
+          <div>
+            <button onClick={() => fileRef.current?.click()} style={{ padding: '6px 14px', borderRadius: 8, border: '0.5px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', display: 'block', marginBottom: 6 }}>Upload photo</button>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>JPG or PNG, max 2MB</div>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAvatarChange} />
         </div>
       </div>
 
@@ -116,7 +138,7 @@ function EditView({ profile, setProfile, onSave, onCancel, saved, toggleAsset })
           </select>
         </div>
         <div>
-          <label style={{ ...lbl, marginBottom: 8 }}>Primary assets <span style={{ color: 'var(--text-dim)' }}>({profile.primaryAssets.length}/5)</span></label>
+          <label style={{ ...lbl, marginBottom: 8 }}>Primary assets <span style={{ color: 'var(--text-muted)' }}>({profile.primaryAssets.length}/5)</span></label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {ASSET_OPTIONS.map(a => {
               const sel = profile.primaryAssets.includes(a)
@@ -155,10 +177,14 @@ function EditView({ profile, setProfile, onSave, onCancel, saved, toggleAsset })
 
 // ── Main ProfileTab ──────────────────────────────────────────────
 export default function ProfileTab({ user }) {
-  const [editing, setEditing]   = useState(false)
-  const [saved,   setSaved]     = useState(false)
-  const [posts,   setPosts]     = useState([])
-  const [profile, setProfile]   = useState({
+  const [editing,   setEditing]   = useState(false)
+  const [saved,     setSaved]     = useState(false)
+  const [posts,     setPosts]     = useState([])
+  const [avatarUrl, setAvatarUrl] = useState(null)
+  const [avatarHover, setAvatarHover] = useState(false)
+  const fileRef = useRef(null)
+
+  const [profile, setProfile] = useState({
     displayName: user?.name || '',
     slug: user?.username || (user?.name || '').toLowerCase().replace(/\s+/g, '') || '',
     bio: '',
@@ -181,15 +207,15 @@ export default function ProfileTab({ user }) {
           data.posts
             .filter(p => p.userId === user?.id)
             .map(p => ({
-              id:           p.id,
-              body:         p.content || p.body || '',
-              postType:     p.postType || p.type || 'General',
-              time:         timeAgo(p.createdAt),
-              likes:        p.likes || 0,
-              liked:        p.liked || false,
-              comments:     p.commentsCount || 0,
-              reposts:      p.reposts || 0,
-              reposted:     p.reposted || false,
+              id:            p.id,
+              body:          p.content || p.body || '',
+              postType:      p.postType || p.type || 'General',
+              time:          timeAgo(p.createdAt),
+              likes:         p.likes || 0,
+              liked:         p.liked || false,
+              comments:      p.commentsCount || 0,
+              reposts:       p.reposts || 0,
+              reposted:      p.reposted || false,
               attachmentUrl: p.imageUrl || null,
             }))
         )
@@ -198,6 +224,14 @@ export default function ProfileTab({ user }) {
   }, [user?.id])
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setAvatarUrl(ev.target.result)
+    reader.readAsDataURL(file)
+  }
 
   const handleLike = async (id) => {
     setPosts(prev => prev.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p))
@@ -226,7 +260,12 @@ export default function ProfileTab({ user }) {
   if (editing) {
     return (
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <EditView profile={profile} setProfile={setProfile} onSave={handleSave} onCancel={() => setEditing(false)} saved={saved} toggleAsset={toggleAsset} />
+        <EditView
+          profile={profile} setProfile={setProfile}
+          avatarUrl={avatarUrl} onAvatarChange={handleAvatarChange}
+          onSave={handleSave} onCancel={() => setEditing(false)}
+          saved={saved} toggleAsset={toggleAsset}
+        />
       </div>
     )
   }
@@ -234,10 +273,10 @@ export default function ProfileTab({ user }) {
   return (
     <div style={{ flex: 1, overflowY: 'auto', fontFamily: 'var(--font)', background: 'var(--bg)' }}>
 
-      {/* Cover */}
-      <div style={{ height: 96, background: 'linear-gradient(135deg,#1e1251,#534AB7 55%,#7c3aed)', position: 'relative', flexShrink: 0 }}>
+      {/* White top space — no gradient */}
+      <div style={{ height: 32, background: 'var(--bg)', position: 'relative' }}>
         <button onClick={() => setEditing(true)}
-          style={{ position: 'absolute', top: 10, right: 14, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontSize: 11, padding: '4px 12px', borderRadius: 16, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          style={{ position: 'absolute', top: 10, right: 14, background: 'var(--surface)', border: '0.5px solid var(--border)', color: 'var(--text)', fontSize: 11, padding: '4px 12px', borderRadius: 16, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 4 }}>
           ✎ Edit profile
         </button>
       </div>
@@ -245,12 +284,27 @@ export default function ProfileTab({ user }) {
       {/* Info */}
       <div style={{ padding: '0 22px 18px', borderBottom: '0.5px solid var(--border)' }}>
 
-        {/* Avatar */}
-        <div style={{ width: 66, height: 66, borderRadius: '50%', background: grad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 23, fontWeight: 500, color: '#fff', border: '3px solid var(--bg)', transform: 'translateY(-22px)', marginBottom: -10, flexShrink: 0 }}>
-          {initials}
+        {/* Avatar with upload on hover */}
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+        <div
+          style={{ position: 'relative', width: 66, height: 66, cursor: 'pointer', marginBottom: -10, transform: 'translateY(-10px)' }}
+          onClick={() => fileRef.current?.click()}
+          onMouseEnter={() => setAvatarHover(true)}
+          onMouseLeave={() => setAvatarHover(false)}>
+          <div style={{ width: 66, height: 66, borderRadius: '50%', background: avatarUrl ? 'transparent' : grad, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 23, fontWeight: 500, color: '#fff', border: '3px solid var(--bg)', flexShrink: 0 }}>
+            {avatarUrl
+              ? <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : initials}
+          </div>
+          {avatarHover && (
+            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,0.45)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, color: '#fff' }}>
+              <IconCamera />
+              <span style={{ fontSize: 8, fontWeight: 500, lineHeight: 1.2, textAlign: 'center' }}>Upload</span>
+            </div>
+          )}
         </div>
 
-        <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>{name}</div>
+        <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)', marginTop: 8 }}>{name}</div>
         {profile.slug && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>@{profile.slug}</div>}
 
         <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
@@ -322,60 +376,69 @@ export default function ProfileTab({ user }) {
         </div>
       </div>
 
-      {/* Posts */}
+      {/* Posts — half-width centered column */}
       <div style={{ padding: '12px 22px 8px', fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
         Posts
       </div>
 
-      {posts.length === 0 ? (
-        <div style={{ padding: '32px 22px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font)' }}>
-          No posts yet — share ideas in the Community tab.
-        </div>
-      ) : posts.map(post => {
-        const ts = TYPE_COLORS[post.postType] || TYPE_COLORS['General']
-        return (
-          <div key={post.id} style={{ margin: '0 12px 10px', padding: '14px 16px', borderRadius: 18, border: '0.5px solid var(--border)', background: 'var(--surface)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 7 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: grad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 500, color: '#fff', flexShrink: 0 }}>
-                {initials}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{name}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10, background: ts.bg, color: ts.color }}>{post.postType}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {post.time}</span>
-                </div>
-                {profile.slug && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{profile.slug}</div>}
-              </div>
-              <span style={{ fontSize: 15, color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}>···</span>
-            </div>
-
-            <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.65, marginBottom: post.attachmentUrl ? 10 : 0 }}>
-              {post.body}
-            </div>
-
-            {post.attachmentUrl && (
-              <img src={post.attachmentUrl} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 10, marginBottom: 10, display: 'block', border: '0.5px solid var(--border)' }} />
-            )}
-
-            {/* Flat action buttons — all: unset, no boxes */}
-            <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 10 }}>
-              <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <IconComment /> {fmt(post.comments)}
-              </button>
-              <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.reposted ? '#16A34A' : 'var(--text-muted)', cursor: 'pointer' }}>
-                <IconRepost /> {fmt(post.reposts)}
-              </button>
-              <button onClick={() => handleLike(post.id)} style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.liked ? '#E11D48' : 'var(--text-muted)', cursor: 'pointer' }}>
-                <IconHeart filled={post.liked} /> {fmt(post.likes)}
-              </button>
-              <button style={{ all: 'unset', display: 'flex', alignItems: 'center', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 'auto' }}>
-                <IconShare />
-              </button>
-            </div>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 12px' }}>
+        {posts.length === 0 ? (
+          <div style={{ padding: '32px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font)' }}>
+            No posts yet — share ideas in the Community tab.
           </div>
-        )
-      })}
+        ) : posts.map(post => {
+          const ts = TYPE_COLORS[post.postType] || TYPE_COLORS['General']
+          return (
+            <div key={post.id} style={{ marginBottom: 10, padding: '13px 15px', borderRadius: 18, border: '0.5px solid var(--border)', background: 'var(--surface)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 7 }}>
+                <div style={{ width: 30, height: 30, borderRadius: '50%', background: avatarUrl ? 'transparent' : grad, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: '#fff', flexShrink: 0 }}>
+                  {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10, background: ts.bg, color: ts.color }}>{post.postType}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {post.time}</span>
+                  </div>
+                  {profile.slug && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{profile.slug}</div>}
+                </div>
+                <span style={{ fontSize: 15, color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}>···</span>
+              </div>
+
+              <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, marginBottom: post.attachmentUrl ? 9 : 0 }}>
+                {post.body}
+              </div>
+
+              {/* True-size image — natural dimensions, not stretched */}
+              {post.attachmentUrl && (
+                <div style={{ marginBottom: 9, borderRadius: 10, overflow: 'hidden', border: '0.5px solid var(--border)', display: 'inline-block', maxWidth: '100%' }}>
+                  <img
+                    src={post.attachmentUrl}
+                    alt=""
+                    style={{ display: 'block', maxWidth: '100%', height: 'auto' }}
+                  />
+                </div>
+              )}
+
+              {/* Flat action buttons */}
+              <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 10 }}>
+                <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <IconComment /> {fmt(post.comments)}
+                </button>
+                <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.reposted ? '#16A34A' : 'var(--text-muted)', cursor: 'pointer' }}>
+                  <IconRepost /> {fmt(post.reposts)}
+                </button>
+                <button onClick={() => handleLike(post.id)} style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.liked ? '#E11D48' : 'var(--text-muted)', cursor: 'pointer' }}>
+                  <IconHeart filled={post.liked} /> {fmt(post.likes)}
+                </button>
+                <button style={{ all: 'unset', display: 'flex', alignItems: 'center', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 'auto' }}>
+                  <IconShare />
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
       <div style={{ paddingBottom: 40 }} />
     </div>
