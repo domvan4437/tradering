@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useCallback } from 'react'
 import { usePlaidLink } from 'react-plaid-link'
+import ProfileTab from './ProfileTab'
 
 const PURPLE = '#4B44C8'
 
@@ -1221,13 +1222,18 @@ export default function AccountTab({ user }) {
         )}
 
         {/* Scrollable content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
-          {activeTab === 'overview'     && <OverviewTab user={user} />}
-          {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
-          {activeTab === 'monetization' && <MonetizationTab />}
-          {activeTab === 'broker'       && <BrokerTab />}
-          {activeTab === 'settings'     && <SettingsContent section={settingsSection} user={user} />}
-        </div>
+        {activeTab === 'overview' ? (
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+            <ProfileTab user={user} />
+          </div>
+        ) : (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+            {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
+            {activeTab === 'monetization' && <MonetizationTab />}
+            {activeTab === 'broker'       && <BrokerTab />}
+            {activeTab === 'settings'     && <SettingsContent section={settingsSection} user={user} />}
+          </div>
+        )}
       </div>
     </div>
   )
