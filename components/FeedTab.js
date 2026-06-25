@@ -160,7 +160,7 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
   };
 
   return (
-    <div style={{ margin: '8px 12px', padding: '14px 16px', borderRadius: 18, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+    <div style={{ marginBottom: 10, padding: '13px 15px', borderRadius: 18, border: '0.5px solid var(--border)', background: 'var(--surface)' }}>
 
       {post.repostedBy && (
         <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -446,9 +446,13 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
                 {activeTab === 'Following' ? 'Follow traders on Discover to see their ideas here.' : 'Tap the + button to share your market analysis and trade ideas.'}
               </div>
             </div>
-          ) : posts.map(post => (
-            <Post key={post.id} post={post} onLike={handleLike} onRepost={handleRepost} onDelete={handleDelete} currentUserId={currentUserId} />
-          ))}
+          ) : (
+            <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 12px' }}>
+              {posts.map(post => (
+                <Post key={post.id} post={post} onLike={handleLike} onRepost={handleRepost} onDelete={handleDelete} currentUserId={currentUserId} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
