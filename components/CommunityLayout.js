@@ -1241,10 +1241,9 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
                 <button style={{ all:'unset', marginLeft:'auto', cursor:'pointer', width:28, height:28, borderRadius:'50%', background:'#534AB7', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0 }}
                   onMouseEnter={e => e.currentTarget.style.background='#3C3489'}
                   onMouseLeave={e => e.currentTarget.style.background='#534AB7'}
-                  
                   title="New post" onClick={()=>setShowPostModal(true)}>+</button>
               </div>
-              <div style={{ flex:1, overflowY:'auto', minHeight:0 }}>
+              <div style={{ flex:1, overflow:'hidden', minHeight:0, display:'flex' }}>
                 {(feedSection==='discover'||feedSection==='following') && <FeedTab currentUserId={currentUserId} activeTab={feedSection==='discover'?'Discover':'Following'} />}
                 {feedSection==='threads' && <ThreadsFeed onNewPost={()=>setShowPostModal(true)} currentUserId={currentUserId} />}
               </div>
