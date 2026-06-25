@@ -275,16 +275,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
       {/* ── Main content ── */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
 
-        {/* Purple topbar — same as Community/Compete */}
-        <div style={{ background:'#6C5CE7', padding:'12px 18px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
-          <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <i className={`ti ${meta.icon}`} style={{ fontSize:17, color:'#fff' }} aria-hidden="true" />
-          </div>
-          <div>
-            <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:500, color:'#fff' }}>{meta.label}</div>
-            <div style={{ fontFamily:'var(--font)', fontSize:12, color:'#CECBF6', marginTop:1 }}>{meta.sub}</div>
-          </div>
-        </div>
+
 
         {/* Journal horizontal subtab strip */}
         {tab === 'Journal' && (
@@ -315,3 +306,4 @@ export default function ToolsLayout({tab, setTab, userInfo}){
     </div>
   );
 }
+                                                                                                                                                                                                                                                                                         

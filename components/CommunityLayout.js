@@ -1220,15 +1220,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
     <div style={{ display:'flex', flexDirection:'row', height:'100%', fontFamily:'var(--font)', overflow:'hidden', alignItems:'stretch' }}>
       <CommSidebar tab={tab} setTab={(t)=>setTab(t)} />
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
-        <div style={{ background:'#6C5CE7', padding:'12px 18px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
-          <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <i className={`ti ${meta.icon}`} style={{ fontSize:17, color:'#fff' }} aria-hidden="true" />
-          </div>
-          <div>
-            <div style={{ fontSize:14, fontWeight:500, color:'#fff', fontFamily:'var(--font)' }}>{meta.label}</div>
-            <div style={{ fontSize:12, color:'#CECBF6', marginTop:1, fontFamily:'var(--font)' }}>{meta.sub}</div>
-          </div>
-        </div>
+
         <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', minHeight:0 }}>
           {tab === 'feed' && (
             <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
