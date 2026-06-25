@@ -1,7 +1,7 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 
-const PURPLE = '#4B44C8'
+const PURPLE = '#534AB7'
 
 const TRADING_STYLES = ['Scalper','Day trader','Swing trader','Position trader','Macro trader','Investor']
 
@@ -14,65 +14,197 @@ const ASSET_OPTIONS = [
   'AAPL','NVDA','TSLA','SPY','QQQ',
 ]
 
-function Avatar({ name, size = 72 }) {
-  const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const colors = [PURPLE, '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626']
-  const color = colors[(name || '').charCodeAt(0) % colors.length]
+const TYPE_COLORS = {
+  'General':    { bg: '#F3F4F6', color: '#6B7280' },
+  'Idea':       { bg: '#ECFDF5', color: '#059669' },
+  'Screener':   { bg: '#F5F3FF', color: '#7C3AED' },
+  'Strategy':   { bg: '#EEF2FF', color: '#4F46E5' },
+  'COT Signal': { bg: '#FFF7ED', color: '#D97706' },
+}
+
+const GRADS = [
+  'linear-gradient(135deg,#4f46e5,#7c3aed)',
+  'linear-gradient(135deg,#0ea5e9,#6366f1)',
+  'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#10b981,#059669)',
+  'linear-gradient(135deg,#ec4899,#8b5cf6)',
+]
+function gradFromId(id) {
+  if (!id) return GRADS[0]
+  let n = 0
+  for (let i = 0; i < id.length; i++) n += id.charCodeAt(i)
+  return GRADS[n % GRADS.length]
+}
+
+function timeAgo(date) {
+  const secs = Math.floor((Date.now() - new Date(date)) / 1000)
+  if (secs < 60) return `${secs}s`
+  if (secs < 3600) return `${Math.floor(secs / 60)}m`
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h`
+  return `${Math.floor(secs / 86400)}d`
+}
+
+const IconComment = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+const IconRepost  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+const IconHeart   = ({ filled }) => <svg width="15" height="15" viewBox="0 0 24 24" fill={filled ? '#E11D48' : 'none'} stroke={filled ? '#E11D48' : 'currentColor'} strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+const IconShare   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+const IconX       = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.254 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+const IconIG      = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg>
+const IconYT      = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22.54 6.42A2.78 2.78 0 0 0 20.6 4.46C18.88 4 12 4 12 4s-6.88 0-8.6.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.4 19.54C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="currentColor" stroke="none"/></svg>
+const IconWeb     = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+const IconPin     = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+
+// ── Edit View ────────────────────────────────────────────────────
+function EditView({ profile, setProfile, onSave, onCancel, saved, toggleAsset }) {
+  const inp = { width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box' }
+  const lbl = { fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }
+  const card = { background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '16px 18px', marginBottom: 14 }
+  const sec  = { fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }
+
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font)', fontSize: size * 0.34, fontWeight: 600, color: '#fff', flexShrink: 0, border: `3px solid var(--bg)`, boxShadow: `0 0 0 2px ${color}` }}>
-      {initials}
+    <div style={{ flex: 1, overflowY: 'auto', fontFamily: 'var(--font)', padding: '18px 22px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>Edit profile</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ padding: '7px 16px', borderRadius: 8, border: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }}>Cancel</button>
+          <button onClick={onSave} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: saved ? '#16a34a' : PURPLE, color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', transition: 'background 0.2s' }}>{saved ? '✓ Saved' : 'Save'}</button>
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={sec}>Public info</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <label style={lbl}>Display name</label>
+            <input style={inp} value={profile.displayName} onChange={e => setProfile(p => ({ ...p, displayName: e.target.value }))} placeholder="Your name" />
+          </div>
+          <div>
+            <label style={lbl}>Profile URL</label>
+            <div style={{ display: 'flex', alignItems: 'center', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '7px 0 7px 10px', whiteSpace: 'nowrap' }}>tradezar.com/p/</span>
+              <input value={profile.slug} onChange={e => setProfile(p => ({ ...p, slug: e.target.value }))} placeholder="your-name" style={{ flex: 1, padding: '7px 10px 7px 0', border: 'none', background: 'transparent', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }} />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label style={lbl}>Bio</label>
+          <textarea value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} placeholder="Tell other traders about your approach and edge..." style={{ ...inp, resize: 'vertical', minHeight: 68 }} />
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={sec}>Location</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={lbl}>City</label>
+            <input style={inp} value={profile.city} onChange={e => setProfile(p => ({ ...p, city: e.target.value }))} placeholder="New York" />
+          </div>
+          <div>
+            <label style={lbl}>Country</label>
+            <input style={inp} value={profile.country} onChange={e => setProfile(p => ({ ...p, country: e.target.value }))} placeholder="United States" />
+          </div>
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={sec}>Trading identity</div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={lbl}>Trading style</label>
+          <select value={profile.tradingStyle} onChange={e => setProfile(p => ({ ...p, tradingStyle: e.target.value }))} style={inp}>
+            <option value="">Not specified</option>
+            {TRADING_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ ...lbl, marginBottom: 8 }}>Primary assets <span style={{ color: 'var(--text-dim)' }}>({profile.primaryAssets.length}/5)</span></label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            {ASSET_OPTIONS.map(a => {
+              const sel = profile.primaryAssets.includes(a)
+              return (
+                <button key={a} onClick={() => toggleAsset(a)}
+                  style={{ fontSize: 10, fontWeight: sel ? 500 : 400, padding: '3px 8px', borderRadius: 4, border: `0.5px solid ${sel ? 'rgba(83,74,183,0.3)' : 'var(--border2)'}`, background: sel ? 'rgba(83,74,183,0.1)' : 'transparent', color: sel ? PURPLE : 'var(--text-muted)', cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                  {a}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={sec}>Social links</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {[
+            { key: 'twitter',   label: 'X / Twitter',  placeholder: '@handle' },
+            { key: 'instagram', label: 'Instagram',     placeholder: '@handle' },
+            { key: 'youtube',   label: 'YouTube',       placeholder: 'youtube.com/c/...' },
+            { key: 'website',   label: 'Website',       placeholder: 'yoursite.com' },
+          ].map(f => (
+            <div key={f.key}>
+              <label style={lbl}>{f.label}</label>
+              <input style={inp} value={profile[f.key]} onChange={e => setProfile(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ paddingBottom: 40 }} />
     </div>
   )
 }
 
-function RepBar({ label, value, max = 100, color = PURPLE, note }) {
-  const pct = Math.min(100, (value / max) * 100)
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-        <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-        <span style={{ fontWeight: 500, color }}>{typeof value === 'number' && max === 100 ? `${value}/100` : value}</span>
-      </div>
-      <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
-      </div>
-      {note && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{note}</div>}
-    </div>
-  )
-}
-
+// ── Main ProfileTab ──────────────────────────────────────────────
 export default function ProfileTab({ user }) {
-  const [profile, setProfile] = useState({
+  const [editing, setEditing]   = useState(false)
+  const [saved,   setSaved]     = useState(false)
+  const [posts,   setPosts]     = useState([])
+  const [profile, setProfile]   = useState({
     displayName: user?.name || '',
-    slug: '',
+    slug: user?.username || (user?.name || '').toLowerCase().replace(/\s+/g, '') || '',
     bio: '',
     tradingStyle: '',
-    visibility: 'public',
+    city: '',
+    country: '',
     primaryAssets: [],
     twitter: '',
+    instagram: '',
     youtube: '',
-    tradingview: '',
     website: '',
   })
-  const [saved, setSaved] = useState(false)
-  const [activeTab, setActiveTab] = useState('profile')
 
-  // Mock stats — will come from real data later
-  const stats = {
-    winRate: null,
-    trades: 0,
-    avgRR: null,
-    followers: 0,
-    communityScore: null,
-    contentScore: null,
+  const fetchPosts = useCallback(async () => {
+    try {
+      const res  = await fetch('/api/social/posts?tab=discover')
+      const data = await res.json()
+      if (data.posts) {
+        setPosts(
+          data.posts
+            .filter(p => p.userId === user?.id)
+            .map(p => ({
+              id:           p.id,
+              body:         p.content || p.body || '',
+              postType:     p.postType || p.type || 'General',
+              time:         timeAgo(p.createdAt),
+              likes:        p.likes || 0,
+              liked:        p.liked || false,
+              comments:     p.commentsCount || 0,
+              reposts:      p.reposts || 0,
+              reposted:     p.reposted || false,
+              attachmentUrl: p.imageUrl || null,
+            }))
+        )
+      }
+    } catch(e) {}
+  }, [user?.id])
+
+  useEffect(() => { fetchPosts() }, [fetchPosts])
+
+  const handleLike = async (id) => {
+    setPosts(prev => prev.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p))
+    try { await fetch('/api/social/posts/like', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: id }) }) } catch(e) {}
   }
 
-  function handleSave() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  function toggleAsset(a) {
+  const toggleAsset = (a) => {
     setProfile(p => ({
       ...p,
       primaryAssets: p.primaryAssets.includes(a)
@@ -81,221 +213,171 @@ export default function ProfileTab({ user }) {
     }))
   }
 
-  const tabs = ['Profile', 'Analytics', 'Community', 'Trade Log', 'Monetization', 'Settings']
+  const handleSave = () => {
+    setSaved(true)
+    setTimeout(() => { setSaved(false); setEditing(false) }, 1500)
+  }
+
+  const name     = profile.displayName || user?.name || 'Trader'
+  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const grad     = gradFromId(user?.id || name)
+  const fmt      = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : n
+
+  if (editing) {
+    return (
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <EditView profile={profile} setProfile={setProfile} onSave={handleSave} onCancel={() => setEditing(false)} saved={saved} toggleAsset={toggleAsset} />
+      </div>
+    )
+  }
 
   return (
-    <div style={{ fontFamily: 'var(--font)', paddingTop: 14, minHeight: 'calc(100vh - 82px)' }}>
+    <div style={{ flex: 1, overflowY: 'auto', fontFamily: 'var(--font)', background: 'var(--bg)' }}>
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '0.5px solid var(--border)', marginBottom: 0, paddingLeft: 24 }}>
-        {tabs.map(t => (
-          <button key={t} onClick={() => setActiveTab(t.toLowerCase())}
-            style={{ fontSize: 12, padding: '8px 14px', color: activeTab === t.toLowerCase() ? PURPLE : 'var(--text-muted)', borderBottom: `2px solid ${activeTab === t.toLowerCase() ? PURPLE : 'transparent'}`, background: 'none', border: 'none', borderBottom: `2px solid ${activeTab === t.toLowerCase() ? PURPLE : 'transparent'}`, cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap' }}>
-            {t}
-          </button>
-        ))}
+      {/* Cover */}
+      <div style={{ height: 96, background: 'linear-gradient(135deg,#1e1251,#534AB7 55%,#7c3aed)', position: 'relative', flexShrink: 0 }}>
+        <button onClick={() => setEditing(true)}
+          style={{ position: 'absolute', top: 10, right: 14, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontSize: 11, padding: '4px 12px', borderRadius: 16, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          ✎ Edit profile
+        </button>
       </div>
 
-      {activeTab === 'profile' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: 'calc(100vh - 140px)' }}>
+      {/* Info */}
+      <div style={{ padding: '0 22px 18px', borderBottom: '0.5px solid var(--border)' }}>
 
-          {/* LEFT SIDEBAR */}
-          <div style={{ borderRight: '0.5px solid var(--border)', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {/* Avatar */}
+        <div style={{ width: 66, height: 66, borderRadius: '50%', background: grad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 23, fontWeight: 500, color: '#fff', border: '3px solid var(--bg)', transform: 'translateY(-22px)', marginBottom: -10, flexShrink: 0 }}>
+          {initials}
+        </div>
 
-            {/* Avatar + name */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, paddingBottom: 16, borderBottom: '0.5px solid var(--border)' }}>
-              <Avatar name={profile.displayName || user?.name || 'U'} size={72} />
-              <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', textAlign: 'center' }}>{profile.displayName || user?.name || 'Your name'}</div>
-              {profile.slug && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>tradezar.com/p/{profile.slug}</div>}
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {stats.trades >= 50 ? (
-                  <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 7px', borderRadius: 3, background: 'rgba(75,68,200,0.12)', color: '#3C3489', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Verified track record</span>
-                ) : (
-                  <span style={{ fontSize: 9, fontWeight: 500, padding: '2px 7px', borderRadius: 3, background: 'var(--surface2)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Unverified</span>
-                )}
-              </div>
-            </div>
+        <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>{name}</div>
+        {profile.slug && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>@{profile.slug}</div>}
 
-            {/* Trading style */}
+        <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}><strong style={{ color: 'var(--text)', fontWeight: 500 }}>0</strong> followers</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}><strong style={{ color: 'var(--text)', fontWeight: 500 }}>0</strong> following</span>
+        </div>
+
+        {profile.bio ? (
+          <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, marginTop: 8 }}>{profile.bio}</div>
+        ) : (
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginTop: 8, fontStyle: 'italic' }}>No bio yet — click Edit profile to add one.</div>
+        )}
+
+        {(profile.city || profile.country) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 7, fontSize: 12, color: 'var(--text-muted)' }}>
+            <IconPin /> {[profile.city, profile.country].filter(Boolean).join(', ')}
+          </div>
+        )}
+
+        {(profile.tradingStyle || profile.primaryAssets.length > 0) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 9 }}>
             {profile.tradingStyle && (
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Trading style</div>
-                <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 20, background: 'rgba(75,68,200,0.1)', color: PURPLE }}>{profile.tradingStyle}</span>
+              <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 16, background: '#EEEDFE', color: PURPLE }}>{profile.tradingStyle}</span>
+            )}
+            {profile.primaryAssets.map(a => (
+              <span key={a} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 6, background: 'var(--surface2)', color: 'var(--text-muted)', border: '0.5px solid var(--border)' }}>{a}</span>
+            ))}
+          </div>
+        )}
+
+        {(profile.twitter || profile.instagram || profile.youtube || profile.website) && (
+          <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
+            {profile.twitter && (
+              <a href={`https://x.com/${profile.twitter.replace('@','')}`} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none' }}>
+                <IconX /> {profile.twitter}
+              </a>
+            )}
+            {profile.instagram && (
+              <a href={`https://instagram.com/${profile.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none' }}>
+                <IconIG /> {profile.instagram}
+              </a>
+            )}
+            {profile.youtube && (
+              <a href={profile.youtube.startsWith('http') ? profile.youtube : `https://${profile.youtube}`} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none' }}>
+                <IconYT /> {profile.youtube}
+              </a>
+            )}
+            {profile.website && (
+              <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none' }}>
+                <IconWeb /> {profile.website}
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Follow / Message — purple, below all info */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <button style={{ flex: 1, padding: '8px 0', borderRadius: 20, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: PURPLE, color: '#fff' }}>
+            Follow
+          </button>
+          <button style={{ flex: 1, padding: '8px 0', borderRadius: 20, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: PURPLE, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Message
+          </button>
+        </div>
+      </div>
+
+      {/* Posts */}
+      <div style={{ padding: '12px 22px 8px', fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        Posts
+      </div>
+
+      {posts.length === 0 ? (
+        <div style={{ padding: '32px 22px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font)' }}>
+          No posts yet — share ideas in the Community tab.
+        </div>
+      ) : posts.map(post => {
+        const ts = TYPE_COLORS[post.postType] || TYPE_COLORS['General']
+        return (
+          <div key={post.id} style={{ margin: '0 12px 10px', padding: '14px 16px', borderRadius: 18, border: '0.5px solid var(--border)', background: 'var(--surface)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 7 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: grad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 500, color: '#fff', flexShrink: 0 }}>
+                {initials}
               </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{name}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10, background: ts.bg, color: ts.color }}>{post.postType}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {post.time}</span>
+                </div>
+                {profile.slug && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{profile.slug}</div>}
+              </div>
+              <span style={{ fontSize: 15, color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}>···</span>
+            </div>
+
+            <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.65, marginBottom: post.attachmentUrl ? 10 : 0 }}>
+              {post.body}
+            </div>
+
+            {post.attachmentUrl && (
+              <img src={post.attachmentUrl} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 10, marginBottom: 10, display: 'block', border: '0.5px solid var(--border)' }} />
             )}
 
-            {/* Primary assets */}
-            {profile.primaryAssets.length > 0 && (
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Primary assets</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {profile.primaryAssets.map(a => (
-                    <span key={a} style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 4, background: 'var(--surface2)', color: 'var(--text-muted)' }}>{a}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Reputation */}
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Reputation</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <RepBar
-                  label="Trade accuracy"
-                  value={stats.winRate !== null ? `${stats.winRate}%` : '—'}
-                  pct={stats.winRate || 0}
-                  color="#16a34a"
-                  note={stats.trades > 0 ? `${stats.trades} public trades` : 'No trades yet'}
-                />
-                <RepBar label="Community score" value={stats.communityScore || 0} color={PURPLE} note="Followers + engagement" />
-                <RepBar label="Content quality" value={stats.contentScore || 0} color={PURPLE} note="Upvotes and saves" />
-              </div>
+            {/* Flat action buttons — all: unset, no boxes */}
+            <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 10 }}>
+              <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <IconComment /> {fmt(post.comments)}
+              </button>
+              <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.reposted ? '#16A34A' : 'var(--text-muted)', cursor: 'pointer' }}>
+                <IconRepost /> {fmt(post.reposts)}
+              </button>
+              <button onClick={() => handleLike(post.id)} style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.liked ? '#E11D48' : 'var(--text-muted)', cursor: 'pointer' }}>
+                <IconHeart filled={post.liked} /> {fmt(post.likes)}
+              </button>
+              <button style={{ all: 'unset', display: 'flex', alignItems: 'center', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 'auto' }}>
+                <IconShare />
+              </button>
             </div>
-
-            <button
-              onClick={handleSave}
-              style={{ marginTop: 'auto', width: '100%', padding: '9px', background: saved ? '#16a34a' : PURPLE, color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', transition: 'background 0.2s' }}>
-              {saved ? '✓ Saved' : 'Save profile'}
-            </button>
           </div>
+        )
+      })}
 
-          {/* RIGHT CONTENT */}
-          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
-
-            {/* Public info */}
-            <div style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Public info</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Display name</div>
-                  <input value={profile.displayName} onChange={e => setProfile(p => ({ ...p, displayName: e.target.value }))}
-                    placeholder="Your name" style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Profile URL</div>
-                  <div style={{ display: 'flex', alignItems: 'center', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden' }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '7px 0 7px 10px', whiteSpace: 'nowrap' }}>tradezar.com/p/</span>
-                    <input value={profile.slug} onChange={e => setProfile(p => ({ ...p, slug: e.target.value }))}
-                      placeholder="your-name" style={{ flex: 1, padding: '7px 10px 7px 0', border: 'none', background: 'transparent', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }} />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Bio</div>
-                <textarea value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
-                  placeholder="Tell other traders about your approach, experience, and edge..."
-                  style={{ width: '100%', padding: '8px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none', resize: 'vertical', minHeight: 72, boxSizing: 'border-box' }} />
-              </div>
-            </div>
-
-            {/* Trade performance */}
-            <div style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Trade performance (public)</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
-                {[
-                  { label: 'Win rate',     value: stats.winRate !== null ? `${stats.winRate}%` : '—', color: stats.winRate ? '#16a34a' : 'var(--text-muted)' },
-                  { label: 'Public trades',value: stats.trades || '—', color: 'var(--text)' },
-                  { label: 'Avg R:R',      value: stats.avgRR !== null ? stats.avgRR : '—', color: 'var(--text)' },
-                  { label: 'Followers',    value: stats.followers || '—', color: 'var(--text)' },
-                ].map(s => (
-                  <div key={s.label} style={{ background: 'var(--surface2)', borderRadius: 7, padding: '10px 12px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 18, fontWeight: 500, color: s.color, marginBottom: 3 }}>{s.value}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, padding: '8px 12px', background: 'var(--surface2)', borderRadius: 6 }}>
-                Your trade performance is calculated automatically from public trade ideas you post. The more you share, the more your track record builds — and the more transparent your profile becomes to followers.
-              </div>
-            </div>
-
-            {/* Trading identity */}
-            <div style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Trading identity</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Trading style</div>
-                  <select value={profile.tradingStyle} onChange={e => setProfile(p => ({ ...p, tradingStyle: e.target.value }))}
-                    style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }}>
-                    <option value="">Not specified</option>
-                    {TRADING_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Profile visibility</div>
-                  <select value={profile.visibility} onChange={e => setProfile(p => ({ ...p, visibility: e.target.value }))}
-                    style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }}>
-                    <option value="public">Public — visible on leaderboards</option>
-                    <option value="invite">Invite only — share via link</option>
-                    <option value="private">Private — only you</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>Primary assets <span style={{ color: 'var(--text-dim)' }}>({profile.primaryAssets.length}/5 selected)</span></div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {ASSET_OPTIONS.map(a => {
-                    const sel = profile.primaryAssets.includes(a)
-                    return (
-                      <button key={a} onClick={() => toggleAsset(a)}
-                        style={{ fontSize: 10, fontWeight: sel ? 500 : 400, padding: '3px 8px', borderRadius: 4, border: `0.5px solid ${sel ? 'rgba(75,68,200,0.3)' : 'var(--border2)'}`, background: sel ? 'rgba(75,68,200,0.1)' : 'transparent', color: sel ? PURPLE : 'var(--text-muted)', cursor: 'pointer', fontFamily: 'var(--font)' }}>
-                        {a}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Social links */}
-            <div style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Social links</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {[
-                  { key: 'twitter',     label: 'Twitter / X',  placeholder: '@handle' },
-                  { key: 'youtube',     label: 'YouTube',       placeholder: 'youtube.com/c/...' },
-                  { key: 'tradingview', label: 'TradingView',   placeholder: 'tradingview.com/u/...' },
-                  { key: 'website',     label: 'Website',       placeholder: 'yoursite.com' },
-                ].map(f => (
-                  <div key={f.key}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{f.label}</div>
-                    <input value={profile[f.key]} onChange={e => setProfile(p => ({ ...p, [f.key]: e.target.value }))}
-                      placeholder={f.placeholder}
-                      style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Account info */}
-            <div style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '16px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Account info</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
-                {[
-                  { label: 'Email',        value: user?.email || '—' },
-                  { label: 'Plan',         value: 'Free' },
-                  { label: 'Member since', value: '—' },
-                  { label: 'Username',     value: user?.name || '—' },
-                ].map(row => (
-                  <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '0.5px solid var(--border)' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
-                    <span style={{ fontWeight: 500 }}>{row.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ paddingBottom: 40 }} />
-          </div>
-        </div>
-      )}
-
-      {activeTab !== 'profile' && (
-        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-          <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 8 }}>{tabs.find(t => t.toLowerCase() === activeTab)}</div>
-          Coming soon — this section is being built out.
-        </div>
-      )}
+      <div style={{ paddingBottom: 40 }} />
     </div>
   )
 }

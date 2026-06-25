@@ -254,36 +254,36 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
           )}
 
           {/* Action bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 10 }}>
             {/* Comment */}
             <button onClick={toggleComments}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 20, border: 'none', background: 'none', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = '#4F46E5'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
+              style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#4F46E5'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               <span>{fmt(commentCount)}</span>
             </button>
             {/* Repost */}
             <button onClick={() => onRepost(post.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 20, border: 'none', background: 'none', fontFamily: 'var(--font)', fontSize: 12, color: post.reposted ? '#16A34A' : 'var(--text-muted)', cursor: 'pointer' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(22,163,74,0.08)'; e.currentTarget.style.color = '#16A34A'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = post.reposted ? '#16A34A' : 'var(--text-muted)'; }}>
+              style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font)', fontSize: 12, color: post.reposted ? '#16A34A' : 'var(--text-muted)', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#16A34A'}
+              onMouseLeave={e => e.currentTarget.style.color = post.reposted ? '#16A34A' : 'var(--text-muted)'}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
               <span>{fmt(post.reposts)}</span>
             </button>
             {/* Like */}
             <button onClick={() => onLike(post.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 20, border: 'none', background: 'none', fontFamily: 'var(--font)', fontSize: 12, color: post.liked ? '#E11D48' : 'var(--text-muted)', cursor: 'pointer' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(225,29,72,0.08)'; e.currentTarget.style.color = '#E11D48'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = post.liked ? '#E11D48' : 'var(--text-muted)'; }}>
+              style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font)', fontSize: 12, color: post.liked ? '#E11D48' : 'var(--text-muted)', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#E11D48'}
+              onMouseLeave={e => e.currentTarget.style.color = post.liked ? '#E11D48' : 'var(--text-muted)'}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill={post.liked ? '#E11D48' : 'none'} stroke="currentColor" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               <span>{fmt(post.likes)}</span>
             </button>
             {/* Share */}
             <button onClick={handleShare}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 20, border: 'none', background: 'none', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 'auto' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = '#4F46E5'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
+              style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 'auto' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#4F46E5'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
           </div>
