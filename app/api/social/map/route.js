@@ -49,6 +49,7 @@ export async function GET() {
         tradingStyle: true,
         primaryAssets: true,
         openToMeetups: true,
+        image: true,
         groupMembers: {
           select: {
             group: {
@@ -92,6 +93,7 @@ export async function GET() {
           .map(m => m.group)
           .filter(g => g.isPublic),
         isMe: r.id === session.user.id,
+        image: r.image || null,
         lat: coords.lat + jitter(),
         lng: coords.lng + jitter(),
       }

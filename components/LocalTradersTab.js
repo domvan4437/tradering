@@ -1,21 +1,25 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useContext } from 'react'
+import { UserAvatarContext } from './UserAvatarContext'
 
 const PURPLE = '#4B44C8'
 const COLORS = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#0284c7','#9333ea']
 function getColor(n) { return COLORS[(n||'?').charCodeAt(0) % COLORS.length] }
 
 // ── Trader profile modal ──────────────────────────────────────
-function TraderProfile({ trader, onClose, onMessage }) {
+function TraderProfile({ trader, onClose, onMessage, myAvatar }) {
   const initials = (trader.displayName||'T').slice(0,2).toUpperCase()
   const color = trader.isMe ? PURPLE : getColor(trader.displayName)
+  const avatarImg = trader.isMe && myAvatar ? myAvatar : (trader.image || null)
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={onClose}>
       <div style={{ background:'var(--surface,#18181b)', borderRadius:20, width:440, maxWidth:'95vw', boxShadow:'0 20px 60px rgba(0,0,0,0.4)', border:'1px solid var(--border,#27272a)', overflow:'hidden' }} onClick={e=>e.stopPropagation()}>
         <div style={{ padding:'20px 22px 22px' }}>
           {/* Avatar + close row */}
           <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:14 }}>
-            <div style={{ width:56, height:56, borderRadius:'50%', background:color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff', flexShrink:0 }}>{initials}</div>
+            <div style={{ width:56, height:56, borderRadius:'50%', background: avatarImg ? 'transparent' : color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+              {avatarImg ? <img src={avatarImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : initials}
+            </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap', marginBottom:3 }}>
                 <span style={{ fontSize:16, fontWeight:700, color:'var(--text,#f4f4f5)' }}>{trader.displayName}</span>
@@ -90,6 +94,7 @@ function TraderProfile({ trader, onClose, onMessage }) {
 
 // ── Main component ────────────────────────────────────────────
 export default function LocalTradersTab({ currentUserId, onNavigate }) {
+  const myAvatar = useContext(UserAvatarContext)
   const mapRef = useRef(null)
   const leafletRef = useRef(null)
   const mapInstanceRef = useRef(null)
@@ -162,9 +167,12 @@ export default function LocalTradersTab({ currentUserId, onNavigate }) {
       if (!t.lat || !t.lng) return
       const color = t.isMe ? PURPLE : getColor(t.displayName)
       const letter = (t.displayName||'T')[0].toUpperCase()
+      const avatarImg = t.isMe && myAvatar ? myAvatar : (t.image || null)
       const icon = L.divIcon({
         className:'',
-        html:`<div style="width:36px;height:36px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:system-ui">${letter}</div>`,
+        html: avatarImg
+          ? `<div style="width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);overflow:hidden;cursor:pointer"><img src="${avatarImg}" style="width:100%;height:100%;object-fit:cover" /></div>`
+          : `<div style="width:36px;height:36px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:system-ui">${letter}</div>`,
         iconSize:[36,36], iconAnchor:[18,18],
       })
       const marker = L.marker([t.lat, t.lng], { icon })
@@ -220,7 +228,7 @@ export default function LocalTradersTab({ currentUserId, onNavigate }) {
         .tr-row:hover { background:var(--surface2,#27272a) !important; }
       `}</style>
 
-      {selected && <TraderProfile trader={selected} onClose={() => setSelected(null)} onMessage={handleMessage} />}
+      {selected && <TraderProfile trader={selected} onClose={() => setSelected(null)} onMessage={handleMessage} myAvatar={myAvatar} />}
 
       {/* Top bar */}
       <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border,#27272a)', flexShrink:0 }}>
@@ -288,13 +296,14 @@ export default function LocalTradersTab({ currentUserId, onNavigate }) {
           {filtered.map(t => {
             const color = t.isMe ? PURPLE : getColor(t.displayName)
             const initials = (t.displayName||'T').slice(0,2).toUpperCase()
+            const avatarImg = t.isMe && myAvatar ? myAvatar : (t.image || null)
             return (
               <div key={t.id} className="tr-row"
                 onClick={() => setSelected(t)}
                 style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 16px', borderBottom:'1px solid var(--border,#27272a)', cursor:'pointer', transition:'background .1s' }}>
                 {/* Avatar */}
-                <div style={{ width:44, height:44, borderRadius:'50%', background:color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'#fff', flexShrink:0, boxShadow: t.isMe ? `0 0 0 2.5px var(--surface), 0 0 0 4.5px ${color}` : 'none' }}>
-                  {initials}
+                <div style={{ width:44, height:44, borderRadius:'50%', background: avatarImg ? 'transparent' : color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'#fff', flexShrink:0, boxShadow: t.isMe ? `0 0 0 2.5px var(--surface), 0 0 0 4.5px ${color}` : 'none', overflow:'hidden' }}>
+                  {avatarImg ? <img src={avatarImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : initials}
                 </div>
                 {/* Info */}
                 <div style={{ flex:1, minWidth:0 }}>

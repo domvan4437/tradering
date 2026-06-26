@@ -1,9 +1,10 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import ReactDOM from 'react-dom';
 import FeedTab from './FeedTab';
 import DMTab from './DMTab';
 import LocalTradersTab from './LocalTradersTab';
+import { UserAvatarContext } from './UserAvatarContext';
 
 const PURPLE = '#4f46e5';
 
@@ -75,6 +76,7 @@ function UserSearch() {
 }
 
 function GroupChatRoom({ group, activeRoom, myName }) {
+  const myAvatar = useContext(UserAvatarContext);
   const [msg, setMsg] = useState('');
   const [messages, setMessages] = useState([]);
   const [attachment, setAttachment] = useState(null);
@@ -152,7 +154,9 @@ function GroupChatRoom({ group, activeRoom, myName }) {
           return (
             <div key={m.id} onMouseEnter={() => setHoveredMsg(m.id)} onMouseLeave={() => setHoveredMsg(null)}
               style={{ display:'flex', gap:10, alignItems:'flex-start', position:'relative', padding:'2px 4px', borderRadius:8, background: isHovered ? 'var(--surface2)' : 'transparent' }}>
-              <div style={{ width:32, height:32, borderRadius:'50%', background:getColor(m.user), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0 }}>{(m.user||'?')[0].toUpperCase()}</div>
+              <div style={{ width:32, height:32, borderRadius:'50%', background: isOwn && myAvatar ? 'transparent' : getColor(m.user), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                {isOwn && myAvatar ? <img src={myAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.user||'?')[0].toUpperCase()}
+              </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
                   <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{m.user}</span>
