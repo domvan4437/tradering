@@ -3,13 +3,13 @@ import { useState, useEffect, useCallback } from 'react';
 
 const PURPLE = '#534AB7';
 
-function Avatar({ name, size = 72 }) {
+function Avatar({ name, size = 72, imageUrl }) {
   const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const colors = ['#4f46e5', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626'];
   const color = colors[(name || 'T').charCodeAt(0) % colors.length];
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font)', fontSize: size * 0.35, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-      {initials}
+    <div style={{ width: size, height: size, borderRadius: '50%', background: imageUrl ? 'transparent' : color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font)', fontSize: size * 0.35, fontWeight: 700, color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+      {imageUrl ? <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
     </div>
   );
 }
@@ -93,7 +93,7 @@ export default function ProfilePopup({ slug, onClose }) {
             <div style={{ padding: '14px 16px 0' }}>
               {/* Avatar + counts row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14 }}>
-                <Avatar name={profile.displayName} size={76} />
+                <Avatar name={profile.displayName} imageUrl={profile.image} size={76} />
                 <div style={{ display: 'flex', flex: 1 }}>
                   {[
                     { num: posts.length, label: 'Posts' },

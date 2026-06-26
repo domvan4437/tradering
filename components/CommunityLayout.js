@@ -868,6 +868,7 @@ function ThreadPoll({ postId, initialPoll, initialVoted }) {
 }
 
 function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
+  const myAvatar = useContext(UserAvatarContext);
   const [showComments, setShowComments] = React.useState(false);
   const [comments, setComments] = React.useState([]);
   const [loadingComments, setLoadingComments] = React.useState(false);
@@ -910,8 +911,10 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
   return (
     <div style={{ background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:12, padding:14, marginBottom:10 }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap' }}>
-        <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0 }}>
-          {(t.user||'T')[0].toUpperCase()}
+        <div style={{ width:28, height:28, borderRadius:'50%', background: t.userId === myUserId && myAvatar ? 'transparent' : 'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+          {t.userId === myUserId && myAvatar
+            ? <img src={myAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            : (t.user||'T')[0].toUpperCase()}
         </div>
         <span style={{ fontSize:13, fontWeight:600, color:'var(--text)', fontFamily:'var(--font)' }}>{t.user}</span>
         <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{new Date(t.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>

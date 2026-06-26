@@ -22,6 +22,7 @@ export async function GET(req, { params }) {
       profile: {
         id: user.id,
         displayName: user.displayName || user.name || user.email?.split('@')[0],
+        image: user.image || null,
         bio: user.bio,
         tradingStyle: user.tradingStyle,
         profileSlug: user.profileSlug,
@@ -127,6 +128,7 @@ export async function GET(req, { params }) {
     profile: {
       id: user.id,
       displayName: user.displayName || user.name || user.email?.split('@')[0],
+      image: user.image || null,
       bio: user.bio,
       tradingStyle: user.tradingStyle,
       primaryAssets: user.primaryAssets ? (typeof user.primaryAssets === 'string' ? JSON.parse(user.primaryAssets) : user.primaryAssets) : [],
