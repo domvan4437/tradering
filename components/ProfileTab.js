@@ -202,21 +202,21 @@ export default function ProfileTab({ user }) {
   useEffect(() => {
     fetch('/api/profile/update')
       .then(r => r.json())
-      .then(data => {
-        if (data && !data.error) {
+      .then(({ user: u }) => {
+        if (u && !u.error) {
           setProfile(prev => ({
             ...prev,
-            displayName:  data.name       || prev.displayName,
-            slug:         data.username   || prev.slug,
-            bio:          data.bio        || '',
-            tradingStyle: data.tradingStyle || '',
-            city:         data.city       || '',
-            country:      data.country    || '',
-            primaryAssets: data.primaryAssets || [],
-            twitter:      data.twitter    || '',
-            instagram:    data.instagram  || '',
-            youtube:      data.youtube    || '',
-            website:      data.website    || '',
+            displayName:   u.displayName  || u.name      || prev.displayName,
+            slug:          u.username     || prev.slug,
+            bio:           u.bio          || '',
+            tradingStyle:  u.tradingStyle || '',
+            city:          u.city         || '',
+            country:       u.country      || '',
+            primaryAssets: u.primaryAssets || [],
+            twitter:       u.twitter      || '',
+            instagram:     u.instagram    || '',
+            youtube:       u.youtube      || '',
+            website:       u.website      || '',
           }))
         }
       })
