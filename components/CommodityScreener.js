@@ -466,6 +466,12 @@ export default function App() {
     if (session) fetch('/api/user').then(r=>r.json()).then(d=>{ if (!d.error) setUserInfo(d) })
   }, [session])
 
+  useEffect(() => {
+    const handler = (e) => setUserInfo(prev => prev ? { ...prev, image: e.detail.url } : prev)
+    window.addEventListener('avatar-updated', handler)
+    return () => window.removeEventListener('avatar-updated', handler)
+  }, [])
+
   const plan = userInfo?.plan || session?.user?.plan || 'free'
   const planColor = plan==='trader' ? C.gold : plan==='pro' ? C.green : C.muted
 

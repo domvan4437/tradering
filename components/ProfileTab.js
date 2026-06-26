@@ -264,7 +264,10 @@ export default function ProfileTab({ user }) {
       fd.append('file', file)
       const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
       const data = await res.json()
-      if (data.url) setAvatarUrl(data.url)
+      if (data.url) {
+        setAvatarUrl(data.url)
+        window.dispatchEvent(new CustomEvent('avatar-updated', { detail: { url: data.url } }))
+      }
     } catch(e) {}
   }
 
