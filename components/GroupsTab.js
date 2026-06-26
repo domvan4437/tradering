@@ -1,5 +1,6 @@
 'use client'
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
+import { UserAvatarContext } from './UserAvatarContext';
 
 // ── Persistence helpers ───────────────────────────────────────
 function saveGroups(groups) {
@@ -21,10 +22,12 @@ function loadChat(groupId) {
 }
 
 // ── Avatar ────────────────────────────────────────────────────
-function Av({ letter, grad, size=36, online }) {
+function Av({ letter, grad, size=36, online, imageUrl }) {
   return (
     <div suppressHydrationWarning style={{ position:'relative', flexShrink:0 }}>
-      <div style={{ width:size, height:size, borderRadius:'50%', background:grad, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:size*0.34, fontWeight:800, color:'#fff' }}>{letter}</div>
+      <div style={{ width:size, height:size, borderRadius:'50%', background:imageUrl?'transparent':grad, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:size*0.34, fontWeight:800, color:'#fff', overflow:'hidden' }}>
+        {imageUrl ? <img src={imageUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : letter}
+      </div>
       {online !== undefined && <div style={{ position:'absolute', bottom:1, right:1, width:8, height:8, borderRadius:'50%', background: online?'var(--green)':'var(--surface3)', border:'2px solid var(--surface)' }} />}
     </div>
   );
@@ -113,7 +116,7 @@ function CallOverlay({ callType, groupName, targetName, onEnd }) {
 }
 
 // ── Chat Message ──────────────────────────────────────────────
-function ChatMessage({ m, onJoinCall }) {
+function ChatMessage({ m, onJoinCall, myAvatar }) {
   if (m.type === 'call_invite') {
     return (
       <div style={{ display:'flex', justifyContent:'center', margin:'6px 0' }}>
@@ -133,7 +136,7 @@ function ChatMessage({ m, onJoinCall }) {
     const isMe = m.user === 'you';
     return (
       <div style={{ display:'flex', gap:8, flexDirection: isMe?'row-reverse':'row', alignItems:'flex-end', marginBottom:2 }}>
-        <Av letter={m.avatar} grad={m.grad} size={28} />
+        <Av letter={m.avatar} grad={m.grad} size={28} imageUrl={isMe ? myAvatar : null} />
         <div style={{ maxWidth:'70%' }}>
           {!isMe && <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:600, color:'var(--text-muted)', marginBottom:2 }}>{m.user}</div>}
           <img src={m.url} alt="attachment" style={{ maxWidth:'100%', borderRadius:10, display:'block', border:'1px solid var(--border)' }} />
@@ -147,7 +150,7 @@ function ChatMessage({ m, onJoinCall }) {
     const isMe = m.user === 'you';
     return (
       <div style={{ display:'flex', gap:8, flexDirection: isMe?'row-reverse':'row', alignItems:'flex-end', marginBottom:2 }}>
-        <Av letter={m.avatar} grad={m.grad} size={28} />
+        <Av letter={m.avatar} grad={m.grad} size={28} imageUrl={isMe ? myAvatar : null} />
         <div style={{ maxWidth:'70%' }}>
           {!isMe && <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:600, color:'var(--text-muted)', marginBottom:2 }}>{m.user}</div>}
           <div style={{ background: isMe?'var(--accent)':'var(--surface2)', padding:'10px 14px', borderRadius:10, display:'flex', alignItems:'center', gap:10 }}>
@@ -166,7 +169,7 @@ function ChatMessage({ m, onJoinCall }) {
   const isMe = m.user === 'you';
   return (
     <div style={{ display:'flex', gap:8, flexDirection: isMe?'row-reverse':'row', alignItems:'flex-end', marginBottom:2 }}>
-      <Av letter={m.avatar} grad={m.grad} size={28} />
+      <Av letter={m.avatar} grad={m.grad} size={28} imageUrl={isMe ? myAvatar : null} />
       <div style={{ maxWidth:'75%' }}>
         {!isMe && <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:600, color:'var(--text-muted)', marginBottom:2 }}>{m.user}</div>}
         <div style={{ background: isMe?'var(--accent)':'var(--surface2)', color: isMe?'#fff':'var(--text)', padding:'9px 13px', borderRadius: isMe?'16px 4px 16px 16px':'4px 16px 16px 16px', fontFamily:'var(--font)', fontSize:13, lineHeight:1.5 }}>{m.text}</div>
@@ -313,6 +316,7 @@ function GroupSettings({ group, onUpdate }) {
 }
 
 function GroupRoom({ group, onBack, onUpdateGroup }) {
+  const myAvatar = useContext(UserAvatarContext);
   const [roomTab, setRoomTab] = useState('chat');
   const [msg, setMsg] = useState('');
   const [messages, setMessages] = useState(() => loadChat(group.id));
@@ -504,7 +508,7 @@ function GroupRoom({ group, onBack, onUpdateGroup }) {
             {messages.length === 0 && (
               <div style={{ textAlign:'center', padding:'30px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>No messages yet. Say hello!</div>
             )}
-            {messages.map(m => <ChatMessage key={m.id} m={m} onJoinCall={(t) => startCall(t)} />)}
+            {messages.map(m => <ChatMessage key={m.id} m={m} onJoinCall={(t) => startCall(t)} myAvatar={myAvatar} />)}
             <div ref={endRef} />
           </div>
           <div style={{ padding:'10px 12px', borderTop:'1px solid var(--border)', display:'flex', gap:8, alignItems:'flex-end' }}>

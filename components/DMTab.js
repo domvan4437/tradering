@@ -1,14 +1,17 @@
 'use client'
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import { UserAvatarContext } from './UserAvatarContext';
 
 const PURPLE = '#4f46e5';
 const COLORS = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
 function getColor(name) { return COLORS[(name||'?').charCodeAt(0) % COLORS.length]; }
 
-function Avatar({ letter, size=36 }) {
+function Avatar({ letter, size=36, imageUrl }) {
   return (
-    <div style={{ width:size, height:size, borderRadius:'50%', background:getColor(letter||'?'), display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font)', fontSize:size*0.38, fontWeight:700, color:'#fff', flexShrink:0 }}>
-      {(letter||'?')[0].toUpperCase()}
+    <div style={{ width:size, height:size, borderRadius:'50%', background:imageUrl?'transparent':getColor(letter||'?'), display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font)', fontSize:size*0.38, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+      {imageUrl
+        ? <img src={imageUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+        : (letter||'?')[0].toUpperCase()}
     </div>
   );
 }
@@ -46,6 +49,7 @@ function fmt(ts) {
 }
 
 export default function DMTab({ initialUser }) {
+  const myAvatar = useContext(UserAvatarContext);
   const [myId, setMyId] = useState(null);
   const [convos, setConvos] = useState([]);
   const [userDirectory, setUserDirectory] = useState({});

@@ -2,7 +2,8 @@
 function goToProfile(slug) {
   if (typeof window !== 'undefined' && window.__goToProfile) window.__goToProfile(slug);
 }
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
+import { UserAvatarContext } from './UserAvatarContext';
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -73,14 +74,19 @@ function typeStyle(t) {
 }
 
 // ── Avatar ────────────────────────────────────────────────────
-function Avatar({ letter, grad, size = 38 }) {
+function Avatar({ letter, grad, size = 38, imageUrl }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
-      background: grad, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: imageUrl ? 'transparent' : grad,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'var(--font-mono)', fontSize: size * 0.36, fontWeight: 700,
-      color: '#fff', flexShrink: 0,
-    }}>{letter}</div>
+      color: '#fff', flexShrink: 0, overflow: 'hidden',
+    }}>
+      {imageUrl
+        ? <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : letter}
+    </div>
   );
 }
 
@@ -123,6 +129,7 @@ function PollBlock({ postId, initialPoll, initialVoted }) {
 
 // ── Post Card ─────────────────────────────────────────────────
 function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
+  const myAvatar = useContext(UserAvatarContext);
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState('');
   const [localComments, setLocalComments] = useState([]);
@@ -171,7 +178,8 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
 
       <div style={{ display: 'flex', gap: 11 }}>
         <div onClick={() => goToProfile(post.slug || post.user)} style={{ cursor: 'pointer', paddingTop: 2 }}>
-          <Avatar letter={post.avatar} grad={post.grad} size={38} />
+          <Avatar letter={post.avatar} grad={post.grad} size={38}
+            imageUrl={post.userId === currentUserId ? myAvatar : null} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Header row */}

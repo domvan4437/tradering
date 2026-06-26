@@ -1,4 +1,5 @@
 'use client'
+import { UserAvatarContext } from './UserAvatarContext'
 import MarketOverview from './MarketOverview'
 import FeedTab from './FeedTab'
 import { MarketsLanding, CommunityLanding, ToolsLanding, NewsLanding } from './SectionLanding'
@@ -485,6 +486,7 @@ export default function App() {
   const navItems = [['Community','community'],['Compete','compete'],['Markets','markets'],['Charts','charts'],['Tools','tools2'],['Account','account']]
 
   return (
+    <UserAvatarContext.Provider value={userInfo?.image || null}>
     <div style={{ height:'100vh', overflow:'hidden', display:'flex', flexDirection:'column', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontSize:13 }}>
 
       {/* ── Navbar — TradingView style ── */}
@@ -632,8 +634,11 @@ export default function App() {
             <div style={{ position:'relative' }}>
               <button onClick={()=>setShowAccount(s=>!s)}
                 style={{ background:'var(--nav-badge)', color:'var(--nav-text-active)', border:'1px solid var(--nav-badge-border)', padding:'4px 10px', fontSize:12, fontWeight:500, borderRadius:3, cursor:'pointer', fontFamily:'var(--font)', display:'flex', alignItems:'center', gap:6 }}>
-                <span style={{ width:20, height:20, borderRadius:'50%', background:'var(--accent)', color:'#fff', fontSize:9, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  {(userInfo?.name?.charAt(0)||session?.user?.name?.charAt(0)||session?.user?.email?.charAt(0)||'U').toUpperCase()}
+                <span style={{ width:20, height:20, borderRadius:'50%', background:'var(--accent)', color:'#fff', fontSize:9, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+                  {userInfo?.image
+                    ? <img src={userInfo.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    : (userInfo?.name?.charAt(0)||session?.user?.name?.charAt(0)||session?.user?.email?.charAt(0)||'U').toUpperCase()
+                  }
                 </span>
                 {userInfo?.name||session?.user?.name||session?.user?.email?.split('@')[0]||'Account'} ▾
               </button>
@@ -756,6 +761,7 @@ function ComingSoonTab({ section, tab }) {
         The {section.charAt(0).toUpperCase()+section.slice(1)} {tab} section is currently being built. Check back soon.
       </p>
     </div>
+    </UserAvatarContext.Provider>
   )
 }
 

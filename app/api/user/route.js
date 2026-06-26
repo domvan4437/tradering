@@ -10,7 +10,7 @@ export async function GET() {
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/User?id=eq.${session.user.id}&select=id,email,name,plan,subscriptionStatus,trialEndsAt,screeningsToday,screeningsReset`,
+      `${SUPABASE_URL}/rest/v1/User?id=eq.${session.user.id}&select=id,email,name,plan,subscriptionStatus,trialEndsAt,screeningsToday,screeningsReset,image`,
       { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } }
     )
     const users = await res.json()
