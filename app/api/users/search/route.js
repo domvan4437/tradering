@@ -19,7 +19,7 @@ export async function GET(request) {
           { name: { contains: q, mode: 'insensitive' } },
         ],
       },
-      select: { id: true, username: true, displayName: true, name: true, verifiedBadge: true },
+      select: { id: true, username: true, displayName: true, name: true, image: true, verifiedBadge: true },
       take: 10,
     })
 
@@ -27,6 +27,7 @@ export async function GET(request) {
       id: u.id,
       username: u.username || null,
       displayName: u.displayName || u.name || u.username || 'Unknown',
+      image: u.image || null,
       verifiedBadge: !!u.verifiedBadge,
     }))
 

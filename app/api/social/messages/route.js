@@ -6,6 +6,7 @@ function fmt(u) {
     id: u.id,
     username: u.username || null,
     displayName: u.displayName || u.name || u.username || 'Unknown',
+    image: u.image || null,
     verifiedBadge: !!u.verifiedBadge,
   }
 }
@@ -40,8 +41,8 @@ export async function GET(request) {
       orderBy: { createdAt: 'desc' },
       take: 300,
       include: {
-        fromUser: { select: { id: true, username: true, displayName: true, name: true, verifiedBadge: true } },
-        toUser:   { select: { id: true, username: true, displayName: true, name: true, verifiedBadge: true } },
+        fromUser: { select: { id: true, username: true, displayName: true, name: true, image: true, verifiedBadge: true } },
+        toUser:   { select: { id: true, username: true, displayName: true, name: true, image: true, verifiedBadge: true } },
       },
     })
     return Response.json({ messages: rows })

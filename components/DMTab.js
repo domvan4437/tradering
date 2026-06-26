@@ -27,7 +27,7 @@ function groupIntoConvos(rows, myId, userDirectory) {
   for (const [otherId, msgs] of byOther.entries()) {
     msgs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const info = userDirectory[otherId] || {};
-    convos.push({ otherId, displayName: info.displayName || 'Unknown user', messages: msgs });
+    convos.push({ otherId, displayName: info.displayName || 'Unknown user', image: info.image || null, messages: msgs });
   }
   convos.sort((a, b) => {
     const aLast = a.messages[a.messages.length-1]?.createdAt || '';
@@ -204,7 +204,7 @@ export default function DMTab({ initialUser }) {
           <button onClick={() => setActiveId(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:18, padding:'0 4px', display:'flex', alignItems:'center' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <Avatar letter={convo.displayName} size={32} />
+          <Avatar letter={convo.displayName} size={32} imageUrl={convo.image} />
           <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)' }}>{convo.displayName}</span>
           <div style={{ flex:1 }} />
           <button onClick={() => deleteConvo(activeId)} title="Delete conversation" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:4 }}
@@ -301,7 +301,7 @@ export default function DMTab({ initialUser }) {
                     style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', cursor:'pointer', borderBottom:'1px solid var(--border)' }}
                     onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
                     onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                    <Avatar letter={u.displayName} size={30} />
+                    <Avatar letter={u.displayName} size={30} imageUrl={u.image} />
                     <div>
                       <div style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{u.displayName}</div>
                       {u.username && <div style={{ fontSize:11, color:'var(--text-muted)' }}>@{u.username}</div>}
@@ -339,7 +339,7 @@ export default function DMTab({ initialUser }) {
               style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer', borderBottom:'1px solid var(--border)', background:'transparent' }}
               onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
               onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-              <Avatar letter={c.displayName} size={40} />
+              <Avatar letter={c.displayName} size={40} imageUrl={c.image} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', marginBottom:2 }}>{c.displayName}</div>
                 <div style={{ fontSize:11, color:'var(--text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lastMsg(c)}</div>
