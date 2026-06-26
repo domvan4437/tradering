@@ -749,6 +749,7 @@ export default function App() {
       <FloatingAICoach />
       {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)} currentPlan={plan} feature={upgradeFeature} />}
     </div>
+    </UserAvatarContext.Provider>
   )
 }
 
@@ -761,7 +762,6 @@ function ComingSoonTab({ section, tab }) {
         The {section.charAt(0).toUpperCase()+section.slice(1)} {tab} section is currently being built. Check back soon.
       </p>
     </div>
-    </UserAvatarContext.Provider>
   )
 }
 
