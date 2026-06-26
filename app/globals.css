@@ -65,8 +65,16 @@
 
   /* Typography */
   --font:           'DM Sans', -apple-system, sans-serif;
+  --font-sans:      'DM Sans', -apple-system, sans-serif;
   --font-display:   'DM Sans', -apple-system, sans-serif;
   --font-mono:      'IBM Plex Mono', 'JetBrains Mono', monospace;
+
+  /* Navbar */
+  --nav-bg:              #0d0d0d;
+  --nav-text:            rgba(255,255,255,0.65);
+  --nav-text-active:     #ffffff;
+  --nav-badge:           rgba(255,255,255,0.18);
+  --nav-badge-border:    rgba(255,255,255,0.3);
 }
 
 /* ── Dark mode ── */
@@ -650,6 +658,13 @@ button, a, input, select {
   --font:         var(--font-sans);
   --radius:       8px;
   --radius-sm:    5px;
+
+  /* Navbar */
+  --nav-bg:              #f5f6fa;
+  --nav-text:            rgba(0,0,0,0.5);
+  --nav-text-active:     #111827;
+  --nav-badge:           rgba(0,0,0,0.07);
+  --nav-badge-border:    rgba(0,0,0,0.15);
 }
 
 /* Hide scrollbars but keep scroll functionality */

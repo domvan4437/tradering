@@ -488,15 +488,15 @@ export default function App() {
     <div style={{ height:'100vh', overflow:'hidden', display:'flex', flexDirection:'column', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontSize:13 }}>
 
       {/* ── Navbar — TradingView style ── */}
-      <div data-community-nav="true" style={{ background:'#0d0d0d', position:'sticky', top:0, zIndex:300, borderBottom:'none' }}>
+      <div data-community-nav="true" style={{ background:'var(--nav-bg)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--nav-badge)' }}>
         <div style={{ display:'flex', alignItems:'center', height:46, padding:'0 16px', gap:0, overflow:'visible' }}>
 
           {/* Logo with ring */}
           <div style={{ display:'flex', alignItems:'center', gap:7, marginRight:20, flexShrink:0 }}>
-            <div style={{ width:20, height:20, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.85)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div style={{ width:20, height:20, borderRadius:'50%', border:'2px solid var(--nav-text-active)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <div style={{ width:7, height:7, background:'var(--accent)', borderRadius:'50%' }} />
             </div>
-            <span style={{ fontSize:15, fontWeight:700, color:'#ffffff', letterSpacing:'-0.4px' }}>TradeZar</span>
+            <span style={{ fontSize:15, fontWeight:700, color:'var(--nav-text-active)', letterSpacing:'-0.4px' }}>TradeZar</span>
           </div>
 
           {/* Nav links with hover dropdowns */}
@@ -516,10 +516,10 @@ export default function App() {
                   <button
                     onClick={() => { setSection(sec); setTab(''); setHoveredSection(null); }}
                     style={{
-                      background: isActive ? 'rgba(255,255,255,0.18)' : 'transparent',
-                      color: '#ffffff',
+                      background: isActive ? 'var(--nav-badge)' : 'transparent',
+                      color: 'var(--nav-text-active)',
                       border: 'none',
-                      borderBottom: isActive ? '2px solid #ffffff' : '2px solid transparent',
+                      borderBottom: isActive ? '2px solid var(--nav-text-active)' : '2px solid transparent',
                       padding: '0 12px',
                       height: 46,
                       fontSize: 12,
@@ -613,7 +613,7 @@ export default function App() {
           {/* Right side */}
           <div style={{ display:'flex', alignItems:'center', gap:8, marginLeft:8, flexShrink:0 }}>
             {plan==='free' && userInfo && (
-              <span style={{ fontSize:11, fontWeight:600, color:'#fff', background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.3)', padding:'3px 9px', borderRadius:5 }}>
+              <span style={{ fontSize:11, fontWeight:600, color:'var(--nav-text-active)', background:'var(--nav-badge)', border:'1px solid var(--nav-badge-border)', padding:'3px 9px', borderRadius:5 }}>
                 FREE · {userInfo.screeningsToday}/{userInfo.limits?.screeningsPerDay}
               </span>
             )}
@@ -621,17 +621,17 @@ export default function App() {
             {plan==='trader' && <span style={{ fontSize:11, fontWeight:600, color:'var(--gold)', background:'var(--gold-bg)', padding:'3px 8px', borderRadius:3 }}>TRADER</span>}
             {plan==='free' && (
               <button onClick={()=>handleUpgrade()}
-                style={{ background:'rgba(255,255,255,0.2)', color:'#fff', border:'1px solid rgba(255,255,255,0.4)', padding:'5px 13px', borderRadius:3, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' }}>
+                style={{ background:'var(--nav-badge)', color:'var(--nav-text-active)', border:'1px solid var(--nav-badge-border)', padding:'5px 13px', borderRadius:3, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' }}>
                 Upgrade
               </button>
             )}
             <button onClick={toggle}
-              style={{ background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.25)', color:'#fff', width:28, height:28, borderRadius:3, cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              style={{ background:'var(--nav-badge)', border:'1px solid var(--nav-badge-border)', color:'var(--nav-text-active)', width:28, height:28, borderRadius:3, cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
               {theme==='dark'?'○':'●'}
             </button>
             <div style={{ position:'relative' }}>
               <button onClick={()=>setShowAccount(s=>!s)}
-                style={{ background:'rgba(255,255,255,0.15)', color:'#fff', border:'1px solid rgba(255,255,255,0.3)', padding:'4px 10px', fontSize:12, fontWeight:500, borderRadius:3, cursor:'pointer', fontFamily:'var(--font)', display:'flex', alignItems:'center', gap:6 }}>
+                style={{ background:'var(--nav-badge)', color:'var(--nav-text-active)', border:'1px solid var(--nav-badge-border)', padding:'4px 10px', fontSize:12, fontWeight:500, borderRadius:3, cursor:'pointer', fontFamily:'var(--font)', display:'flex', alignItems:'center', gap:6 }}>
                 <span style={{ width:20, height:20, borderRadius:'50%', background:'var(--accent)', color:'#fff', fontSize:9, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   {(userInfo?.name?.charAt(0)||session?.user?.name?.charAt(0)||session?.user?.email?.charAt(0)||'U').toUpperCase()}
                 </span>

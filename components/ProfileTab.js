@@ -198,6 +198,31 @@ export default function ProfileTab({ user }) {
     website: '',
   })
 
+  // Load saved profile from DB on mount
+  useEffect(() => {
+    fetch('/api/profile/update')
+      .then(r => r.json())
+      .then(data => {
+        if (data && !data.error) {
+          setProfile(prev => ({
+            ...prev,
+            displayName:  data.name       || prev.displayName,
+            slug:         data.username   || prev.slug,
+            bio:          data.bio        || '',
+            tradingStyle: data.tradingStyle || '',
+            city:         data.city       || '',
+            country:      data.country    || '',
+            primaryAssets: data.primaryAssets || [],
+            twitter:      data.twitter    || '',
+            instagram:    data.instagram  || '',
+            youtube:      data.youtube    || '',
+            website:      data.website    || '',
+          }))
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const fetchPosts = useCallback(async () => {
     try {
       const res  = await fetch('/api/social/posts?tab=discover')
@@ -247,7 +272,26 @@ export default function ProfileTab({ user }) {
     }))
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    try {
+      await fetch('/api/profile/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:          profile.displayName,
+          username:      profile.slug,
+          bio:           profile.bio,
+          tradingStyle:  profile.tradingStyle,
+          city:          profile.city,
+          country:       profile.country,
+          primaryAssets: profile.primaryAssets,
+          twitter:       profile.twitter,
+          instagram:     profile.instagram,
+          youtube:       profile.youtube,
+          website:       profile.website,
+        }),
+      })
+    } catch(e) {}
     setSaved(true)
     setTimeout(() => { setSaved(false); setEditing(false) }, 1500)
   }
