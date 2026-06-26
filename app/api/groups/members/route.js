@@ -10,7 +10,7 @@ export async function GET(request) {
 
   const members = await prisma.groupMember.findMany({
     where: { groupId },
-    include: { user: { select: { id: true, name: true, username: true, displayName: true } } },
+    include: { user: { select: { id: true, name: true, username: true, displayName: true, image: true } } },
     orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
   })
 
@@ -19,6 +19,7 @@ export async function GET(request) {
       id: m.user.id,
       name: m.user.displayName || m.user.name || m.user.username || 'Trader',
       username: m.user.username,
+      image: m.user.image || null,
       role: m.role,
     }))
   })

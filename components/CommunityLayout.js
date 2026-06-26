@@ -472,7 +472,9 @@ function GroupsView({ currentUserId }) {
               ? <div style={{ padding:'6px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Loading…</div>
               : members.map(m => (
                 <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8 }}>
-                  <div style={{ width:24, height:24, borderRadius:'50%', background:getColor(m.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', flexShrink:0 }}>{(m.name||'?')[0].toUpperCase()}</div>
+                  <div style={{ width:24, height:24, borderRadius:'50%', background: m.image ? 'transparent' : getColor(m.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                    {m.image ? <img src={m.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.name||'?')[0].toUpperCase()}
+                  </div>
                   <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text)', flex:1 }}>{m.name}</span>
                   <span style={{ fontFamily:'var(--font)', fontSize:10, color:roleColor(m.role) }}>{roleLabel(m.role)}</span>
                 </div>
