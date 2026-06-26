@@ -29,6 +29,7 @@ model User {
   customFields         Json?
   badgeEarnedAt        DateTime?
   displayName          String?
+  image                String?
   primaryAssets        String?
   profileSlug          String?               @unique
   profileVisibility    String                @default("private")

@@ -7,7 +7,7 @@ export async function PATCH(request) {
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const body = await request.json()
 
-    const allowed = ['name','username','bio','country','city','tradingStyle','experience','primaryAssets','openToMeetups','openToMentoring','twitter','instagram','youtube','website','publicWinRate','publicPnl','publicTrades','publicLocation','tagline','displayName']
+    const allowed = ['name','username','bio','country','city','tradingStyle','experience','primaryAssets','openToMeetups','openToMentoring','twitter','instagram','youtube','website','publicWinRate','publicPnl','publicTrades','publicLocation','tagline','displayName','image']
     const update = {}
     allowed.forEach(k => { if (body[k] !== undefined) update[k] = body[k] })
     // handle legacy 'assets' key
@@ -39,7 +39,7 @@ export async function GET(request) {
         primaryAssets: true, openToMeetups: true, openToMentoring: true,
         twitter: true, instagram: true, youtube: true, website: true,
         publicWinRate: true, publicPnl: true, publicTrades: true,
-        publicLocation: true, tagline: true, plan: true,
+        publicLocation: true, tagline: true, plan: true, image: true,
       },
     })
     if (user && typeof user.primaryAssets === 'string') {

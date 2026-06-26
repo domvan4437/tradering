@@ -218,6 +218,7 @@ export default function ProfileTab({ user }) {
             youtube:       u.youtube      || '',
             website:       u.website      || '',
           }))
+          if (u.image) setAvatarUrl(u.image)
         }
       })
       .catch(() => {})
@@ -250,12 +251,21 @@ export default function ProfileTab({ user }) {
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
 
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    // Preview immediately
     const reader = new FileReader()
     reader.onload = ev => setAvatarUrl(ev.target.result)
     reader.readAsDataURL(file)
+    // Upload to server
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (data.url) setAvatarUrl(data.url)
+    } catch(e) {}
   }
 
   const handleLike = async (id) => {
