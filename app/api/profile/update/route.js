@@ -12,6 +12,8 @@ export async function PATCH(request) {
     allowed.forEach(k => { if (body[k] !== undefined) update[k] = body[k] })
     // handle legacy 'assets' key
     if (body.assets !== undefined && update.primaryAssets === undefined) update.primaryAssets = body.assets
+    // primaryAssets is stored as a JSON string in the DB
+    if (Array.isArray(update.primaryAssets)) update.primaryAssets = JSON.stringify(update.primaryAssets)
 
     const user = await prisma.user.update({
       where: { id: session.user.id },
@@ -40,6 +42,9 @@ export async function GET(request) {
         publicLocation: true, tagline: true, plan: true,
       },
     })
+    if (user && typeof user.primaryAssets === 'string') {
+      try { user.primaryAssets = JSON.parse(user.primaryAssets) } catch { user.primaryAssets = [] }
+    }
     return Response.json({ user })
   } catch(e) {
     console.error('[GET /api/profile/update]', e)
