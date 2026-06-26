@@ -47,6 +47,7 @@ function mapApiPost(p) {
     postType: p.postType || p.type || 'General',
     assetTag: p.assetTag || p.symbol || '',
     direction: p.direction || null,
+    authorImage: p.authorImage || null,
     attachmentUrl: p.imageUrl || null,
     attachmentType: p.imageUrl ? 'image' : null,
     poll: p.poll || null,
@@ -179,7 +180,7 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
       <div style={{ display: 'flex', gap: 11 }}>
         <div onClick={() => goToProfile(post.slug || post.user)} style={{ cursor: 'pointer', paddingTop: 2 }}>
           <Avatar letter={post.avatar} grad={post.grad} size={38}
-            imageUrl={post.userId === currentUserId ? myAvatar : null} />
+            imageUrl={post.userId === currentUserId ? (myAvatar || post.authorImage) : post.authorImage} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Header row */}
