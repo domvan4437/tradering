@@ -182,6 +182,8 @@ export default function ProfileTab({ user }) {
   const [posts,     setPosts]     = useState([])
   const [avatarUrl, setAvatarUrl] = useState(null)
   const [avatarHover, setAvatarHover] = useState(false)
+  const [followerCount,  setFollowerCount]  = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
   const fileRef = useRef(null)
 
   const [profile, setProfile] = useState({
@@ -219,6 +221,8 @@ export default function ProfileTab({ user }) {
             website:       u.website      || '',
           }))
           if (u.image) setAvatarUrl(u.image)
+          setFollowerCount(u.followerCount ?? 0)
+          setFollowingCount(u.followingCount ?? 0)
         }
       })
       .catch(() => {})
@@ -365,8 +369,8 @@ export default function ProfileTab({ user }) {
         {profile.slug && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>@{profile.slug}</div>}
 
         <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}><strong style={{ color: 'var(--text)', fontWeight: 500 }}>0</strong> followers</span>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}><strong style={{ color: 'var(--text)', fontWeight: 500 }}>0</strong> following</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}><strong style={{ color: 'var(--text)', fontWeight: 500 }}>{fmt(followerCount)}</strong> followers</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}><strong style={{ color: 'var(--text)', fontWeight: 500 }}>{fmt(followingCount)}</strong> following</span>
         </div>
 
         {profile.bio ? (

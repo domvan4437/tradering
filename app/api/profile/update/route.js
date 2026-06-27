@@ -40,10 +40,15 @@ export async function GET(request) {
         twitter: true, instagram: true, youtube: true, website: true,
         publicWinRate: true, publicPnl: true, publicTrades: true,
         publicLocation: true, tagline: true, plan: true, image: true,
+        _count: { select: { followers: true, following: true } },
       },
     })
     if (user && typeof user.primaryAssets === 'string') {
       try { user.primaryAssets = JSON.parse(user.primaryAssets) } catch { user.primaryAssets = [] }
+    }
+    if (user) {
+      user.followerCount  = user._count?.followers ?? 0
+      user.followingCount = user._count?.following ?? 0
     }
     return Response.json({ user })
   } catch(e) {
