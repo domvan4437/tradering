@@ -471,7 +471,7 @@ function GroupsView({ currentUserId }) {
             {members.length === 0
               ? <div style={{ padding:'6px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>Loading…</div>
               : members.map(m => (
-                <div key={m.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8 }}>
+                <div key={m.id} onClick={() => goToProfile(m.profileSlug || m.id)} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, cursor:'pointer' }}>
                   <div style={{ width:24, height:24, borderRadius:'50%', background: m.image ? 'transparent' : getColor(m.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
                     {m.image ? <img src={m.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.name||'?')[0].toUpperCase()}
                   </div>
@@ -916,12 +916,12 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
         {(() => {
           const avatarUrl = t.userId === myUserId ? (myAvatar || t.authorImage) : t.authorImage;
           return (
-            <div style={{ width:28, height:28, borderRadius:'50%', background: avatarUrl ? 'transparent' : 'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+            <div onClick={() => goToProfile(t.authorSlug || t.userId)} style={{ width:28, height:28, borderRadius:'50%', background: avatarUrl ? 'transparent' : 'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden', cursor:'pointer' }}>
               {avatarUrl ? <img src={avatarUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (t.user||'T')[0].toUpperCase()}
             </div>
           );
         })()}
-        <span style={{ fontSize:13, fontWeight:600, color:'var(--text)', fontFamily:'var(--font)' }}>{t.user}</span>
+        <span onClick={() => goToProfile(t.authorSlug || t.userId)} style={{ fontSize:13, fontWeight:600, color:'var(--text)', fontFamily:'var(--font)', cursor:'pointer' }}>{t.user}</span>
         <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{new Date(t.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
         {t.asset && <span style={{ fontSize:10, fontWeight:500, padding:'2px 8px', borderRadius:12, background:'#EEEDFE', color:'#3C3489', fontFamily:'var(--font)' }}>{t.asset}</span>}
         {t.userId === myUserId && (
@@ -993,6 +993,7 @@ function ThreadsFeed({ onNewPost, currentUserId }) {
         setThreads(data.posts.map(p => ({
           id: p.id,
           userId: p.userId,
+          authorSlug: p.authorSlug || p.userId || null,
           user: p.authorName || 'Trader',
           authorImage: p.authorImage || null,
           body: p.content,

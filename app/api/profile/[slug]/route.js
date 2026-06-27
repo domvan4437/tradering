@@ -6,7 +6,7 @@ export async function GET(req, { params }) {
   const session = await getSession();
 
   const user = await prisma.user.findFirst({
-    where: { OR: [{ profileSlug: slug }, { id: slug }] },
+    where: { OR: [{ profileSlug: slug }, { id: slug }, { username: slug }] },
     include: {
       consistency: true,
       screenerTemplates: { where: { isPublic: true }, take: 6, orderBy: { useCount: 'desc' } },

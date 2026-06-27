@@ -77,7 +77,7 @@ export default function GlobalLeaderboard() {
                 <tr key={entry.userId} style={{ transition: 'background 0.1s', cursor: 'pointer' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  onClick={() => entry.profileSlug && window.__goToProfile && window.__goToProfile(entry.profileSlug)}
+                  onClick={() => { const id = entry.profileSlug || entry.userId; if (id && window.__goToProfile) window.__goToProfile(id); }}
                 >
                   <td style={{ padding: '13px 16px', borderBottom: '1px solid var(--border)', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: rankColor(entry.rank) }}>
                     {rankLabel(entry.rank)}
