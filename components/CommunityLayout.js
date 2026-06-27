@@ -199,7 +199,7 @@ function GroupChatRoom({ group, activeRoom, myName }) {
         )}
         <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx" style={{ display:'none' }} onChange={handleFile} />
         {/* Message bar */}
-        <div style={{ display:'flex', gap:8, alignItems:'center', background:'#1e1e2e', border:'2px solid #534AB7', borderRadius:14, padding:'10px 14px', boxShadow:'0 2px 12px rgba(83,74,183,0.18)' }}>
+        <div style={{ display:'flex', gap:8, alignItems:'center', background:'var(--surface2)', border:'2px solid #534AB7', borderRadius:14, padding:'10px 14px', boxShadow:'0 2px 12px rgba(83,74,183,0.18)' }}>
           <div ref={popRef} style={{ position:'relative', flexShrink:0 }}>
             <button onClick={() => setPopover(p => !p)} style={{ width:28, height:28, borderRadius:'50%', background:popover?PURPLE:'rgba(83,74,183,0.2)', border:'1px solid '+(popover?PURPLE:'#534AB7'), display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#AFA9EC', fontSize:20, lineHeight:1, fontWeight:300, outline:'none' }}>+</button>
             {popover && (
@@ -216,7 +216,7 @@ function GroupChatRoom({ group, activeRoom, myName }) {
           </div>
           <input value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} }}
             placeholder={'Message #'+activeRoom}
-            style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'#fff', outline:'none', caretColor:'#AFA9EC' }} />
+            style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', caretColor:'#534AB7' }} />
           <button onClick={send} disabled={!msg.trim()&&!attachment} style={{ width:30, height:30, borderRadius:8, background:(msg.trim()||attachment)?PURPLE:'rgba(83,74,183,0.3)', color:'#fff', border:'none', cursor:(msg.trim()||attachment)?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>

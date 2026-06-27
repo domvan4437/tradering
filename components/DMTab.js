@@ -251,7 +251,7 @@ export default function DMTab({ initialUser }) {
 
         {/* Input */}
         <div style={{ padding:'10px 14px', borderTop:'1px solid var(--border)', flexShrink:0 }}>
-          <div style={{ display:'flex', gap:8, alignItems:'center', background:'#1e1e2e', border:'2px solid #534AB7', borderRadius:14, padding:'10px 14px', boxShadow:'0 2px 12px rgba(83,74,183,0.18)' }}>
+          <div style={{ display:'flex', gap:8, alignItems:'center', background:'var(--surface2)', border:'2px solid #534AB7', borderRadius:14, padding:'10px 14px', boxShadow:'0 2px 12px rgba(83,74,183,0.18)' }}>
             <input
               ref={inputRef}
               value={msgText}
@@ -259,7 +259,7 @@ export default function DMTab({ initialUser }) {
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMsg()}
               placeholder={`Message ${convo.displayName}...`}
               disabled={sending}
-              style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'#fff', outline:'none', caretColor:'#AFA9EC' }}
+              style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', caretColor:'#534AB7' }}
             />
             <button onClick={sendMsg} disabled={sending || !msgText.trim()}
               style={{ width:30, height:30, borderRadius:8, background: msgText.trim() ? PURPLE : 'rgba(83,74,183,0.3)', color:'#fff', border:'none', cursor: msgText.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, opacity: sending ? 0.6 : 1 }}>
