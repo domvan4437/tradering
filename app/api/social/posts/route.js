@@ -2,7 +2,7 @@ import { getSession } from '../../../../lib/auth'
 import { prisma } from '../../../../lib/prisma'
 
 const POST_INCLUDE = (userId) => ({
-  user: { select: { name: true, username: true, image: true } },
+  user: { select: { name: true, username: true, image: true, profileSlug: true } },
   postLikes: { where: { userId }, select: { id: true } },
   postReposts: { where: { userId }, select: { id: true } },
   _count: { select: { comments: true } },
@@ -23,6 +23,7 @@ const mapPost = (p, session, repostedBy = null) => ({
   createdAt: p.createdAt,
   authorName: p.user?.username || p.user?.name || 'Trader',
   authorImage: p.user?.image || null,
+  authorSlug: p.user?.profileSlug || p.user?.username || null,
   user: p.user,
   liked: p.postLikes.length > 0,
   reposted: p.postReposts.length > 0,

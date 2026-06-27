@@ -48,6 +48,7 @@ function mapApiPost(p) {
     assetTag: p.assetTag || p.symbol || '',
     direction: p.direction || null,
     authorImage: p.authorImage || null,
+    authorSlug: p.authorSlug || null,
     attachmentUrl: p.imageUrl || null,
     attachmentType: p.imageUrl ? 'image' : null,
     poll: p.poll || null,
@@ -178,14 +179,14 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
       )}
 
       <div style={{ display: 'flex', gap: 11 }}>
-        <div onClick={() => goToProfile(post.slug || post.user)} style={{ cursor: 'pointer', paddingTop: 2 }}>
+        <div onClick={() => goToProfile(post.authorSlug || post.userId)} style={{ cursor: 'pointer', paddingTop: 2 }}>
           <Avatar letter={post.avatar} grad={post.grad} size={38}
             imageUrl={post.userId === currentUserId ? (myAvatar || post.authorImage) : post.authorImage} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Header row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
-            <span onClick={() => goToProfile(post.slug || post.user)}
+            <span onClick={() => goToProfile(post.authorSlug || post.userId)}
               style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}
               onMouseEnter={e => e.currentTarget.style.color = '#4F46E5'}
               onMouseLeave={e => e.currentTarget.style.color = 'var(--text)'}>
