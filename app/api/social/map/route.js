@@ -41,6 +41,7 @@ export async function GET() {
       select: {
         id: true,
         username: true,
+        profileSlug: true,
         displayName: true,
         name: true,
         bio: true,
@@ -83,11 +84,12 @@ export async function GET() {
         id: r.id,
         displayName: r.displayName || r.name || r.username || 'Trader',
         username: r.username || null,
+        profileSlug: r.profileSlug || r.username || null,
         bio: r.bio || null,
         city: r.city || null,
         country: r.country || null,
         tradingStyle: r.tradingStyle || null,
-        assets: r.primaryAssets ? r.primaryAssets.split(',').map(s => s.trim()).filter(Boolean) : [],
+        assets: (() => { try { return r.primaryAssets ? JSON.parse(r.primaryAssets) : [] } catch { return r.primaryAssets ? r.primaryAssets.split(',').map(s => s.trim()).filter(Boolean) : [] } })(),
         openToMeetups: !!r.openToMeetups,
         groups: (r.groupMembers || [])
           .map(m => m.group)

@@ -7,22 +7,58 @@ const COLORS = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#02
 function getColor(n) { return COLORS[(n||'?').charCodeAt(0) % COLORS.length] }
 
 // ── Trader profile modal ──────────────────────────────────────
-function TraderProfile({ trader, onClose, onMessage, myAvatar }) {
+function TraderProfile({ trader, onClose, onMessage, myAvatar, onViewProfile }) {
+  const [following, setFollowing] = React.useState(false)
+  const [followLoading, setFollowLoading] = React.useState(false)
+
+  // Load current follow state
+  React.useEffect(() => {
+    if (!trader.isMe && trader.id) {
+      fetch('/api/social/follow?userId=' + trader.id)
+        .then(r => r.json())
+        .then(d => { if (!d.error) setFollowing(!!d.isFollowing) })
+        .catch(() => {})
+    }
+  }, [trader.id, trader.isMe])
+
+  const handleFollow = async () => {
+    setFollowLoading(true)
+    try {
+      const res = await fetch('/api/social/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: trader.id }),
+      })
+      const d = await res.json()
+      if (!d.error) setFollowing(d.following)
+    } catch {}
+    setFollowLoading(false)
+  }
+
   const initials = (trader.displayName||'T').slice(0,2).toUpperCase()
   const color = trader.isMe ? PURPLE : getColor(trader.displayName)
   const avatarImg = trader.isMe && myAvatar ? myAvatar : (trader.image || null)
+
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={onClose}>
-      <div style={{ background:'var(--surface,#18181b)', borderRadius:20, width:440, maxWidth:'95vw', boxShadow:'0 20px 60px rgba(0,0,0,0.4)', border:'1px solid var(--border,#27272a)', overflow:'hidden' }} onClick={e=>e.stopPropagation()}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1500, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={onClose}>
+      <div style={{ background:'var(--bg,#18181b)', borderRadius:20, width:440, maxWidth:'95vw', boxShadow:'0 20px 60px rgba(0,0,0,0.4)', border:'1px solid var(--border,#27272a)', overflow:'hidden' }} onClick={e=>e.stopPropagation()}>
         <div style={{ padding:'20px 22px 22px' }}>
           {/* Avatar + close row */}
           <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:14 }}>
-            <div style={{ width:56, height:56, borderRadius:'50%', background: avatarImg ? 'transparent' : color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+            {/* Clickable avatar → opens full ProfilePopup */}
+            <div
+              onClick={() => onViewProfile && onViewProfile(trader.profileSlug || trader.id)}
+              title="View full profile"
+              style={{ width:56, height:56, borderRadius:'50%', background: avatarImg ? 'transparent' : color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden', cursor: trader.isMe ? 'default' : 'pointer', position:'relative' }}>
               {avatarImg ? <img src={avatarImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : initials}
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap', marginBottom:3 }}>
-                <span style={{ fontSize:16, fontWeight:700, color:'var(--text,#f4f4f5)' }}>{trader.displayName}</span>
+                <span
+                  onClick={() => !trader.isMe && onViewProfile && onViewProfile(trader.profileSlug || trader.id)}
+                  style={{ fontSize:16, fontWeight:700, color:'var(--text,#f4f4f5)', cursor: trader.isMe ? 'default' : 'pointer' }}>
+                  {trader.displayName}
+                </span>
                 {trader.isMe && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:20, background:'rgba(75,68,200,0.2)', color:PURPLE, fontWeight:600 }}>You</span>}
                 {trader.openToMeetups && <span style={{ fontSize:11, padding:'2px 8px', borderRadius:20, background:'rgba(5,150,105,0.15)', color:'#10b981', fontWeight:600 }}>Open to meetups</span>}
               </div>
@@ -76,13 +112,15 @@ function TraderProfile({ trader, onClose, onMessage, myAvatar }) {
           {/* Actions */}
           {!trader.isMe && (
             <div style={{ display:'flex', gap:8 }}>
-              <button onClick={() => { onMessage(trader.id); onClose(); }}
-                style={{ flex:1, padding:'11px', background:PURPLE, color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:600, cursor:'pointer' }}>
-                Message
+              <button
+                onClick={handleFollow}
+                disabled={followLoading}
+                style={{ flex:1, padding:'11px', background: following ? 'var(--surface2,#27272a)' : PURPLE, color: following ? 'var(--text,#f4f4f5)' : '#fff', border: following ? '1px solid var(--border,#3f3f46)' : 'none', borderRadius:12, fontSize:14, fontWeight:600, cursor:'pointer', transition:'all .15s' }}>
+                {followLoading ? '…' : following ? 'Following' : 'Follow'}
               </button>
-              <button onClick={onClose}
+              <button onClick={() => { onMessage(trader.id); onClose(); }}
                 style={{ flex:1, padding:'11px', background:'transparent', color:'var(--text,#f4f4f5)', border:'1px solid var(--border,#3f3f46)', borderRadius:12, fontSize:14, fontWeight:600, cursor:'pointer' }}>
-                Close
+                Message
               </button>
             </div>
           )}
@@ -228,7 +266,13 @@ export default function LocalTradersTab({ currentUserId, onNavigate }) {
         .tr-row:hover { background:var(--surface2,#27272a) !important; }
       `}</style>
 
-      {selected && <TraderProfile trader={selected} onClose={() => setSelected(null)} onMessage={handleMessage} myAvatar={myAvatar} />}
+      {selected && <TraderProfile
+        trader={selected}
+        onClose={() => setSelected(null)}
+        onMessage={handleMessage}
+        myAvatar={myAvatar}
+        onViewProfile={slug => { if (typeof window !== 'undefined' && window.__goToProfile) window.__goToProfile(slug) }}
+      />}
 
       {/* Top bar */}
       <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border,#27272a)', flexShrink:0 }}>
