@@ -335,7 +335,17 @@ function FeedSidebar({ posts }) {
   useEffect(() => {
     fetch('/api/social/leaderboard?limit=4')
       .then(r => r.json())
-      .then(d => setSuggestions((d.users || d.leaderboard || []).slice(0, 4)))
+      .then(d => {
+        const users = (d.users || d.leaderboard || []).slice(0, 4);
+        setSuggestions(users);
+        // Pre-load current follow state for each suggestion
+        users.forEach(u => {
+          fetch(`/api/social/follow?userId=${u.id}`)
+            .then(r => r.json())
+            .then(d => { if (d.isFollowing !== undefined) setFollowed(prev => ({ ...prev, [u.id]: d.isFollowing })); })
+            .catch(() => {});
+        });
+      })
       .catch(() => {});
   }, []);
 
@@ -345,7 +355,15 @@ function FeedSidebar({ posts }) {
 
   const handleFollow = async (userId) => {
     setFollowed(prev => ({ ...prev, [userId]: !prev[userId] }));
-    try { await fetch('/api/social/follow', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetUserId: userId }) }); } catch {}
+    try {
+      const res = await fetch('/api/social/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const d = await res.json();
+      if (!d.error) setFollowed(prev => ({ ...prev, [userId]: d.following }));
+    } catch {}
   };
 
   function getColor(name) {

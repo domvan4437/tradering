@@ -425,16 +425,6 @@ export default function ProfileTab({ user }) {
           </div>
         )}
 
-        {/* Follow / Message — purple, below all info */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-          <button style={{ flex: 1, padding: '8px 0', borderRadius: 20, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: PURPLE, color: '#fff' }}>
-            Follow
-          </button>
-          <button style={{ flex: 1, padding: '8px 0', borderRadius: 20, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: PURPLE, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Message
-          </button>
-        </div>
       </div>
 
       {/* Posts — half-width centered column */}
