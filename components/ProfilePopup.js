@@ -80,6 +80,19 @@ export default function ProfilePopup({ slug, onClose }) {
             reposted:     false,
             comments:     p._count?.comments || 0,
           })));
+          // Separately verify follow status from the dedicated follow API
+          // (profile API's embedded isFollowing can be stale/wrong due to session timing)
+          if (d.profile?.id) {
+            fetch('/api/social/follow?userId=' + d.profile.id)
+              .then(r => r.json())
+              .then(f => {
+                if (!f.error) {
+                  setFollowing(!!f.isFollowing);
+                  setFollowerCount(f.followers ?? d.profile?.followerCount ?? 0);
+                }
+              })
+              .catch(() => {});
+          }
         }
         setLoading(false);
       })
