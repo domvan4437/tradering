@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { usePlaidLink } from 'react-plaid-link'
+import CompetitionTradingView from './CompetitionTradingView'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function timeLeft(end) {
@@ -506,7 +507,7 @@ export default function MatchDetailView({ matchId, onBack }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState('mine')
+  const [tab, setTab] = useState('paper')
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError('')
@@ -615,9 +616,10 @@ export default function MatchDetailView({ matchId, onBack }) {
         )}
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 14 }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 14, overflowX: 'auto' }}>
           {[
-            ['mine', `My Trades${myTrades?.length ? ` (${myTrades.length})` : ''}`],
+            ['paper', '📊 Paper Trade'],
+            ['mine', `My Synced${myTrades?.length ? ` (${myTrades.length})` : ''}`],
             ['theirs', opponent ? `${opponentName.split(' ')[0]}'s Trades${theirTrades?.length ? ` (${theirTrades.length})` : ''}` : 'Opponent'],
             ['analytics', 'Analytics'],
           ].map(([key, label]) => (
@@ -635,7 +637,17 @@ export default function MatchDetailView({ matchId, onBack }) {
           ))}
         </div>
 
-        {/* My trades */}
+        {/* Paper trading panel */}
+        {tab === 'paper' && (
+          <CompetitionTradingView
+            competitionId={matchId}
+            competitionType="h2h"
+            endDate={match.endDate}
+            title={match.asset !== 'Any' ? `${match.asset} Challenge` : 'Open Challenge'}
+          />
+        )}
+
+        {/* My trades (broker-synced) */}
         {tab === 'mine' && (
           myTrades?.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '36px 20px' }}>

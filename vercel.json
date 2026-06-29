@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/competition-housekeeping",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/competition-price-engine",
+      "schedule": "* * * * *"
     }
   ]
 }

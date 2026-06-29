@@ -89,10 +89,14 @@ model User {
   tradeMedia           TradeMedia[]
   tradePlans           TradePlan[]
   consistency          TraderConsistency?
-  followers            UserFollow[]          @relation("Followers")
-  following            UserFollow[]          @relation("Following")
-  watchlist            WatchlistItem[]
-  weeklyReviews        WeeklyReview[]
+  followers             UserFollow[]          @relation("Followers")
+  following             UserFollow[]          @relation("Following")
+  watchlist             WatchlistItem[]
+  weeklyReviews         WeeklyReview[]
+  competitionPortfolios CompetitionPortfolio[]
+  competitionPositions  CompetitionPosition[]
+  competitionOrders     CompetitionOrder[]
+  competitionTrades     CompetitionTrade[]
 }
 
 model Screening {
@@ -783,4 +787,98 @@ model TradeIdea {
   createdAt    DateTime @default(now())
   author       User     @relation("AuthoredIdeas", fields: [authorId], references: [id], onDelete: Cascade)
   group        Group?   @relation(fields: [groupId], references: [id])
+}
+
+// ─── Paper Trading Competition Engine ────────────────────────────────────────
+
+model CompetitionPortfolio {
+  id              String    @id @default(cuid())
+  competitionId   String
+  competitionType String    @default("h2h") // "h2h" | "group"
+  userId          String
+  startingCash    Float     @default(10000)
+  cash            Float     @default(10000)
+  isLiquidated    Boolean   @default(false)
+  endDate         DateTime?
+  status          String    @default("active") // "active" | "completed"
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions CompetitionPosition[]
+  orders    CompetitionOrder[]
+  trades    CompetitionTrade[]
+
+  @@unique([competitionId, userId])
+}
+
+model CompetitionPosition {
+  id            String   @id @default(cuid())
+  portfolioId   String
+  competitionId String
+  userId        String
+  symbol        String
+  symbolName    String   @default("")
+  assetType     String   @default("stock")
+  direction     String
+  quantity      Float
+  leverage      Float    @default(1)
+  entryPrice    Float
+  currentPrice  Float    @default(0)
+  openedAt      DateTime @default(now())
+  stopLoss      Float?
+  takeProfit    Float?
+
+  portfolio CompetitionPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CompetitionOrder {
+  id            String    @id @default(cuid())
+  portfolioId   String
+  competitionId String
+  userId        String
+  symbol        String
+  symbolName    String    @default("")
+  assetType     String    @default("stock")
+  direction     String
+  quantity      Float
+  leverage      Float     @default(1)
+  orderType     String    // "market" | "limit" | "stop_entry"
+  limitPrice    Float?
+  stopLoss      Float?
+  takeProfit    Float?
+  status        String    @default("pending") // "pending" | "filled" | "cancelled" | "rejected"
+  submittedAt   DateTime  @default(now())
+  canFillAfter  DateTime  @default(now())
+  filledAt      DateTime?
+  fillPrice     Float?
+  rejectReason  String?
+
+  portfolio CompetitionPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CompetitionTrade {
+  id            String   @id @default(cuid())
+  portfolioId   String
+  competitionId String
+  userId        String
+  positionId    String?
+  symbol        String
+  symbolName    String   @default("")
+  assetType     String   @default("stock")
+  direction     String
+  quantity      Float
+  leverage      Float    @default(1)
+  entryPrice    Float
+  exitPrice     Float
+  openedAt      DateTime
+  closedAt      DateTime @default(now())
+  closeReason   String   @default("manual") // "manual" | "stop_loss" | "take_profit" | "liquidation" | "competition_end"
+  pnl           Float    @default(0)
+  pnlPct        Float    @default(0)
+
+  portfolio CompetitionPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

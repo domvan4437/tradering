@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import MatchDetailView from './MatchDetailView';
+import CompetitionTradingView from './CompetitionTradingView';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ASSET_CLASSES = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
@@ -1030,6 +1031,85 @@ function H2HTab({ currentUserId, onOpenProfile }) {
   );
 }
 
+// ─── Contest Detail View (Group Paper Trading) ────────────────────────────────
+function ContestDetailView({ contest, onBack }) {
+  const [tab, setTab] = useState('paper');
+  const [detail, setDetail] = useState(null);
+
+  useEffect(() => {
+    if (!contest?.id) return;
+    fetch(`/api/group-contests/preview?id=${contest.id}`)
+      .then(r => r.json())
+      .then(d => setDetail(d))
+      .catch(() => {});
+  }, [contest?.id]);
+
+  const endDate = detail?.endDate || contest.endDate || null;
+
+  return (
+    <div style={{ paddingBottom: 32 }}>
+      {/* Back */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px 10px' }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontFamily: 'var(--font)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 5, padding: 0 }}>
+          <i className="ti ti-arrow-left" /> Back
+        </button>
+        <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{contest.name}</div>
+        {endDate && (
+          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+            {new Date(endDate) > Date.now() ? `ends ${new Date(endDate).toLocaleDateString()}` : 'Ended'}
+          </div>
+        )}
+      </div>
+
+      {/* Sub-tabs */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 0, paddingLeft: 18 }}>
+        {[['paper', '📊 Paper Trade'], ['info', 'Contest Info']].map(([k, l]) => (
+          <button key={k} onClick={() => setTab(k)} style={{
+            padding: '8px 14px', fontFamily: 'var(--font)', fontSize: 12,
+            fontWeight: tab === k ? 600 : 400,
+            color: tab === k ? '#534AB7' : 'var(--text-muted)',
+            background: 'none', border: 'none',
+            borderBottom: tab === k ? '2px solid #534AB7' : '2px solid transparent',
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>{l}</button>
+        ))}
+      </div>
+
+      {tab === 'paper' && (
+        <CompetitionTradingView
+          competitionId={contest.id}
+          competitionType="group"
+          endDate={endDate}
+          title={contest.name}
+        />
+      )}
+
+      {tab === 'info' && detail && (
+        <div style={{ padding: '14px 18px' }}>
+          {contest.description && (
+            <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', marginBottom: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>
+              {contest.description}
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { l: 'Asset', v: contest.asset || 'Any' },
+              { l: 'Members', v: detail.memberCount ?? contest.memberCount },
+              { l: 'Buy-in', v: contest.buyIn > 0 ? `$${contest.buyIn}` : 'Free' },
+              { l: 'Prize', v: detail.prizeStructure || 'Winner Takes All' },
+            ].map(({ l, v }) => (
+              <div key={l} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>{l}</div>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── GROUP TAB ────────────────────────────────────────────────────────────────
 function GroupTab({ currentUserId, onOpenProfile }) {
   const [inner, setInner] = useState('browse');
@@ -1038,6 +1118,7 @@ function GroupTab({ currentUserId, onOpenProfile }) {
   const [showModal, setShowModal] = useState(false);
   const [data, setData] = useState({ contests: [], myContests: [] });
   const [loading, setLoading] = useState(true);
+  const [selectedContest, setSelectedContest] = useState(null);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -1048,6 +1129,11 @@ function GroupTab({ currentUserId, onOpenProfile }) {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Show ContestDetailView (paper trading) if a joined contest is selected
+  if (selectedContest) {
+    return <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} />;
+  }
 
   const handleJoin = async (contestId) => {
     await fetch('/api/group-contests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId }) });
@@ -1097,7 +1183,11 @@ function GroupTab({ currentUserId, onOpenProfile }) {
         ) : (data.myContests || []).length === 0 ? (
           <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />
         ) : (
-          (data.myContests || []).map(c => <ContestCard key={c.id} contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />)
+          (data.myContests || []).map(c => (
+            <div key={c.id} onClick={() => setSelectedContest(c)} style={{ cursor: 'pointer' }}>
+              <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />
+            </div>
+          ))
         )
       )}
     </div>
