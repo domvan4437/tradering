@@ -1822,7 +1822,19 @@ function GroupTab({ currentUserId, onOpenProfile }) {
           ) : filteredContests.length === 0 ? (
             <EmptyState icon="ti-users" title="No open contests" sub="Create one or wait for others to post" btnLabel="Create contest" onBtnClick={() => setShowModal(true)} />
           ) : (
-            filteredContests.map(c => <ContestCard key={c.id} contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />)
+            filteredContests.map(c => (
+              <div key={c.id} style={{ position: 'relative' }}>
+                <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />
+                {c.isCreator && (
+                  <button
+                    onClick={e => { e.stopPropagation(); handleDeleteContest(c.id); }}
+                    style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', zIndex: 1 }}
+                    title="Delete contest">
+                    <i className="ti ti-trash" style={{ fontSize: 14 }} />
+                  </button>
+                )}
+              </div>
+            ))
           )}
         </>
       )}
