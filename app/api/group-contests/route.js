@@ -150,6 +150,7 @@ export async function DELETE(request) {
     await prisma.competitionOrder.deleteMany({ where: { competitionId: contestId } })
     await prisma.competitionPortfolio.deleteMany({ where: { competitionId: contestId } })
     await prisma.tournamentEntry.deleteMany({ where: { tournamentId: contestId } })
+    await prisma.contestTeam.deleteMany({ where: { contestId } })
     await prisma.tournament.delete({ where: { id: contestId } })
 
     return Response.json({ success: true })
