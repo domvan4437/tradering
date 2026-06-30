@@ -485,8 +485,56 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile }) {
           )}
         </div>
 
+        {/* Team slot picker — shown when contest has a fixed team format */}
+        {!contest.joined && detail?.teamFormat && (detail?.teams || []).length > 0 && (() => {
+          const renderSlot = (team) => {
+            const full = !!(detail.teamSize && team.memberCount >= detail.teamSize);
+            return (
+              <button
+                key={team.id}
+                disabled={joining || full}
+                onClick={() => joinTeam(team.id)}
+                style={{
+                  background: full ? 'var(--surface2)' : team.color + '14',
+                  border: `2px solid ${full ? 'var(--border)' : team.color}`,
+                  borderRadius: 14, padding: '16px 10px', cursor: full ? 'not-allowed' : 'pointer',
+                  opacity: full ? 0.55 : 1,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                  width: '100%', transition: 'opacity .15s',
+                }}
+              >
+                <span style={{ fontSize: 26 }}>{team.emoji}</span>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: full ? 'var(--text-muted)' : team.color }}>{team.name}</div>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+                  {team.memberCount}{detail.teamSize ? `/${detail.teamSize}` : ''} joined
+                </div>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, background: full ? 'var(--surface3)' : team.color, color: full ? 'var(--text-muted)' : '#fff', borderRadius: 8, padding: '3px 12px' }}>
+                  {joining ? '…' : full ? 'Full' : 'Join'}
+                </div>
+              </button>
+            );
+          };
+          const t = detail.teams;
+          return (
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Pick your side</div>
+              {t.length === 2 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'center' }}>
+                  {renderSlot(t[0])}
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 800, color: 'var(--text-muted)', textAlign: 'center' }}>VS</div>
+                  {renderSlot(t[1])}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {t.map(team => renderSlot(team))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ ...S.ghostBtn, flex: 1 }}>Cancel</button>
+          <button onClick={onClose} style={{ ...S.ghostBtn, flex: 1 }}>{contest.joined ? 'Close' : 'Cancel'}</button>
           {contest.joined ? (
             <button onClick={onClose} style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center', background: '#059669' }}>
               ✓ Already joined
@@ -495,11 +543,11 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile }) {
             <button disabled style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'not-allowed' }}>
               Contest full
             </button>
-          ) : (
+          ) : !detail?.teamFormat ? (
             <button onClick={goToTeams} style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center' }}>
               <i className="ti ti-users" /> Join contest →
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
@@ -883,11 +931,27 @@ function CreateGroupModal({ onClose, onSuccess }) {
     structure: 'Top 3 Split',
     minTrades: 10,
     desc: '',
+    teamFormat: 'none',
+    teamNameA: 'Team Alpha',
+    teamNameB: 'Team Beta',
+    teamSizeCustom: '10',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setDur = (patch) => setForm(p => ({ ...p, ...patch }));
+
+  const TEAM_FORMAT_OPTS = [
+    { v: 'none', l: 'None (free-for-all)' },
+    { v: '5v5', l: '5v5' },
+    { v: '10v10', l: '10v10' },
+    { v: '20v20', l: '20v20' },
+    { v: 'custom', l: 'Custom' },
+  ];
+  const parsedTeamSize = form.teamFormat === 'none' ? null
+    : form.teamFormat === 'custom' ? (parseInt(form.teamSizeCustom) || 10)
+    : parseInt(form.teamFormat.split('v')[0]);
+  const finalTeamFormat = parsedTeamSize ? `${parsedTeamSize}v${parsedTeamSize}` : null;
 
   const feeNum = parseInt(form.fee) || 0;
   const estimatedPool = feeNum * form.maxGroups;
@@ -909,6 +973,10 @@ function CreateGroupModal({ onClose, onSuccess }) {
           asset: form.asset,
           duration,
           buyIn: type === 'paid' ? form.fee : '0',
+          teamFormat: finalTeamFormat,
+          teamSize: parsedTeamSize,
+          teamNameA: form.teamNameA,
+          teamNameB: form.teamNameB,
         }),
       });
       const data = await res.json();
@@ -974,6 +1042,43 @@ function CreateGroupModal({ onClose, onSuccess }) {
           <label style={S.label}>Min trades required</label>
           <input type="number" min="1" value={form.minTrades} onChange={e => set('minTrades', parseInt(e.target.value) || 1)} style={S.input} />
         </div>
+
+        {/* Team format */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={S.label}>Team format</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {TEAM_FORMAT_OPTS.map(({ v, l }) => (
+              <button key={v} type="button" onClick={() => set('teamFormat', v)} style={{
+                padding: '5px 13px', borderRadius: 20, cursor: 'pointer',
+                border: `1.5px solid ${form.teamFormat === v ? '#534AB7' : 'var(--border)'}`,
+                background: form.teamFormat === v ? '#EEEDFE' : 'transparent',
+                color: form.teamFormat === v ? '#534AB7' : 'var(--text-muted)',
+                fontFamily: 'var(--font)', fontSize: 12, fontWeight: form.teamFormat === v ? 600 : 400,
+              }}>{l}</button>
+            ))}
+          </div>
+        </div>
+
+        {form.teamFormat !== 'none' && (
+          <>
+            {form.teamFormat === 'custom' && (
+              <div>
+                <label style={S.label}>Players per team</label>
+                <input type="number" min={2} max={50} value={form.teamSizeCustom} onChange={e => set('teamSizeCustom', e.target.value)} style={S.input} />
+              </div>
+            )}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={S.label}>Team names</label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input value={form.teamNameA} onChange={e => set('teamNameA', e.target.value)} placeholder="Team Alpha" style={{ ...S.input, flex: 1 }} />
+                <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>VS</span>
+                <input value={form.teamNameB} onChange={e => set('teamNameB', e.target.value)} placeholder="Team Beta" style={{ ...S.input, flex: 1 }} />
+              </div>
+              {parsedTeamSize && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{parsedTeamSize} slots per team — players pick their side when joining</div>}
+            </div>
+          </>
+        )}
+
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={S.label}>Rules / description</label>
           <textarea
@@ -1481,9 +1586,127 @@ function ContestLeaderboard({ contestId, currentUserId }) {
 }
 
 // ─── Contest Detail View (Group Paper Trading) ────────────────────────────────
+// ─── TEAM BATTLE VIEW ─────────────────────────────────────────────────────────
+function TeamBattleView({ contestId, currentUserId, teamSize: propTeamSize }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch(`/api/group-contests/preview?id=${contestId}`)
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [contestId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return (
+    <div style={{ textAlign: 'center', padding: 40, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+  );
+
+  const teams = data?.teams || [];
+  const teamSize = data?.teamSize || propTeamSize || null;
+  const fmtPnl = v => `${v >= 0 ? '+' : '-'}$${Math.abs(v).toFixed(2)}`;
+
+  if (teams.length === 0) return (
+    <div style={{ padding: 24, textAlign: 'center', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>
+      No teams found for this contest.
+    </div>
+  );
+
+  return (
+    <div style={{ padding: 18 }}>
+      {/* Team summary header */}
+      {teams.length === 2 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+          {[teams[0], null, teams[1]].map((team, i) =>
+            team === null ? (
+              <div key="vs" style={{ textAlign: 'center', fontFamily: 'var(--font)', fontSize: 16, fontWeight: 800, color: 'var(--text-muted)' }}>VS</div>
+            ) : (
+              <div key={team.id} style={{ background: team.color + '12', border: `1.5px solid ${team.color}55`, borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }}>{team.emoji}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: team.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: team.teamPnl >= 0 ? '#059669' : '#dc2626' }}>{fmtPnl(team.teamPnl)}</div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{team.memberCount}{teamSize ? `/${teamSize}` : ''} players</div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${teams.length}, 1fr)`, gap: 10, marginBottom: 16 }}>
+          {teams.map(team => (
+            <div key={team.id} style={{ background: team.color + '12', border: `1.5px solid ${team.color}55`, borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 24, flexShrink: 0 }}>{team.emoji}</span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: team.color }}>{team.name}</div>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: team.teamPnl >= 0 ? '#059669' : '#dc2626' }}>{fmtPnl(team.teamPnl)}</div>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{team.memberCount}{teamSize ? `/${teamSize}` : ''} players</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Two-column member rankings */}
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(teams.length, 2)}, 1fr)`, gap: 10 }}>
+        {teams.map(team => {
+          const emptySlots = teamSize ? Math.max(0, teamSize - team.memberCount) : 0;
+          return (
+            <div key={team.id} style={{ background: 'var(--surface)', border: `1.5px solid ${team.color}30`, borderRadius: 12, overflow: 'hidden' }}>
+              {/* Column header */}
+              <div style={{ background: team.color + '18', borderBottom: `1px solid ${team.color}30`, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 15 }}>{team.emoji}</span>
+                <span style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: team.color, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</span>
+                <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{team.memberCount}{teamSize ? `/${teamSize}` : ''}</span>
+              </div>
+
+              {/* Ranked members */}
+              {team.members.length === 0 ? (
+                <div style={{ padding: '20px 12px', textAlign: 'center', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>No members yet</div>
+              ) : (
+                team.members.map((m, i) => (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: m.id === currentUserId ? team.color + '0A' : 'transparent' }}>
+                    <div style={{ width: 18, fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, color: i === 0 ? team.color : 'var(--text-muted)', flexShrink: 0 }}>{i + 1}</div>
+                    <div style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', fontWeight: m.id === currentUserId ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {m.name}
+                      {m.id === currentUserId && <span style={{ marginLeft: 5, fontSize: 9, background: team.color, color: '#fff', padding: '1px 5px', borderRadius: 6 }}>YOU</span>}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: m.pnl >= 0 ? '#059669' : '#dc2626', flexShrink: 0 }}>{fmtPnl(m.pnl)}</div>
+                  </div>
+                ))
+              )}
+
+              {/* Open slots */}
+              {emptySlots > 0 && Array.from({ length: Math.min(emptySlots, 3) }).map((_, i) => (
+                <div key={`slot-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--border)', opacity: 0.35 }}>
+                  <div style={{ width: 18, fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{team.memberCount + i + 1}</div>
+                  <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Open slot</div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>—</div>
+                </div>
+              ))}
+              {emptySlots > 3 && (
+                <div style={{ padding: '7px 12px', fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', borderTop: '1px solid var(--border)' }}>+{emptySlots - 3} more open slots</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <button onClick={load} style={{ marginTop: 14, ...S.ghostBtn, width: '100%', justifyContent: 'center' }}>
+        <i className="ti ti-refresh" /> Refresh standings
+      </button>
+    </div>
+  );
+}
+
+// ─── CONTEST DETAIL VIEW ───────────────────────────────────────────────────────
 function ContestDetailView({ contest, onBack, currentUserId }) {
   const [tab, setTab] = useState('paper');
   const [detail, setDetail] = useState(null);
+  const hasTeamFormat = !!(contest.teamFormat);
 
   useEffect(() => {
     if (!contest?.id) return;
@@ -1494,6 +1717,9 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
   }, [contest?.id]);
 
   const endDate = detail?.endDate || contest.endDate || null;
+  const tabs = hasTeamFormat
+    ? [['paper', '📊 Trade'], ['battle', '⚔️ Battle'], ['info', 'ℹ️ Info']]
+    : [['paper', '📊 Trade'], ['leaderboard', '🏆 Leaderboard'], ['teams', '⚔️ Teams'], ['info', 'ℹ️ Info']];
 
   return (
     <div style={{ paddingBottom: 32 }}>
@@ -1502,7 +1728,10 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
         <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontFamily: 'var(--font)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 5, padding: 0 }}>
           <i className="ti ti-arrow-left" /> Back
         </button>
-        <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{contest.name}</div>
+        <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+          {contest.name}
+          {hasTeamFormat && <span style={{ marginLeft: 8, fontSize: 11, background: '#EEEDFE', color: '#534AB7', padding: '2px 7px', borderRadius: 10, fontWeight: 500 }}>{contest.teamFormat}</span>}
+        </div>
         {endDate && (
           <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
             {new Date(endDate) > Date.now() ? `ends ${new Date(endDate).toLocaleDateString()}` : 'Ended'}
@@ -1512,7 +1741,7 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
 
       {/* Sub-tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 0, paddingLeft: 18 }}>
-        {[['paper', '📊 Paper Trade'], ['leaderboard', '🏆 Leaderboard'], ['teams', '⚔️ Teams'], ['info', 'Info']].map(([k, l]) => (
+        {tabs.map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} style={{
             padding: '8px 14px', fontFamily: 'var(--font)', fontSize: 12,
             fontWeight: tab === k ? 600 : 400,
@@ -1534,11 +1763,15 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
         />
       )}
 
-      {tab === 'teams' && (
+      {tab === 'battle' && hasTeamFormat && (
+        <TeamBattleView contestId={contest.id} currentUserId={currentUserId} teamSize={contest.teamSize} />
+      )}
+
+      {tab === 'teams' && !hasTeamFormat && (
         <TeamsView contestId={contest.id} currentUserId={currentUserId} />
       )}
 
-      {tab === 'leaderboard' && (
+      {tab === 'leaderboard' && !hasTeamFormat && (
         <ContestLeaderboard contestId={contest.id} currentUserId={currentUserId} />
       )}
 

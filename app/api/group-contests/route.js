@@ -61,6 +61,9 @@ export async function GET(request) {
       joined: (c.entries?.length ?? 0) > 0,
       creatorName: c.creator?.displayName || c.creator?.name || c.creator?.username || 'Trader',
       creatorSlug: c.creator?.profileSlug || c.creator?.id,
+      isCreator: c.creatorId === uid,
+      teamFormat: c.teamFormat || null,
+      teamSize: c.teamSize || null,
     })
 
     return Response.json({ contests: allContests.map(fmtContest), myContests: myContests.map(fmtContest) })
@@ -74,11 +77,11 @@ export async function POST(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const { action, contestId, name, description, asset, duration, buyIn } = await request.json()
+    const { action, contestId, name, description, asset, duration, buyIn, teamFormat, teamSize, teamNameA, teamNameB } = await request.json()
 
     if (action === 'join') {
       const existing = await prisma.tournamentEntry.findFirst({ where: { tournamentId: contestId, userId: session.user.id } })
-      if (existing) return Response.json({ error: 'Already joined' }, { status: 400 })
+      if (existing) return Response.json({ success: true }) // already joined — silently succeed
       await prisma.tournamentEntry.create({ data: { tournamentId: contestId, userId: session.user.id, score: 0 } })
       return Response.json({ success: true })
     }
@@ -86,6 +89,7 @@ export async function POST(request) {
     if (action === 'create') {
       const now = new Date()
       const endDate = new Date(now.getTime() + parseDuration(duration))
+      const parsedTeamSize = teamSize ? parseInt(teamSize) : null
 
       const tournament = await prisma.tournament.create({
         data: {
@@ -100,16 +104,57 @@ export async function POST(request) {
           endDate,
           buyIn: parseFloat(buyIn) || 0,
           prizePool: 0,
+          teamFormat: teamFormat || null,
+          teamSize: parsedTeamSize,
         },
       })
 
-      await prisma.tournamentEntry.create({ data: { tournamentId: tournament.id, userId: session.user.id, score: 0 } })
+      // Auto-create 2 teams when a team format is set
+      if (teamFormat && parsedTeamSize) {
+        await prisma.contestTeam.createMany({
+          data: [
+            { contestId: tournament.id, captainId: session.user.id, name: teamNameA?.trim() || 'Team Alpha', emoji: '🔵', color: '#3B82F6' },
+            { contestId: tournament.id, captainId: session.user.id, name: teamNameB?.trim() || 'Team Beta', emoji: '🔴', color: '#EF4444' },
+          ],
+        })
+      } else {
+        // Non-team contest: creator auto-joins
+        await prisma.tournamentEntry.create({ data: { tournamentId: tournament.id, userId: session.user.id, score: 0 } })
+      }
+
       return Response.json({ success: true, contestId: tournament.id })
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 })
   } catch (e) {
     console.error('[POST /api/group-contests]', e)
+    return Response.json({ error: e.message }, { status: 500 })
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const session = await getSession()
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const uid = session.user.id
+    const { contestId } = await request.json()
+    if (!contestId) return Response.json({ error: 'contestId required' }, { status: 400 })
+
+    const contest = await prisma.tournament.findUnique({ where: { id: contestId } })
+    if (!contest) return Response.json({ error: 'Not found' }, { status: 404 })
+    if (contest.creatorId !== uid) return Response.json({ error: 'Only the creator can delete this contest' }, { status: 403 })
+
+    // Delete related data then the tournament
+    await prisma.tradeCall.deleteMany({ where: { tournamentId: contestId } })
+    await prisma.competitionPosition.deleteMany({ where: { competitionId: contestId } })
+    await prisma.competitionOrder.deleteMany({ where: { competitionId: contestId } })
+    await prisma.competitionPortfolio.deleteMany({ where: { competitionId: contestId } })
+    await prisma.tournamentEntry.deleteMany({ where: { tournamentId: contestId } })
+    await prisma.tournament.delete({ where: { id: contestId } })
+
+    return Response.json({ success: true })
+  } catch (e) {
+    console.error('[DELETE /api/group-contests]', e)
     return Response.json({ error: e.message }, { status: 500 })
   }
 }

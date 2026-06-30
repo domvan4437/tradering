@@ -93,6 +93,7 @@ model User {
   following             UserFollow[]          @relation("Following")
   watchlist             WatchlistItem[]
   weeklyReviews         WeeklyReview[]
+  captainedTeams        ContestTeam[]         @relation("TeamCaptain")
   competitionPortfolios CompetitionPortfolio[]
   competitionPositions  CompetitionPosition[]
   competitionOrders     CompetitionOrder[]
@@ -520,10 +521,13 @@ model Tournament {
   requireStopLoss  Boolean           @default(true)
   requireTarget    Boolean           @default(true)
   traderStyle      String?
+  teamFormat       String?
+  teamSize         Int?
   h2hMatches       H2HMatch[]
   creator          User              @relation("CreatedTournaments", fields: [creatorId], references: [id], onDelete: Cascade)
   entries          TournamentEntry[]
   calls            TradeCall[]
+  teams            ContestTeam[]
 }
 
 model H2HMatch {
@@ -881,4 +885,17 @@ model CompetitionTrade {
 
   portfolio CompetitionPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ContestTeam {
+  id          String     @id @default(cuid())
+  contestId   String
+  captainId   String
+  name        String
+  emoji       String     @default("⚡")
+  color       String     @default("#534AB7")
+  description String?
+  createdAt   DateTime   @default(now())
+  contest     Tournament @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  captain     User       @relation("TeamCaptain", fields: [captainId], references: [id])
 }
