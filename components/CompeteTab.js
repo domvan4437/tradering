@@ -8,6 +8,8 @@ const ASSET_CLASSES = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Cryp
 const H2H_DURATION_PRESETS = ['1 Day', '3 Days', '1 Week', '2 Weeks', '1 Month', 'Custom'];
 const GROUP_DURATION_PRESETS = ['1 Day', '3 Days', '1 Week', '2 Weeks', '1 Month', '3 Months', 'Custom'];
 const PRIZE_STRUCTURES = ['Winner Take All', 'Top 2 Split', 'Top 3 Split', 'Top 5 Split'];
+const TEAM_EMOJIS = ['⚡','🔥','🦁','🐯','🦊','🐺','🦅','🦋','🌊','💎','🎯','🚀','💪','🧠','👑','⚔️'];
+const TEAM_COLORS = ['#534AB7','#059669','#dc2626','#d97706','#0891b2','#7c3aed','#db2777','#65a30d'];
 
 // ─── Shared style tokens ──────────────────────────────────────────────────────
 const S = {
@@ -172,7 +174,7 @@ function SearchBar({ placeholder, value, onChange }) {
 function TypeToggle({ value, onChange, freeLabel, paidLabel }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 18 }}>
-      {[['free', freeLabel || 'Free (bragging rights)', 'ti-gift'], ['paid', paidLabel || 'Paid (entry stake)', 'ti-currency-dollar']].map(([type, label, icon]) => (
+      {[['free', freeLabel || 'Free', 'ti-gift'], ['paid', paidLabel || 'Paid (entry stake)', 'ti-currency-dollar']].map(([type, label, icon]) => (
         <button
           key={type}
           onClick={() => onChange(type)}
@@ -354,58 +356,98 @@ function H2HPreviewModal({ match, onAccept, onClose, onOpenProfile }) {
 
 // ─── Group Preview Modal ───────────────────────────────────────────────────────
 function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile }) {
-  const [loading, setLoading] = useState(false);
-  const [joining, setJoining] = useState(false);
+  const [step, setStep] = useState('info'); // 'info' | 'teams'
   const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(true);
+  const [teams, setTeams] = useState([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [createForm, setCreateForm] = useState({ show: false, name: '', emoji: '⚡', color: '#534AB7' });
 
   useEffect(() => {
-    setLoading(true);
+    setDetailLoading(true);
     fetch(`/api/group-contests/preview?id=${contest.id}`)
       .then(r => r.json())
-      .then(d => { setDetail(d); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(d => { setDetail(d); setDetailLoading(false); })
+      .catch(() => setDetailLoading(false));
   }, [contest.id]);
 
-  const spotsLeft = detail?.maxParticipants
-    ? detail.maxParticipants - (detail.memberCount || 0)
-    : null;
+  const loadTeams = () => {
+    setTeamsLoading(true);
+    fetch(`/api/group-contests/teams?contestId=${contest.id}`)
+      .then(r => r.json())
+      .then(d => { setTeams(d.teams || []); setTeamsLoading(false); })
+      .catch(() => setTeamsLoading(false));
+  };
 
-  return (
+  const goToTeams = () => { setStep('teams'); loadTeams(); };
+
+  const joinTeam = async (teamId) => {
+    setJoining(true);
+    await fetch('/api/group-contests/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId: contest.id, teamId }) });
+    await onJoin(contest.id);
+    onClose();
+  };
+
+  const createAndJoinTeam = async () => {
+    if (!createForm.name.trim()) return;
+    setJoining(true);
+    await fetch('/api/group-contests/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', contestId: contest.id, name: createForm.name.trim(), emoji: createForm.emoji, color: createForm.color }) });
+    await onJoin(contest.id);
+    onClose();
+  };
+
+  const joinSolo = async () => {
+    setJoining(true);
+    await onJoin(contest.id);
+    onClose();
+  };
+
+  const spotsLeft = detail?.maxParticipants ? detail.maxParticipants - (detail.memberCount || 0) : null;
+  const isFull = spotsLeft === 0;
+
+  const header = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {step === 'teams' && (
+          <button onClick={() => setStep('info')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontSize: 18, padding: '0 4px 0 0', display: 'flex', alignItems: 'center' }}>
+            <i className="ti ti-arrow-left" />
+          </button>
+        )}
+        <div style={{ width: 36, height: 36, borderRadius: 9, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <i className="ti ti-users" style={{ fontSize: 17, color: '#534AB7' }} />
+        </div>
+        <div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{contest.name}</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>
+            {step === 'info' ? (contest.creatorSlug
+              ? <button onClick={e => { e.stopPropagation(); onOpenProfile(contest.creatorSlug); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', padding: 0 }}>by {contest.creatorName}</button>
+              : `by ${contest.creatorName}`)
+            : 'Pick your team'}
+          </div>
+        </div>
+      </div>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20, lineHeight: 1 }}>×</button>
+    </div>
+  );
+
+  // ── Step 1: Info ──
+  if (step === 'info') return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
       <div style={{ background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 420, padding: 24, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 9, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="ti ti-users" style={{ fontSize: 18, color: '#534AB7' }} />
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{contest.name}</div>
-              {contest.creatorSlug ? (
-                <button onClick={e => { e.stopPropagation(); onOpenProfile(contest.creatorSlug); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: '#534AB7', padding: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
-                  by {contest.creatorName} <i className="ti ti-arrow-right" style={{ fontSize: 11 }} />
-                </button>
-              ) : (
-                <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>by {contest.creatorName}</div>
-              )}
-            </div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20 }}>×</button>
-        </div>
+        {header}
 
-        {/* Description */}
         {contest.description && (
           <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', marginBottom: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>
             "{contest.description}"
           </div>
         )}
 
-        {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
           {[
             { label: 'Asset', value: contest.asset || 'Any' },
             { label: 'Buy-in', value: contest.buyIn > 0 ? `$${contest.buyIn}` : 'Free' },
-            { label: 'Prize', value: detail?.prizeStructure || 'Winner Takes All' },
+            { label: 'Members', value: detail?.memberCount ?? contest.memberCount },
           ].map(({ label, value }) => (
             <div key={label} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 12px', textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
@@ -414,59 +456,137 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile }) {
           ))}
         </div>
 
-        {/* Members */}
+        {/* Live leaderboard preview */}
         <div style={{ marginBottom: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Joined ({detail?.memberCount ?? contest.memberCount})
-            </div>
-            {spotsLeft !== null && (
-              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: spotsLeft === 0 ? '#ef4444' : '#059669', fontWeight: 600 }}>
-                {spotsLeft === 0 ? 'Full' : `${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`}
-              </div>
-            )}
+          <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+            Leaderboard
           </div>
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 20, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading members…</div>
-          ) : detail?.members?.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 16, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', background: 'var(--surface2)', borderRadius: 9 }}>
+          {detailLoading ? (
+            <div style={{ textAlign: 'center', padding: 16, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+          ) : (detail?.members || []).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', background: 'var(--surface2)', borderRadius: 9 }}>
               No one joined yet — be the first!
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {(detail?.members || []).map((m, i) => (
-                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', borderRadius: 9, padding: '9px 12px' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#534AB7', flexShrink: 0 }}>
-                    {i + 1}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{m.name}</div>
-                  {m.score != null && m.score !== 0 && (
-                    <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: m.score >= 0 ? '#059669' : '#dc2626' }}>
-                      {m.score > 0 ? '+' : ''}{Number(m.score).toFixed(1)}R
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {(detail?.members || []).map((m, i) => {
+                const pnl = m.pnl ?? m.score ?? 0;
+                return (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', borderRadius: 9, padding: '8px 12px' }}>
+                    <div style={{ width: 22, textAlign: 'center', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: i === 0 ? '#d97706' : 'var(--text-muted)', flexShrink: 0 }}>{i + 1}</div>
+                    <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{m.name}</div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: pnl >= 0 ? '#059669' : '#dc2626' }}>
+                      {pnl >= 0 ? '+' : '-'}${Math.abs(pnl).toFixed(2)}
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Actions */}
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onClose} style={{ ...S.ghostBtn, flex: 1 }}>Cancel</button>
-          <button
-            disabled={joining || contest.joined || spotsLeft === 0}
-            onClick={async () => { setJoining(true); await onJoin(contest.id); onClose(); }}
-            style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center', background: contest.joined ? '#059669' : spotsLeft === 0 ? 'var(--surface2)' : '#534AB7', color: spotsLeft === 0 && !contest.joined ? 'var(--text-muted)' : '#fff' }}
-          >
-            {joining ? '…' : contest.joined ? '✓ Already joined' : spotsLeft === 0 ? 'Contest full' : <><i className="ti ti-users" /> Join contest</>}
-          </button>
+          {contest.joined ? (
+            <button onClick={onClose} style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center', background: '#059669' }}>
+              ✓ Already joined
+            </button>
+          ) : isFull ? (
+            <button disabled style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'not-allowed' }}>
+              Contest full
+            </button>
+          ) : (
+            <button onClick={goToTeams} style={{ ...S.primaryBtn, flex: 2, justifyContent: 'center' }}>
+              <i className="ti ti-users" /> Join contest →
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
+
+  // ── Step 2: Team Selection ──
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+      <div style={{ background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 420, padding: 24, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        {header}
+
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>
+          Join an existing team, create your own, or compete solo.
+        </div>
+
+        {teamsLoading ? (
+          <div style={{ textAlign: 'center', padding: 20, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading teams…</div>
+        ) : (
+          <>
+            {/* Existing teams */}
+            {teams.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Existing teams</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {teams.map(team => (
+                    <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: `1px solid ${team.color}33`, borderRadius: 11, padding: '10px 12px' }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 9, background: team.color + '18', border: `1px solid ${team.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{team.emoji}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: team.color }}>{team.name}</div>
+                        <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{team.memberCount} member{team.memberCount !== 1 ? 's' : ''}</div>
+                      </div>
+                      <button disabled={joining} onClick={() => joinTeam(team.id)} style={{ padding: '5px 12px', border: `1px solid ${team.color}`, borderRadius: 7, background: 'transparent', color: team.color, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                        {joining ? '…' : 'Join'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Create team */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Create a team</div>
+              {!createForm.show ? (
+                <button onClick={() => setCreateForm(f => ({ ...f, show: true }))} style={{ width: '100%', padding: '10px', border: '1.5px dashed var(--border)', borderRadius: 11, background: 'transparent', color: '#534AB7', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <i className="ti ti-plus" /> Create new team
+                </button>
+              ) : (
+                <div style={{ background: 'var(--surface2)', borderRadius: 11, padding: '12px 14px' }}>
+                  {/* Preview */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 9, background: createForm.color + '22', border: `2px solid ${createForm.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{createForm.emoji}</div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: createForm.color }}>{createForm.name || 'Team name…'}</div>
+                  </div>
+                  <input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} placeholder="Team name" maxLength={30} style={{ ...S.input, marginBottom: 10 }} />
+                  {/* Emoji row */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+                    {TEAM_EMOJIS.map(em => (
+                      <button key={em} onClick={() => setCreateForm(f => ({ ...f, emoji: em }))} style={{ width: 32, height: 32, borderRadius: 7, border: `2px solid ${createForm.emoji === em ? createForm.color : 'var(--border)'}`, background: createForm.emoji === em ? createForm.color + '18' : 'transparent', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{em}</button>
+                    ))}
+                  </div>
+                  {/* Color row */}
+                  <div style={{ display: 'flex', gap: 7, marginBottom: 12 }}>
+                    {TEAM_COLORS.map(c => (
+                      <button key={c} onClick={() => setCreateForm(f => ({ ...f, color: c }))} style={{ width: 24, height: 24, borderRadius: '50%', background: c, border: `3px solid ${createForm.color === c ? 'var(--text)' : 'transparent'}`, cursor: 'pointer', flexShrink: 0 }} />
+                    ))}
+                  </div>
+                  <button disabled={!createForm.name.trim() || joining} onClick={createAndJoinTeam} style={{ ...S.primaryBtn, width: '100%', justifyContent: 'center' }}>
+                    {joining ? '…' : 'Create team & join'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Solo option */}
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, textAlign: 'center' }}>
+              <button disabled={joining} onClick={joinSolo} style={{ background: 'none', border: 'none', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}>
+                {joining ? '…' : 'Skip — join as individual (no team)'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
+
 
 // ─── Data cards ───────────────────────────────────────────────────────────────
 function ChallengeCard({ match, onAccept, onOpenProfile }) {
@@ -497,11 +617,12 @@ function ChallengeCard({ match, onAccept, onOpenProfile }) {
   );
 }
 
-function MatchCard({ match, currentUserId, onClick }) {
+function MatchCard({ match, currentUserId, onClick, onDelete }) {
   const isChallenger = match.challengerId === currentUserId;
   const myScore = isChallenger ? match.challengerScore : match.opponentScore;
   const oppScore = isChallenger ? match.opponentScore : match.challengerScore;
   const oppName = isChallenger ? match.opponentName : match.challengerName;
+  const canDelete = isChallenger && match.status !== 'active';
   return (
     <div onClick={onClick} style={{ ...S.card, cursor: 'pointer', transition: 'border-color 0.15s' }}
       onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
@@ -516,17 +637,24 @@ function MatchCard({ match, currentUserId, onClick }) {
           <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: match.status === 'active' ? '#059669' : '#d97706', fontWeight: 600 }}>
             {match.status === 'active' ? '● Live' : '⏳ Waiting'}
           </span>
+          {canDelete && onDelete && (
+            <button onClick={e => { e.stopPropagation(); onDelete(match.id); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--text-muted)' }}
+              title="Delete match">
+              <i className="ti ti-trash" style={{ fontSize: 14 }} />
+            </button>
+          )}
           <i className="ti ti-chevron-right" style={{ fontSize: 14, color: '#534AB7' }} />
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 6 }}>
         <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
           <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>You</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: myScore >= 0 ? '#059669' : '#dc2626' }}>{myScore > 0 ? '+' : ''}{Number(myScore).toFixed(1)}R</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: myScore >= 0 ? '#059669' : '#dc2626' }}>{myScore > 0 ? '+' : ''}${Math.abs(Number(myScore)).toFixed(2)}</div>
         </div>
         <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
           <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>{oppName}</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: oppScore >= 0 ? '#059669' : '#dc2626' }}>{oppScore > 0 ? '+' : ''}{Number(oppScore).toFixed(1)}R</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: oppScore >= 0 ? '#059669' : '#dc2626' }}>{oppScore > 0 ? '+' : ''}${Math.abs(Number(oppScore)).toFixed(2)}</div>
         </div>
       </div>
       <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
@@ -971,6 +1099,12 @@ function H2HTab({ currentUserId, onOpenProfile }) {
     fetchData();
   };
 
+  const handleDeleteMatch = async (matchId) => {
+    if (!confirm('Delete this match? This cannot be undone.')) return;
+    await fetch('/api/challenges', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) });
+    fetchData();
+  };
+
   const filteredOpen = (data.open || []).filter(m => {
     const matchAsset = assetFilter === 'Any' || m.asset === assetFilter || m.asset === 'Any';
     const matchSearch = !search || m.challengerName.toLowerCase().includes(search.toLowerCase()) || m.description.toLowerCase().includes(search.toLowerCase());
@@ -1014,7 +1148,7 @@ function H2HTab({ currentUserId, onOpenProfile }) {
         ) : (data.myMatches || []).length === 0 ? (
           <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />
         ) : (
-          (data.myMatches || []).map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} />)
+          (data.myMatches || []).map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)
         )
       )}
 
@@ -1031,8 +1165,323 @@ function H2HTab({ currentUserId, onOpenProfile }) {
   );
 }
 
+
+// ─── Create / Edit Team Modal ────────────────────────────────────────────────
+function CreateTeamModal({ contestId, existingTeam, onClose, onSuccess }) {
+  const isEdit = !!existingTeam;
+  const [form, setForm] = useState({
+    name: existingTeam?.name || '',
+    emoji: existingTeam?.emoji || '⚡',
+    color: existingTeam?.color || '#534AB7',
+    description: existingTeam?.description || '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) { setError('Team name is required'); return; }
+    setLoading(true); setError('');
+    try {
+      let res;
+      if (isEdit) {
+        res = await fetch('/api/group-contests/teams', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teamId: existingTeam.id, ...form }) });
+      } else {
+        res = await fetch('/api/group-contests/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', contestId, ...form }) });
+      }
+      const d = await res.json();
+      if (!res.ok) { setError(d.error || 'Failed'); setLoading(false); return; }
+      onSuccess?.();
+      onClose();
+    } catch { setError('Network error'); }
+    setLoading(false);
+  };
+
+  return (
+    <Modal title={isEdit ? 'Edit team' : 'Create a team'} onClose={onClose}>
+      {/* Live preview */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface2)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 11, background: form.color + '22', border: `2px solid ${form.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+          {form.emoji}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: form.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.name || 'Your team name'}</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.description || 'Team description'}</div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={S.label}>Team name *</label>
+        <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. The Alpha Bears" style={S.input} maxLength={30} />
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={S.label}>Team emoji</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {TEAM_EMOJIS.map(em => (
+            <button key={em} onClick={() => set('emoji', em)} style={{ width: 36, height: 36, borderRadius: 8, border: `2px solid ${form.emoji === em ? form.color : 'var(--border)'}`, background: form.emoji === em ? form.color + '18' : 'var(--surface2)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{em}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={S.label}>Team color</label>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {TEAM_COLORS.map(c => (
+            <button key={c} onClick={() => set('color', c)} style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: `3px solid ${form.color === c ? 'var(--text)' : 'transparent'}`, cursor: 'pointer', flexShrink: 0 }} />
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={S.label}>Description (optional)</label>
+        <textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="What's your team about?" rows={2} style={{ ...S.input, resize: 'none' }} maxLength={120} />
+      </div>
+
+      {error && <div style={{ marginBottom: 10, padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{error}</div>}
+      <ModalFooter onCancel={onClose} onSubmit={handleSubmit} submitLabel={loading ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save changes' : 'Create team')} disabled={!form.name.trim() || loading} />
+    </Modal>
+  );
+}
+
+// ─── Teams View ───────────────────────────────────────────────────────────────
+function TeamsView({ contestId, currentUserId }) {
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editTeam, setEditTeam] = useState(null);
+
+  const fetchTeams = useCallback(() => {
+    setLoading(true);
+    fetch(`/api/group-contests/teams?contestId=${contestId}`)
+      .then(r => r.json())
+      .then(d => { setTeams(d.teams || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [contestId]);
+
+  useEffect(() => { fetchTeams(); }, [fetchTeams]);
+
+  const myTeam = teams.find(t => t.isMyTeam);
+  const hasTeam = !!myTeam;
+
+  const handleJoin = async (teamId) => {
+    await fetch('/api/group-contests/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId, teamId }) });
+    fetchTeams();
+  };
+
+  const handleLeave = async () => {
+    if (!confirm('Leave your team?')) return;
+    await fetch('/api/group-contests/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave', contestId }) });
+    fetchTeams();
+  };
+
+  const handleDeleteTeam = async (teamId) => {
+    if (!confirm('Delete this team? All members will be unlinked.')) return;
+    await fetch('/api/group-contests/teams', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teamId }) });
+    fetchTeams();
+  };
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 40, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading teams…</div>;
+
+  return (
+    <div style={{ padding: '14px 18px' }}>
+      {(showCreate || editTeam) && (
+        <CreateTeamModal
+          contestId={contestId}
+          existingTeam={editTeam}
+          onClose={() => { setShowCreate(false); setEditTeam(null); }}
+          onSuccess={() => { fetchTeams(); setShowCreate(false); setEditTeam(null); }}
+        />
+      )}
+
+      {/* My team banner */}
+      {myTeam && (
+        <div style={{ background: myTeam.color + '12', border: `1px solid ${myTeam.color}44`, borderRadius: 11, padding: '12px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 26 }}>{myTeam.emoji}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: myTeam.color }}>{myTeam.name}</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>Your team · {myTeam.memberCount} member{myTeam.memberCount !== 1 ? 's' : ''}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {myTeam.isCaptain && (
+              <button onClick={() => setEditTeam(myTeam)} style={{ padding: '5px 10px', border: `1px solid ${myTeam.color}`, borderRadius: 7, background: 'transparent', color: myTeam.color, fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                <i className="ti ti-settings" /> Edit
+              </button>
+            )}
+            <button onClick={handleLeave} style={{ padding: '5px 10px', border: '1px solid var(--border)', borderRadius: 7, background: 'transparent', color: 'var(--text-muted)', fontFamily: 'var(--font)', fontSize: 11, cursor: 'pointer' }}>Leave</button>
+          </div>
+        </div>
+      )}
+
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Teams ({teams.length})
+        </div>
+        {!hasTeam && (
+          <button onClick={() => setShowCreate(true)} style={S.primaryBtn}>
+            <i className="ti ti-plus" /> Create team
+          </button>
+        )}
+      </div>
+
+      {teams.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '36px 0' }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>⚔️</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>No teams yet</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>Create the first team and recruit members</div>
+          {!hasTeam && <button onClick={() => setShowCreate(true)} style={S.primaryBtn}><i className="ti ti-plus" /> Create first team</button>}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {teams.map((team, i) => {
+            const isExpanded = expanded === team.id;
+            const pnlColor = team.teamPnl > 0 ? '#059669' : team.teamPnl < 0 ? '#dc2626' : 'var(--text-muted)';
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+            return (
+              <div key={team.id} style={{ background: 'var(--surface)', border: `1px solid ${team.isMyTeam ? team.color + '55' : 'var(--border)'}`, borderRadius: 11, overflow: 'hidden' }}>
+                {/* Header row */}
+                <div onClick={() => setExpanded(isExpanded ? null : team.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', cursor: 'pointer' }}>
+                  <div style={{ width: 22, textAlign: 'center', fontFamily: 'var(--font)', fontSize: 13, flexShrink: 0 }}>{medal || <span style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: 12 }}>{i + 1}</span>}</div>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: team.color + '18', border: `1px solid ${team.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{team.emoji}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: team.color, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {team.name}
+                      {team.isMyTeam && <span style={{ fontSize: 10, background: team.color + '18', color: team.color, padding: '1px 6px', borderRadius: 10 }}>YOU</span>}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{team.memberCount} member{team.memberCount !== 1 ? 's' : ''} · Cap: {team.captainName}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: pnlColor }}>{team.teamPnl >= 0 ? '+' : '-'}${Math.abs(team.teamPnl).toFixed(2)}</div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)' }}>team P&L</div>
+                  </div>
+                  <i className={`ti ti-chevron-${isExpanded ? 'up' : 'down'}`} style={{ fontSize: 14, color: 'var(--text-muted)', flexShrink: 0 }} />
+                </div>
+
+                {/* Expanded: members + actions */}
+                {isExpanded && (
+                  <div style={{ borderTop: '1px solid var(--border)', padding: '10px 14px' }}>
+                    {team.description && (
+                      <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, fontStyle: 'italic' }}>"{team.description}"</div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
+                      {team.members.length === 0 ? (
+                        <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>No members yet — join to be first!</div>
+                      ) : team.members.map((m, mi) => (
+                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: m.id === currentUserId ? team.color + '10' : 'var(--surface2)', borderRadius: 8 }}>
+                          <div style={{ width: 20, fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>{mi + 1}</div>
+                          <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>
+                            {m.name}{m.isCaptain && <span style={{ marginLeft: 4, fontSize: 11 }}>👑</span>}
+                          </div>
+                          <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: m.pnl >= 0 ? '#059669' : '#dc2626' }}>
+                            {m.pnl >= 0 ? '+' : '-'}${Math.abs(m.pnl).toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {!hasTeam && (
+                        <button onClick={() => handleJoin(team.id)} style={{ ...S.primaryBtn, flex: 1, justifyContent: 'center', padding: '7px' }}>Join this team</button>
+                      )}
+                      {team.isCaptain && (
+                        <>
+                          <button onClick={() => setEditTeam(team)} style={{ flex: 1, padding: '7px', border: `1px solid ${team.color}`, borderRadius: 8, background: 'transparent', color: team.color, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            <i className="ti ti-settings" /> Edit team
+                          </button>
+                          <button onClick={() => handleDeleteTeam(team.id)} style={{ padding: '7px 10px', border: '1px solid #fca5a5', borderRadius: 8, background: 'transparent', color: '#dc2626', fontFamily: 'var(--font)', fontSize: 12, cursor: 'pointer' }}>
+                            <i className="ti ti-trash" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!hasTeam && teams.length > 0 && (
+        <div style={{ marginTop: 14, textAlign: 'center' }}>
+          <button onClick={() => setShowCreate(true)} style={{ ...S.primaryBtn, padding: '8px 20px' }}>
+            <i className="ti ti-plus" /> Create your own team
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Contest Leaderboard (live P&L from paper trading) ───────────────────────
+function ContestLeaderboard({ contestId, currentUserId }) {
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchLeaderboard = useCallback(() => {
+    setLoading(true);
+    fetch(`/api/group-contests/preview?id=${contestId}`)
+      .then(r => r.json())
+      .then(d => { setMembers(d.members || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [contestId]);
+
+  useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
+
+  const medals = ['🥇', '🥈', '🥉'];
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 40, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading leaderboard…</div>;
+
+  if (members.length === 0) return (
+    <div style={{ textAlign: 'center', padding: '36px 18px' }}>
+      <div style={{ fontSize: 32, marginBottom: 8 }}>🏆</div>
+      <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>No trades yet</div>
+      <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Place your first trade to appear on the leaderboard</div>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: '14px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Individual standings — live P&L
+        </div>
+        <button onClick={fetchLeaderboard} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontFamily: 'var(--font)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <i className="ti ti-refresh" /> Refresh
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {members.map((m, i) => {
+          const isMe = m.id === currentUserId;
+          const pnlColor = m.pnl > 0 ? '#059669' : m.pnl < 0 ? '#dc2626' : 'var(--text-muted)';
+          return (
+            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: isMe ? 'rgba(83,74,183,0.06)' : 'var(--surface2)', border: isMe ? '1px solid #534AB733' : '1px solid transparent', borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{ width: 26, textAlign: 'center', fontFamily: 'var(--font)', fontSize: 14, flexShrink: 0 }}>
+                {medals[i] || <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{i + 1}</span>}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: isMe ? 700 : 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {m.name}
+                  {isMe && <span style={{ fontSize: 10, background: '#534AB718', color: '#534AB7', padding: '1px 6px', borderRadius: 10 }}>YOU</span>}
+                </div>
+                {m.teamName && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{m.teamName}</div>}
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: pnlColor }}>
+                  {m.pnl >= 0 ? '+' : '-'}${Math.abs(m.pnl).toFixed(2)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Contest Detail View (Group Paper Trading) ────────────────────────────────
-function ContestDetailView({ contest, onBack }) {
+function ContestDetailView({ contest, onBack, currentUserId }) {
   const [tab, setTab] = useState('paper');
   const [detail, setDetail] = useState(null);
 
@@ -1063,7 +1512,7 @@ function ContestDetailView({ contest, onBack }) {
 
       {/* Sub-tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 0, paddingLeft: 18 }}>
-        {[['paper', '📊 Paper Trade'], ['info', 'Contest Info']].map(([k, l]) => (
+        {[['paper', '📊 Paper Trade'], ['leaderboard', '🏆 Leaderboard'], ['teams', '⚔️ Teams'], ['info', 'Info']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} style={{
             padding: '8px 14px', fontFamily: 'var(--font)', fontSize: 12,
             fontWeight: tab === k ? 600 : 400,
@@ -1081,10 +1530,19 @@ function ContestDetailView({ contest, onBack }) {
           competitionType="group"
           endDate={endDate}
           title={contest.name}
+          allowedAsset={contest.asset !== 'Any' ? contest.asset : null}
         />
       )}
 
-      {tab === 'info' && detail && (
+      {tab === 'teams' && (
+        <TeamsView contestId={contest.id} currentUserId={currentUserId} />
+      )}
+
+      {tab === 'leaderboard' && (
+        <ContestLeaderboard contestId={contest.id} currentUserId={currentUserId} />
+      )}
+
+      {tab === 'info' && (
         <div style={{ padding: '14px 18px' }}>
           {contest.description && (
             <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', marginBottom: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>
@@ -1094,9 +1552,9 @@ function ContestDetailView({ contest, onBack }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {[
               { l: 'Asset', v: contest.asset || 'Any' },
-              { l: 'Members', v: detail.memberCount ?? contest.memberCount },
+              { l: 'Members', v: detail?.memberCount ?? contest.memberCount },
               { l: 'Buy-in', v: contest.buyIn > 0 ? `$${contest.buyIn}` : 'Free' },
-              { l: 'Prize', v: detail.prizeStructure || 'Winner Takes All' },
+              { l: 'Prize', v: detail?.prizeStructure || 'Winner Takes All' },
             ].map(({ l, v }) => (
               <div key={l} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
                 <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>{l}</div>
@@ -1132,11 +1590,17 @@ function GroupTab({ currentUserId, onOpenProfile }) {
 
   // Show ContestDetailView (paper trading) if a joined contest is selected
   if (selectedContest) {
-    return <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} />;
+    return <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} currentUserId={currentUserId} />;
   }
 
   const handleJoin = async (contestId) => {
     await fetch('/api/group-contests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId }) });
+    fetchData();
+  };
+
+  const handleDeleteContest = async (contestId) => {
+    if (!confirm('Delete this contest? All trades and entries will be removed. This cannot be undone.')) return;
+    await fetch('/api/group-contests', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contestId }) });
     fetchData();
   };
 
@@ -1184,8 +1648,18 @@ function GroupTab({ currentUserId, onOpenProfile }) {
           <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />
         ) : (
           (data.myContests || []).map(c => (
-            <div key={c.id} onClick={() => setSelectedContest(c)} style={{ cursor: 'pointer' }}>
-              <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />
+            <div key={c.id} style={{ position: 'relative' }}>
+              <div onClick={() => setSelectedContest(c)} style={{ cursor: 'pointer' }}>
+                <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />
+              </div>
+              {c.isCreator && (
+                <button
+                  onClick={e => { e.stopPropagation(); handleDeleteContest(c.id); }}
+                  style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', zIndex: 1 }}
+                  title="Delete contest">
+                  <i className="ti ti-trash" style={{ fontSize: 14 }} />
+                </button>
+              )}
             </div>
           ))
         )
@@ -1382,26 +1856,26 @@ export default function CompeteTab({ currentUserId, externalTab }) {
             title={t.label}
             onClick={() => setActiveTab(t.key)}
             style={{
-              width: 38, height: 38,
-              borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer',
-              background: resolvedTab === t.key ? '#534AB7' : 'transparent',
-              color: resolvedTab === t.key ? '#fff' : 'var(--text-muted)',
-              fontSize: 19,
-              transition: 'all .15s',
+              width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'background 0.15s',
+              background: resolvedTab === t.key ? '#EEEDFE' : 'transparent',
+              color: resolvedTab === t.key ? '#534AB7' : 'var(--text-muted)',
             }}
-            onMouseEnter={e => { if (resolvedTab !== t.key) { e.currentTarget.style.background = '#EEEDFE'; e.currentTarget.style.color = '#534AB7'; } }}
-            onMouseLeave={e => { if (resolvedTab !== t.key) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; } }}
           >
-            <i className={`ti ${t.icon}`} aria-hidden="true" />
+            <i className={`ti ${t.icon}`} style={{ fontSize: 20 }} aria-hidden="true" />
           </div>
         ))}
       </div>
 
       {/* Main content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        {meta && (
+          <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
+          </div>
+        )}
 
         {/* Tab content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
