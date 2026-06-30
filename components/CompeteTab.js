@@ -2056,8 +2056,8 @@ export default function CompeteTab({ currentUserId, externalTab }) {
             style={{
               width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', transition: 'background 0.15s',
-              background: resolvedTab === t.key ? '#534AB7' : 'transparent',
-              color: resolvedTab === t.key ? '#fff' : 'var(--text-muted)',
+              background: resolvedTab === t.key ? '#EEEDFE' : 'transparent',
+              color: resolvedTab === t.key ? '#534AB7' : 'var(--text-muted)',
             }}
           >
             <i className={`ti ${t.icon}`} style={{ fontSize: 20 }} aria-hidden="true" />
