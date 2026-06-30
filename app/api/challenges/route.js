@@ -65,29 +65,68 @@ export async function GET(request) {
       }),
     ])
 
-    const fmt = (m) => ({
-      id: m.id,
-      tournamentId: m.tournamentId,
-      status: m.status,
-      challengerName: userName(m.challenger),
-      challengerSlug: m.challenger?.profileSlug || m.challenger?.id,
-      opponentName: m.opponent ? userName(m.opponent) : 'Waiting…',
-      opponentSlug: m.opponent ? (m.opponent?.profileSlug || m.opponent?.id) : null,
-      challengerId: m.challengerId,
-      opponentId: m.opponentId,
-      winnerId: m.winnerId,
-      challengerScore: m.challengerScore,
-      opponentScore: m.opponentScore,
-      timeLeft: getTimeLeft(m.endDate || m.tournament?.endDate),
-      buyIn: m.tournament?.buyIn || 0,
-      asset: m.tournament?.assetClasses?.[0] || 'Any',
-      description: m.tournament?.description || '',
-      myRole: m.challengerId === uid ? 'challenger' : 'opponent',
-      won: m.winnerId === uid,
-      createdAt: m.createdAt,
-    })
+    const fmt = (m, portfolioMap = {}) => {
+      const isPaid = (m.tournament?.buyIn || 0) > 0
+      let challengerScore = m.challengerScore
+      let opponentScore = m.opponentScore
+      // For active free matches, use live paper trading P&L instead of stale DB score
+      if (!isPaid && m.status === 'active' && portfolioMap[m.id]) {
+        const portfs = portfolioMap[m.id]
+        const cp = portfs.find(p => p.userId === m.challengerId)
+        const op = portfs.find(p => p.userId === m.opponentId)
+        const equity = (p) => p ? p.trades.reduce((s, t) => s + (t.pnl || 0), 0) + p.positions.reduce((s, pos) => {
+          const mult = pos.direction === 'short' ? -1 : 1
+          return s + (pos.currentPrice - pos.entryPrice) * pos.quantity * mult
+        }, 0) : 0
+        challengerScore = +equity(cp).toFixed(2)
+        opponentScore = +equity(op).toFixed(2)
+      }
+      return {
+        id: m.id,
+        tournamentId: m.tournamentId,
+        status: m.status,
+        challengerName: userName(m.challenger),
+        challengerSlug: m.challenger?.profileSlug || m.challenger?.id,
+        opponentName: m.opponent ? userName(m.opponent) : 'Waiting…',
+        opponentSlug: m.opponent ? (m.opponent?.profileSlug || m.opponent?.id) : null,
+        challengerId: m.challengerId,
+        opponentId: m.opponentId,
+        winnerId: m.winnerId,
+        challengerScore,
+        opponentScore,
+        timeLeft: getTimeLeft(m.endDate || m.tournament?.endDate),
+        buyIn: m.tournament?.buyIn || 0,
+        asset: m.tournament?.assetClasses?.[0] || 'Any',
+        description: m.tournament?.description || '',
+        myRole: m.challengerId === uid ? 'challenger' : 'opponent',
+        won: m.winnerId === uid,
+        createdAt: m.createdAt,
+      }
+    }
 
-    return Response.json({ open: open.map(fmt), myMatches: myMatches.map(fmt), invites: invites.map(fmt), history: history.map(fmt) })
+    // For active free matches in myMatches, fetch live paper trading portfolios
+    const activeFreeIds = myMatches
+      .filter(m => m.status === 'active' && (m.tournament?.buyIn || 0) === 0)
+      .map(m => m.id)
+
+    let portfolioMap = {}
+    if (activeFreeIds.length > 0) {
+      const portfolios = await prisma.competitionPortfolio.findMany({
+        where: { competitionId: { in: activeFreeIds } },
+        include: { trades: true, positions: true },
+      })
+      for (const p of portfolios) {
+        if (!portfolioMap[p.competitionId]) portfolioMap[p.competitionId] = []
+        portfolioMap[p.competitionId].push(p)
+      }
+    }
+
+    return Response.json({
+      open: open.map(m => fmt(m)),
+      myMatches: myMatches.map(m => fmt(m, portfolioMap)),
+      invites: invites.map(m => fmt(m)),
+      history: history.map(m => fmt(m)),
+    })
   } catch (e) {
     console.error('[GET /api/challenges]', e)
     return Response.json({ error: e.message }, { status: 500 })
@@ -179,6 +218,33 @@ export async function PATCH(request) {
     return Response.json({ error: 'Unknown action' }, { status: 400 })
   } catch (e) {
     console.error('[PATCH /api/challenges]', e)
+    return Response.json({ error: e.message }, { status: 500 })
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const session = await getSession()
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    const uid = session.user.id
+    const { matchId } = await request.json()
+    if (!matchId) return Response.json({ error: 'matchId required' }, { status: 400 })
+
+    const match = await prisma.h2HMatch.findUnique({ where: { id: matchId } })
+    if (!match) return Response.json({ error: 'Not found' }, { status: 404 })
+    if (match.challengerId !== uid) return Response.json({ error: 'Only the challenger can delete this match' }, { status: 403 })
+    if (match.status === 'active') return Response.json({ error: 'Cannot delete an active match' }, { status: 400 })
+
+    // Delete related trade calls then the match
+    if (match.tournamentId) {
+      await prisma.tradeCall.deleteMany({ where: { tournamentId: match.tournamentId } })
+      await prisma.tournamentEntry.deleteMany({ where: { tournamentId: match.tournamentId } })
+    }
+    await prisma.h2HMatch.delete({ where: { id: matchId } })
+
+    return Response.json({ success: true })
+  } catch (e) {
+    console.error('[DELETE /api/challenges]', e)
     return Response.json({ error: e.message }, { status: 500 })
   }
 }

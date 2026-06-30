@@ -588,40 +588,6 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile }) {
               </div>
             )}
 
-            {/* Create team */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Create a team</div>
-              {!createForm.show ? (
-                <button onClick={() => setCreateForm(f => ({ ...f, show: true }))} style={{ width: '100%', padding: '10px', border: '1.5px dashed var(--border)', borderRadius: 11, background: 'transparent', color: '#534AB7', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <i className="ti ti-plus" /> Create new team
-                </button>
-              ) : (
-                <div style={{ background: 'var(--surface2)', borderRadius: 11, padding: '12px 14px' }}>
-                  {/* Preview */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 9, background: createForm.color + '22', border: `2px solid ${createForm.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{createForm.emoji}</div>
-                    <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: createForm.color }}>{createForm.name || 'Team name…'}</div>
-                  </div>
-                  <input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} placeholder="Team name" maxLength={30} style={{ ...S.input, marginBottom: 10 }} />
-                  {/* Emoji row */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                    {TEAM_EMOJIS.map(em => (
-                      <button key={em} onClick={() => setCreateForm(f => ({ ...f, emoji: em }))} style={{ width: 32, height: 32, borderRadius: 7, border: `2px solid ${createForm.emoji === em ? createForm.color : 'var(--border)'}`, background: createForm.emoji === em ? createForm.color + '18' : 'transparent', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{em}</button>
-                    ))}
-                  </div>
-                  {/* Color row */}
-                  <div style={{ display: 'flex', gap: 7, marginBottom: 12 }}>
-                    {TEAM_COLORS.map(c => (
-                      <button key={c} onClick={() => setCreateForm(f => ({ ...f, color: c }))} style={{ width: 24, height: 24, borderRadius: '50%', background: c, border: `3px solid ${createForm.color === c ? 'var(--text)' : 'transparent'}`, cursor: 'pointer', flexShrink: 0 }} />
-                    ))}
-                  </div>
-                  <button disabled={!createForm.name.trim() || joining} onClick={createAndJoinTeam} style={{ ...S.primaryBtn, width: '100%', justifyContent: 'center' }}>
-                    {joining ? '…' : 'Create team & join'}
-                  </button>
-                </div>
-              )}
-            </div>
-
             {/* Solo option */}
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, textAlign: 'center' }}>
               <button disabled={joining} onClick={joinSolo} style={{ background: 'none', border: 'none', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}>
@@ -1424,19 +1390,13 @@ function TeamsView({ contestId, currentUserId }) {
         <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Teams ({teams.length})
         </div>
-        {!hasTeam && (
-          <button onClick={() => setShowCreate(true)} style={S.primaryBtn}>
-            <i className="ti ti-plus" /> Create team
-          </button>
-        )}
       </div>
 
       {teams.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '36px 0' }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>⚔️</div>
           <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>No teams yet</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>Create the first team and recruit members</div>
-          {!hasTeam && <button onClick={() => setShowCreate(true)} style={S.primaryBtn}><i className="ti ti-plus" /> Create first team</button>}
+          <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>Teams will appear here once the contest has started</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1508,13 +1468,6 @@ function TeamsView({ contestId, currentUserId }) {
         </div>
       )}
 
-      {!hasTeam && teams.length > 0 && (
-        <div style={{ marginTop: 14, textAlign: 'center' }}>
-          <button onClick={() => setShowCreate(true)} style={{ ...S.primaryBtn, padding: '8px 20px' }}>
-            <i className="ti ti-plus" /> Create your own team
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -2091,8 +2044,8 @@ export default function CompeteTab({ currentUserId, externalTab }) {
             style={{
               width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', transition: 'background 0.15s',
-              background: resolvedTab === t.key ? '#EEEDFE' : 'transparent',
-              color: resolvedTab === t.key ? '#534AB7' : 'var(--text-muted)',
+              background: resolvedTab === t.key ? '#534AB7' : 'transparent',
+              color: resolvedTab === t.key ? '#fff' : 'var(--text-muted)',
             }}
           >
             <i className={`ti ${t.icon}`} style={{ fontSize: 20 }} aria-hidden="true" />

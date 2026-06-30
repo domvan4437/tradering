@@ -52,9 +52,15 @@ function brokerIcon(broker) {
 
 // ─── Score Bar ────────────────────────────────────────────────────────────────
 function ScoreBar({ myPnL, theirPnL, theirName }) {
-  const total = Math.abs(myPnL || 0) + Math.abs(theirPnL || 0)
-  const myPct = total > 0 ? Math.round((Math.abs(myPnL) / total) * 100) : 50
-  const winning = (myPnL || 0) > (theirPnL || 0)
+  const my = myPnL || 0
+  const their = theirPnL || 0
+  const winning = my > their
+  // Shift both scores so the lower one = 0, giving a fair proportional bar
+  const min = Math.min(my, their, 0)
+  const myAdj = my - min
+  const theirAdj = their - min
+  const adjTotal = myAdj + theirAdj
+  const myPct = adjTotal > 0 ? Math.min(95, Math.max(5, Math.round((myAdj / adjTotal) * 100))) : 50
 
   return (
     <div style={{ marginBottom: 14 }}>
@@ -90,52 +96,14 @@ function ScoreBar({ myPnL, theirPnL, theirName }) {
   )
 }
 
-// ─── Platform connect form (shared) ──────────────────────────────────────────
-function PlatformForm({ fields, onConnect, connecting, error, signupUrl, signupLabel, helpText }) {
-  const [values, setValues] = useState(() => Object.fromEntries(fields.map(f => [f.key, ''])))
-  const set = (k, v) => setValues(prev => ({ ...prev, [k]: v }))
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-      {helpText && (
-        <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          {helpText}
-        </div>
-      )}
-      {fields.map(f => (
-        <input
-          key={f.key}
-          value={values[f.key]}
-          onChange={e => set(f.key, e.target.value)}
-          type={f.secret ? 'password' : 'text'}
-          placeholder={f.label}
-          style={{ padding: '9px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'monospace', fontSize: 12, color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box' }}
-        />
-      ))}
-      {error && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#ef4444' }}>{error}</div>}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={() => onConnect(values)}
-          disabled={connecting}
-          style={{ flex: 1, padding: '9px 14px', background: connecting ? 'var(--surface2)' : '#534AB7', color: '#fff', border: 'none', borderRadius: 8, fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-        >
-          {connecting
-            ? <><i className="ti ti-loader-2 animate-spin" /> Connecting…</>
-            : <><i className="ti ti-plug-connected" /> Connect</>}
-        </button>
-        {signupUrl && (
-          <a href={signupUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '9px 12px', background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'var(--font)', fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-            <i className="ti ti-external-link" style={{ fontSize: 13 }} /> {signupLabel || 'Sign Up'}
-          </a>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── Plaid Connect Button ─────────────────────────────────────────────────────
-function PlaidConnectButton({ onSuccess }) {
+// ─── Paid Connection Panel ─────────────────────────────────────────────────────
+// Only shown on paid (buyIn > 0) matches. Plaid for real brokers only.
+function PaidConnectionPanel({ connections, onSynced }) {
   const [linkToken, setLinkToken] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+
+  const plaidConn = connections?.find(c => !['webhook','demo'].includes(c.broker) && c.broker?.length > 10)
 
   useEffect(() => {
     fetch('/api/plaid/create-link-token', { method: 'POST' })
@@ -145,7 +113,7 @@ function PlaidConnectButton({ onSuccess }) {
   }, [])
 
   const onPlaidSuccess = useCallback(async (public_token, metadata) => {
-    setLoading(true)
+    setConnecting(true)
     try {
       const res = await fetch('/api/plaid/exchange-token', {
         method: 'POST',
@@ -158,246 +126,104 @@ function PlaidConnectButton({ onSuccess }) {
         }),
       })
       const data = await res.json()
-      if (data.success) onSuccess?.()
-      else alert('Connection failed: ' + (data.error || 'Unknown error'))
-    } catch (e) {
-      alert('Connection failed: ' + e.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [onSuccess])
+      if (data.success) onSynced?.()
+      else alert('Connection failed: ' + (data.error || 'Unknown'))
+    } catch (e) { alert('Connection failed: ' + e.message) }
+    setConnecting(false)
+  }, [onSynced])
 
-  const { open, ready } = usePlaidLink({ token: linkToken, onSuccess: onPlaidSuccess })
+  const { open: openPlaid, ready: plaidReady } = usePlaidLink({ token: linkToken, onSuccess: onPlaidSuccess })
+
+  const syncPlaid = async () => {
+    setSyncing(true)
+    try { await fetch('/api/plaid/sync', { method: 'POST' }); onSynced?.() } catch {}
+    setSyncing(false)
+  }
 
   return (
-    <button
-      onClick={() => open()}
-      disabled={!ready || loading}
-      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: '#534AB7', color: '#fff', border: 'none', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: (!ready || loading) ? 'not-allowed' : 'pointer', opacity: (!ready || loading) ? 0.6 : 1, flexShrink: 0 }}
-    >
-      <i className="ti ti-plug-connected" />
-      {loading ? 'Connecting…' : 'Connect'}
-    </button>
-  )
-}
-
-// ─── Connection Panel ─────────────────────────────────────────────────────────
-function ConnectionPanel({ connections, onSynced }) {
-  const [expanded, setExpanded] = useState(null)   // which platform card is open
-  const [connecting, setConnecting] = useState(null)
-  const [syncing, setSyncing]   = useState(null)
-  const [errors, setErrors]     = useState({})
-  const [demoing, setDemoing]   = useState(false)
-
-  const hasDemo = connections?.some(c => c.broker === 'demo')
-
-  const loadDemo = async () => {
-    setDemoing(true)
-    try {
-      await fetch('/api/broker/demo', { method: hasDemo ? 'DELETE' : 'POST' })
-      if (!hasDemo) await fetch('/api/broker/demo', { method: 'POST' })
-      onSynced?.()
-    } catch {}
-    setDemoing(false)
-  }
-
-  const conn = (broker) => connections?.find(c => c.broker === broker)
-  const has  = (broker) => !!conn(broker)
-
-  const setErr = (id, msg) => setErrors(prev => ({ ...prev, [id]: msg }))
-
-  // ── Connect helpers ────────────────────────────────────────────────
-  const connectAndSync = async (id, connectUrl, syncUrl, body) => {
-    setConnecting(id); setErr(id, '')
-    try {
-      const res  = await fetch(connectUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      const data = await res.json()
-      if (!res.ok) { setErr(id, data.error || 'Connection failed'); setConnecting(null); return }
-      await fetch(syncUrl, { method: 'POST' })
-      onSynced?.()
-      setExpanded(null)
-    } catch { setErr(id, 'Network error') }
-    setConnecting(null)
-  }
-
-  const syncBroker = async (id, syncUrl) => {
-    setSyncing(id)
-    try { await fetch(syncUrl, { method: 'POST' }); onSynced?.() } catch {}
-    setSyncing(null)
-  }
-
-  // ── Platform definitions ───────────────────────────────────────────
-  const PLATFORMS = [
-    // ── Stocks & ETFs ──
-    {
-      id: 'alpaca_paper', name: 'Alpaca', tag: 'Stocks · ETFs · Crypto',
-      icon: 'ti-chart-line', color: '#FFBE00',
-      signupUrl: 'https://app.alpaca.markets/paper-trading/overview', signupLabel: 'Free Account',
-      helpText: 'alpaca.markets → Paper Trading → API Keys → Generate Key',
-      fields: [
-        { key: 'keyId',     label: 'API Key ID  (starts with PK…)' },
-        { key: 'secretKey', label: 'Secret Key', secret: true },
-      ],
-      onConnect: (v) => connectAndSync('alpaca_paper', '/api/broker/alpaca/connect', '/api/broker/alpaca/sync', { keyId: v.keyId, secretKey: v.secretKey, paper: true }),
-      onSync: () => syncBroker('alpaca_paper', '/api/broker/alpaca/sync'),
-    },
-    // ── Forex & Commodities ──
-    {
-      id: 'oanda_practice', name: 'OANDA', tag: 'Forex · Gold · Oil · Indices',
-      icon: 'ti-currency-dollar', color: '#E85D26',
-      signupUrl: 'https://www.oanda.com/us-en/trading/try-free-demo/', signupLabel: 'Free Demo',
-      helpText: 'oanda.com → My Account → Manage API Access → Generate token. Account ID is in top-left of dashboard.',
-      fields: [
-        { key: 'token',     label: 'API Token' },
-        { key: 'accountId', label: 'Account ID  (e.g. 001-001-XXXXXXX-001)' },
-      ],
-      onConnect: (v) => connectAndSync('oanda_practice', '/api/broker/oanda/connect', '/api/broker/oanda/sync', { token: v.token, accountId: v.accountId }),
-      onSync: () => syncBroker('oanda_practice', '/api/broker/oanda/sync'),
-    },
-    // ── Crypto Spot ──
-    {
-      id: 'binance_testnet', name: 'Binance Testnet', tag: 'Crypto Spot',
-      icon: 'ti-currency-bitcoin', color: '#F3BA2F',
-      signupUrl: 'https://testnet.binance.vision/', signupLabel: 'Get Keys',
-      helpText: 'Go to testnet.binance.vision → Log in with GitHub → Generate HMAC key. No email or deposit needed.',
-      fields: [
-        { key: 'apiKey', label: 'API Key' },
-        { key: 'secret', label: 'Secret Key', secret: true },
-      ],
-      onConnect: (v) => connectAndSync('binance_testnet', '/api/broker/binance/connect', '/api/broker/binance/sync', { apiKey: v.apiKey, secret: v.secret }),
-      onSync: () => syncBroker('binance_testnet', '/api/broker/binance/sync'),
-    },
-    // ── Crypto + Futures ──
-    {
-      id: 'bybit_testnet', name: 'Bybit Testnet', tag: 'Crypto · Perp Futures · Inverse',
-      icon: 'ti-chart-bar', color: '#F7A600',
-      signupUrl: 'https://testnet.bybit.com/', signupLabel: 'Free Testnet',
-      helpText: 'testnet.bybit.com → Account & Security → API Management → Create Key (enable Read + Trade).',
-      fields: [
-        { key: 'apiKey', label: 'API Key' },
-        { key: 'secret', label: 'API Secret', secret: true },
-      ],
-      onConnect: (v) => connectAndSync('bybit_testnet', '/api/broker/bybit/connect', '/api/broker/bybit/sync', { apiKey: v.apiKey, secret: v.secret }),
-      onSync: () => syncBroker('bybit_testnet', '/api/broker/bybit/sync'),
-    },
-    // ── Crypto + Options + Futures ──
-    {
-      id: 'okx_demo', name: 'OKX Demo', tag: 'Crypto · Options · Futures · Spot',
-      icon: 'ti-circle-letter-o', color: '#000000',
-      signupUrl: 'https://www.okx.com/account/users/personal-center/demo-trading/create-api-key', signupLabel: 'Demo API Keys',
-      helpText: 'okx.com → Demo Trading mode → Account → API Management → Create API Key (set passphrase). Must use Demo Trading API keys, not live keys.',
-      fields: [
-        { key: 'apiKey',     label: 'API Key' },
-        { key: 'secret',     label: 'Secret Key', secret: true },
-        { key: 'passphrase', label: 'Passphrase', secret: true },
-      ],
-      onConnect: (v) => connectAndSync('okx_demo', '/api/broker/okx/connect', '/api/broker/okx/sync', { apiKey: v.apiKey, secret: v.secret, passphrase: v.passphrase }),
-      onSync: () => syncBroker('okx_demo', '/api/broker/okx/sync'),
-    },
-    // ── Real brokers ──
-    {
-      id: 'plaid', name: 'Real Broker Account', tag: 'Robinhood · Fidelity · Coinbase · Schwab & more',
-      icon: 'ti-building-bank', color: '#534AB7',
-      isPlaid: true,
-      onSync: () => syncBroker('plaid', '/api/broker/sync'),
-    },
-  ]
-
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          Connect your trading account
-        </div>
-        <button
-          onClick={loadDemo}
-          disabled={demoing}
-          style={{ padding: '4px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 11, color: hasDemo ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer' }}
-        >
-          {demoing ? '…' : hasDemo ? 'Clear Demo' : '✦ Try Demo'}
-        </button>
+    <div>
+      <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+        Verified Broker Connection
+      </div>
+      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontFamily: 'var(--font)', fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
+        <i className="ti ti-shield-check" style={{ marginRight: 6 }} />
+        Paid challenges require a real broker connection. Trades are pulled directly from your account — no manual entry, no cheating.
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {PLATFORMS.map(p => {
-          const isConnected = has(p.id)
-          const c = conn(p.id)
-          const isExpanded = expanded === p.id
-          const isSyncing  = syncing === p.id
-          const isConnecting = connecting === p.id
-
-          return (
-            <div
-              key={p.id}
-              style={{
-                background: 'var(--surface2)',
-                border: `1px solid ${isConnected ? p.color + '44' : 'var(--border)'}`,
-                borderRadius: 11,
-                overflow: 'hidden',
-                transition: 'border-color 0.2s',
-              }}
-            >
-              {/* Row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 9, background: p.color + '18', border: `1px solid ${p.color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <i className={`ti ${p.icon}`} style={{ fontSize: 18, color: p.color }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {p.name}
-                    {isConnected && (
-                      <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>● Connected</span>
-                    )}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-                    {isConnected
-                      ? `Last sync: ${timeAgo(c?.lastSynced)}`
-                      : p.tag}
-                  </div>
-                </div>
-
-                {isConnected ? (
-                  <button
-                    onClick={() => p.onSync()}
-                    disabled={isSyncing}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', cursor: 'pointer', flexShrink: 0 }}
-                  >
-                    <i className={`ti ti-refresh${isSyncing ? ' animate-spin' : ''}`} />
-                    {isSyncing ? 'Syncing…' : 'Sync'}
-                  </button>
-                ) : p.isPlaid ? (
-                  <PlaidConnectButton onSuccess={() => { onSynced?.() }} />
-                ) : (
-                  <button
-                    onClick={() => setExpanded(isExpanded ? null : p.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: isExpanded ? p.color : 'transparent', color: isExpanded ? '#fff' : p.color, border: `1px solid ${p.color}55`, borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
-                  >
-                    {isExpanded ? 'Cancel' : 'Connect'}
-                  </button>
-                )}
-              </div>
-
-              {/* Expand form */}
-              {!p.isPlaid && isExpanded && !isConnected && (
-                <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
-                  <PlatformForm
-                    fields={p.fields}
-                    onConnect={p.onConnect}
-                    connecting={isConnecting}
-                    error={errors[p.id]}
-                    signupUrl={p.signupUrl}
-                    signupLabel={p.signupLabel}
-                    helpText={p.helpText}
-                  />
-                </div>
-              )}
+      {/* Plaid */}
+      <div style={{ background: 'var(--surface2)', border: `1px solid ${plaidConn ? '#534AB744' : 'var(--border)'}`, borderRadius: 11, padding: '12px 14px', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: '#534AB718', border: '1px solid #534AB733', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <i className="ti ti-building-bank" style={{ fontSize: 18, color: '#534AB7' }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              Real Broker Account
+              {plaidConn && <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>● Connected</span>}
             </div>
-          )
-        })}
+            <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+              {plaidConn ? `Last sync: ${timeAgo(plaidConn.lastSynced)}` : 'Coinbase · Robinhood · Fidelity · Schwab & more'}
+            </div>
+          </div>
+          {plaidConn ? (
+            <button onClick={syncPlaid} disabled={syncing} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', cursor: 'pointer', flexShrink: 0 }}>
+              <i className={`ti ti-refresh${syncing ? ' animate-spin' : ''}`} />
+              {syncing ? 'Syncing…' : 'Sync now'}
+            </button>
+          ) : (
+            <button onClick={() => openPlaid()} disabled={!plaidReady || connecting}
+              style={{ padding: '6px 14px', background: (!plaidReady || connecting) ? 'var(--surface2)' : '#534AB7', color: (!plaidReady || connecting) ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              <i className="ti ti-plug-connected" />
+              {connecting ? 'Connecting…' : 'Connect'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* TradingView Webhook */}
+      <div style={{ background: 'var(--surface2)', border: `1px solid ${webhookConn ? '#10b98144' : 'var(--border)'}`, borderRadius: 11, padding: '12px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: '#10b98118', border: '1px solid #10b98133', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <i className="ti ti-chart-candle" style={{ fontSize: 18, color: '#10b981' }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              TradingView Webhook
+              {webhookConn && <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>● Active</span>}
+            </div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Auto-log live trades from TradingView strategy alerts</div>
+          </div>
+          {!webhookData ? (
+            <button onClick={loadWebhook} disabled={webhookLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', cursor: 'pointer', flexShrink: 0 }}>
+              {webhookLoading ? '…' : 'Get URL'}
+            </button>
+          ) : (
+            <button onClick={copyWebhook}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 11px', background: copied ? '#10b981' : 'transparent', color: copied ? '#fff' : 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'var(--font)', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
+              <i className={`ti ti-${copied ? 'check' : 'copy'}`} />
+              {copied ? 'Copied!' : 'Copy URL'}
+            </button>
+          )}
+        </div>
+        {webhookData && (
+          <>
+            <div style={{ marginTop: 10, padding: '8px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontFamily: 'monospace', fontSize: 10, color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+              {webhookData.webhookUrl}
+            </div>
+            <div style={{ marginTop: 6, fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              In TradingView → Strategy → Alerts → Webhook URL. Message body must include{' '}
+              <code style={{ background: 'var(--surface)', padding: '1px 4px', borderRadius: 4 }}>
+                {`{"symbol":"{{ticker}}","action":"{{strategy.order.action}}","price":"{{close}}","key":"${webhookData.key}"}`}
+              </code>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
 }
+
 
 // ─── Trade Card ───────────────────────────────────────────────────────────────
 function TradeCard({ trade }) {
@@ -507,7 +333,7 @@ export default function MatchDetailView({ matchId, onBack }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState('paper')
+  const [tab, setTab] = useState('mine')
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError('')
@@ -538,6 +364,7 @@ export default function MatchDetailView({ matchId, onBack }) {
   )
 
   const { match, me, opponent, myTrades, theirTrades, myConnections } = data
+  const isPaid = (match.buyIn || 0) > 0
   const matchActive = match.status === 'active'
   const matchWaiting = match.status === 'waiting'
   const opponentName = opponent?.displayName || opponent?.name || opponent?.username || 'Waiting…'
@@ -582,120 +409,128 @@ export default function MatchDetailView({ matchId, onBack }) {
             </div>
           </div>
 
-          <ScoreBar myPnL={myPnL} theirPnL={theirPnL} theirName={opponentName} />
-
-          {/* Quick stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px' }}>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
-                YOU · {me?.analytics?.wins ?? 0}W {me?.analytics?.losses ?? 0}L · {me?.analytics?.winRate ?? 0}% WR
+          {!matchWaiting && (
+            <>
+              <ScoreBar myPnL={myPnL} theirPnL={theirPnL} theirName={opponentName} />
+              {/* Quick stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px' }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+                    YOU · {me?.analytics?.wins ?? 0}W {me?.analytics?.losses ?? 0}L · {me?.analytics?.winRate ?? 0}% WR
+                  </div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                    {me?.analytics?.openTrades > 0 && <span style={{ color: '#7c3aed' }}>{me.analytics.openTrades} open · </span>}
+                    {me?.analytics?.closedTrades ?? 0} closed
+                  </div>
+                </div>
+                <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px' }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+                    {opponentName} · {opponent?.analytics?.wins ?? 0}W {opponent?.analytics?.losses ?? 0}L · {opponent?.analytics?.winRate ?? 0}% WR
+                  </div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                    {opponent?.analytics?.openTrades > 0 && <span style={{ color: '#7c3aed' }}>{opponent.analytics.openTrades} open · </span>}
+                    {opponent?.analytics?.closedTrades ?? 0} closed
+                  </div>
+                </div>
               </div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                {me?.analytics?.openTrades > 0 && <span style={{ color: '#7c3aed' }}>{me.analytics.openTrades} open · </span>}
-                {me?.analytics?.closedTrades ?? 0} closed
-              </div>
-            </div>
-            <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px' }}>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
-                {opponentName} · {opponent?.analytics?.wins ?? 0}W {opponent?.analytics?.losses ?? 0}L · {opponent?.analytics?.winRate ?? 0}% WR
-              </div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                {opponent?.analytics?.openTrades > 0 && <span style={{ color: '#7c3aed' }}>{opponent.analytics.openTrades} open · </span>}
-                {opponent?.analytics?.closedTrades ?? 0} closed
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
         {/* Waiting state notice */}
         {matchWaiting && (
           <div style={{ padding: '12px 16px', background: '#fef9c3', border: '1px solid #fde047', borderRadius: 10, marginBottom: 14, fontFamily: 'var(--font)', fontSize: 13, color: '#854d0e' }}>
             <i className="ti ti-clock" style={{ marginRight: 6 }} />
-            Waiting for an opponent to accept. Once the match goes live, your synced trades will count toward the score.
+            Waiting for an opponent to accept. Once the match goes live, {isPaid ? 'your verified broker trades will count toward the score.' : 'paper trades will count toward the score.'}
           </div>
         )}
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 14, overflowX: 'auto' }}>
-          {[
-            ['paper', '📊 Paper Trade'],
-            ['mine', `My Synced${myTrades?.length ? ` (${myTrades.length})` : ''}`],
-            ['theirs', opponent ? `${opponentName.split(' ')[0]}'s Trades${theirTrades?.length ? ` (${theirTrades.length})` : ''}` : 'Opponent'],
-            ['analytics', 'Analytics'],
-          ].map(([key, label]) => (
-            <button key={key} onClick={() => setTab(key)} style={{
-              padding: '8px 14px',
-              fontFamily: 'var(--font)', fontSize: 12,
-              fontWeight: tab === key ? 600 : 400,
-              color: tab === key ? '#534AB7' : 'var(--text-muted)',
-              background: 'none', border: 'none',
-              borderBottom: tab === key ? '2px solid #534AB7' : '2px solid transparent',
-              cursor: 'pointer', whiteSpace: 'nowrap',
-            }}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Paper trading panel */}
-        {tab === 'paper' && (
+        {/* ── FREE MATCH: only paper trading ── */}
+        {!isPaid && (
           <CompetitionTradingView
             competitionId={matchId}
             competitionType="h2h"
             endDate={match.endDate}
             title={match.asset !== 'Any' ? `${match.asset} Challenge` : 'Open Challenge'}
+            allowedAsset={match.asset !== 'Any' ? match.asset : null}
           />
         )}
 
-        {/* My trades (broker-synced) */}
-        {tab === 'mine' && (
-          myTrades?.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '36px 20px' }}>
-              <i className="ti ti-plug-connected" style={{ fontSize: 30, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }} />
-              <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>No trades synced yet</div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', maxWidth: 260, margin: '0 auto', lineHeight: 1.5 }}>
-                Connect a platform below — Alpaca, OANDA, Binance, Bybit, or OKX. Every trade you place will appear here automatically.
+        {/* ── PAID MATCH: verified broker trades ── */}
+        {isPaid && (
+          <>
+            {/* Tabs */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 14, overflowX: 'auto' }}>
+              {[
+                ['mine', `My Trades${myTrades?.length ? ` (${myTrades.length})` : ''}`],
+                ['theirs', opponent ? `${opponentName.split(' ')[0]}'s Trades${theirTrades?.length ? ` (${theirTrades.length})` : ''}` : 'Opponent'],
+                ['analytics', 'Analytics'],
+              ].map(([key, label]) => (
+                <button key={key} onClick={() => setTab(key)} style={{
+                  padding: '8px 14px',
+                  fontFamily: 'var(--font)', fontSize: 12,
+                  fontWeight: tab === key ? 600 : 400,
+                  color: tab === key ? '#534AB7' : 'var(--text-muted)',
+                  background: 'none', border: 'none',
+                  borderBottom: tab === key ? '2px solid #534AB7' : '2px solid transparent',
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* My verified trades */}
+            {tab === 'mine' && (
+              myTrades?.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '36px 20px' }}>
+                  <i className="ti ti-plug-connected" style={{ fontSize: 30, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }} />
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>No verified trades yet</div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', maxWidth: 260, margin: '0 auto', lineHeight: 1.5 }}>
+                    Connect your broker below. Every real trade you place will auto-sync here.
+                  </div>
+                </div>
+              ) : (
+                myTrades.map(t => <TradeCard key={t.id} trade={t} />)
+              )
+            )}
+
+            {/* Opponent trades */}
+            {tab === 'theirs' && (
+              !opponent ? (
+                <div style={{ textAlign: 'center', padding: '36px 20px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>
+                  <i className="ti ti-user-question" style={{ fontSize: 30, display: 'block', marginBottom: 10 }} />
+                  No opponent yet — challenge is open
+                </div>
+              ) : theirTrades?.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '36px 20px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>
+                  <i className="ti ti-chart-candle" style={{ fontSize: 30, display: 'block', marginBottom: 10 }} />
+                  {match.status === 'completed'
+                    ? `${opponentName} had no verified trades in this challenge`
+                    : `${opponentName}'s closed trades will appear here`}
+                </div>
+              ) : (
+                theirTrades.map(t => <TradeCard key={t.id} trade={t} />)
+              )
+            )}
+
+            {/* Analytics */}
+            {tab === 'analytics' && (
+              <div>
+                <AnalyticsPanel analytics={me?.analytics} label="Your Performance" />
+                {opponent
+                  ? <AnalyticsPanel analytics={opponent?.analytics} label={`${opponentName}'s Performance`} />
+                  : <div style={{ textAlign: 'center', padding: 20, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Opponent analytics appear once someone joins</div>
+                }
               </div>
-            </div>
-          ) : (
-            myTrades.map(t => <TradeCard key={t.id} trade={t} />)
-          )
-        )}
+            )}
 
-        {/* Opponent trades */}
-        {tab === 'theirs' && (
-          !opponent ? (
-            <div style={{ textAlign: 'center', padding: '36px 20px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>
-              <i className="ti ti-user-question" style={{ fontSize: 30, display: 'block', marginBottom: 10 }} />
-              No opponent yet — challenge is open
+            {/* Broker connection panel — paid only */}
+            <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+              <PaidConnectionPanel connections={myConnections} onSynced={fetchData} />
             </div>
-          ) : theirTrades?.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '36px 20px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>
-              <i className="ti ti-chart-candle" style={{ fontSize: 30, display: 'block', marginBottom: 10 }} />
-              {match.status === 'completed'
-                ? `${opponentName} had no trades in this challenge`
-                : `${opponentName}'s closed trades will appear here during the match`}
-            </div>
-          ) : (
-            theirTrades.map(t => <TradeCard key={t.id} trade={t} />)
-          )
+          </>
         )}
-
-        {/* Analytics */}
-        {tab === 'analytics' && (
-          <div>
-            <AnalyticsPanel analytics={me?.analytics} label="Your Performance" />
-            {opponent
-              ? <AnalyticsPanel analytics={opponent?.analytics} label={`${opponentName}'s Performance`} />
-              : <div style={{ textAlign: 'center', padding: 20, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Opponent analytics appear once someone joins</div>
-            }
-          </div>
-        )}
-
-        {/* Connection panel */}
-        <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
-          <ConnectionPanel connections={myConnections} matchId={matchId} onSynced={fetchData} />
-        </div>
       </div>
     </div>
   )

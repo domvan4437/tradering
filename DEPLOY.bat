@@ -1,0 +1,13 @@
+@echo off
+cd /d "%~dp0"
+echo Removing git lock if present...
+if exist .git\index.lock del /f .git\index.lock
+echo Adding changed files...
+git add components/CompeteTab.js
+echo Committing...
+git commit -m "fix: remove create team inside contest, purple sidebar tabs"
+echo Pushing to GitHub...
+git push origin main
+echo.
+echo Done! Vercel will deploy in ~1 minute.
+pause

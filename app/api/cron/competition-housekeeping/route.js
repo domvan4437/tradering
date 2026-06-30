@@ -1,6 +1,15 @@
 
 import { prisma } from '../../../../lib/prisma';
 import { NextResponse } from 'next/server';
+import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
+
+const plaidClient = new PlaidApi(new Configuration({
+  basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
+  baseOptions: { headers: {
+    'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
+    'PLAID-SECRET': process.env.PLAID_SECRET,
+  }},
+}));
 
 /**
  * Cron: runs periodically to:
@@ -57,33 +66,52 @@ export async function GET(req) {
 
   // 2. Resolve expired H2H matches
   const expiredMatches = await prisma.h2HMatch.findMany({
-    where: { status: 'active', endDate: { lt: now } }
+    where: { status: 'active', endDate: { lt: now } },
+    include: { tournament: { select: { buyIn: true } } },
   });
 
   for (const match of expiredMatches) {
-    const calls = await prisma.tradeCall.findMany({
-      where: {
-        tournamentId: match.tournamentId,
-        userId: { in: [match.challengerId, match.opponentId].filter(Boolean) },
-        validationStatus: 'valid',
-        result: { not: null },
-      }
-    });
+    const participants = [match.challengerId, match.opponentId].filter(Boolean);
+    const isPaid = (match.tournament?.buyIn || 0) > 0;
     let cScore = 0, oScore = 0;
-    for (const c of calls) {
-      if (c.userId === match.challengerId) cScore += (c.pnlPoints || 0);
-      else oScore += (c.pnlPoints || 0);
+
+    if (!isPaid) {
+      // Free match: score from paper trading portfolios
+      const portfolios = await prisma.competitionPortfolio.findMany({
+        where: { competitionId: match.id, userId: { in: participants } },
+        include: { trades: true, positions: true },
+      });
+      for (const p of portfolios) {
+        const realized = p.trades.reduce((s, t) => s + (t.pnl || 0), 0);
+        const unrealized = p.positions.reduce((s, pos) => {
+          const mult = pos.direction === 'short' ? -1 : 1;
+          return s + (pos.currentPrice - pos.entryPrice) * pos.quantity * mult;
+        }, 0);
+        const totalPnL = realized + unrealized;
+        if (p.userId === match.challengerId) cScore = totalPnL;
+        else oScore = totalPnL;
+      }
+    } else {
+      // Paid match: score from real broker trades
+      const brokerTrades = await prisma.brokerTrade.findMany({
+        where: { userId: { in: participants }, status: 'closed' },
+      });
+      for (const t of brokerTrades) {
+        if (t.userId === match.challengerId) cScore += (t.realizedPnL || 0);
+        else oScore += (t.realizedPnL || 0);
+      }
     }
+
     await prisma.h2HMatch.update({
       where: { id: match.id },
       data: {
         status: 'completed',
-        challengerScore: cScore,
-        opponentScore: oScore,
+        challengerScore: +cScore.toFixed(2),
+        opponentScore: +oScore.toFixed(2),
         winnerId: cScore >= oScore ? match.challengerId : match.opponentId,
       }
     });
-    log.push(`Resolved H2H match ${match.id}`);
+    log.push(`Resolved H2H match ${match.id} (${isPaid ? 'paid' : 'free'}): challenger ${cScore.toFixed(2)} vs opponent ${oScore.toFixed(2)}`);
   }
 
   // 3. Clean up waiting H2H slots older than 48h (abandoned)
@@ -94,6 +122,65 @@ export async function GET(req) {
     }
   });
   log.push(`Cleaned ${staleWaiting.count} stale H2H queue entries`);
+
+  // 4. Auto-sync Plaid connections for users in active paid matches
+  try {
+    const paidActiveMatches = await prisma.h2HMatch.findMany({
+      where: { status: 'active' },
+      include: { tournament: { select: { buyIn: true } } },
+    });
+    const paidMatches = paidActiveMatches.filter(m => (m.tournament?.buyIn || 0) > 0);
+    const userIds = [...new Set(paidMatches.flatMap(m => [m.challengerId, m.opponentId].filter(Boolean)))];
+
+    if (userIds.length > 0) {
+      const plaidConns = await prisma.brokerConnection.findMany({
+        where: { userId: { in: userIds }, status: 'connected', broker: { not: 'webhook' } },
+      });
+
+      for (const conn of plaidConns) {
+        if (!conn.accessToken) continue;
+        try {
+          const endDate = new Date().toISOString().slice(0, 10);
+          const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const invRes = await plaidClient.investmentsTransactionsGet({
+            access_token: conn.accessToken, start_date: startDate, end_date: endDate,
+          });
+          const txns = invRes.data.investment_transactions || [];
+          let synced = 0;
+          for (const txn of txns) {
+            const exists = await prisma.brokerTrade.findFirst({
+              where: { connectionId: conn.id, brokerTradeId: txn.investment_transaction_id },
+            });
+            if (!exists) {
+              await prisma.brokerTrade.create({
+                data: {
+                  connectionId: conn.id,
+                  userId: conn.userId,
+                  brokerTradeId: txn.investment_transaction_id,
+                  asset: txn.security?.ticker_symbol || 'Unknown',
+                  symbol: txn.security?.ticker_symbol || 'UNK',
+                  direction: (txn.quantity || 0) > 0 ? 'long' : 'short',
+                  entryPrice: Math.abs(txn.price || 0),
+                  quantity: Math.abs(txn.quantity || 1),
+                  status: 'closed',
+                  openedAt: new Date(txn.date),
+                  closedAt: new Date(txn.date),
+                  realizedPnL: txn.amount ? -txn.amount : 0,
+                },
+              });
+              synced++;
+            }
+          }
+          await prisma.brokerConnection.update({ where: { id: conn.id }, data: { lastSynced: new Date() } });
+          if (synced > 0) log.push(`Plaid sync user ${conn.userId}: +${synced} trades`);
+        } catch (e) {
+          log.push(`Plaid sync failed for conn ${conn.id}: ${e.message}`);
+        }
+      }
+    }
+  } catch (e) {
+    log.push(`Plaid auto-sync error: ${e.message}`);
+  }
 
   return NextResponse.json({ success: true, log });
 }

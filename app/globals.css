@@ -117,7 +117,11 @@
 }
 
 /* ── Base ── */
-html, body { height: 100%; }
+html, body {
+  height: 100%;
+  overflow: hidden; /* prevent body-level scroll — all scrolling happens inside designated containers */
+  overscroll-behavior: none; /* stop Edge/Chrome pull-to-refresh and bounce */
+}
 body {
   background: var(--bg);
   color: var(--text);
@@ -126,6 +130,14 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: fixed; /* belt-and-suspenders: fixes Edge bounce/overscroll */
+  width: 100%;
+}
+
+/* Next.js root wrapper — must fill viewport exactly */
+#__next, [data-nextjs-scroll-focus-boundary] {
+  height: 100%;
+  overflow: hidden;
 }
 
 /* ── Ticker keyframe ── */

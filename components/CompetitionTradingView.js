@@ -84,7 +84,16 @@ function PortfolioBar({ portfolio }) {
 }
 
 // ─── Asset Search + Quote ──────────────────────────────────────────────────────
-function AssetSearch({ onSelect }) {
+// Map challenge asset class → internal classifySymbol type
+const ASSET_CLASS_MAP = {
+  'Futures': 'futures',
+  'Crypto': 'crypto',
+  'Forex': 'forex',
+  'Stocks': 'stock',
+}
+
+function AssetSearch({ onSelect, allowedAsset }) {
+  const allowedType = ASSET_CLASS_MAP[allowedAsset] || null // null = any
   const [query, setQuery] = useState('')
   const [quote, setQuote] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -99,6 +108,13 @@ function AssetSearch({ onSelect }) {
       const res = await fetch(`/api/compete/quote?symbol=${encodeURIComponent(sym.trim().toUpperCase())}`)
       const d = await res.json()
       if (d.error) { setError(d.error); setLoading(false); return }
+      // Validate against allowed asset class
+      const quoteType = d.assetType
+      if (allowedType && quoteType !== allowedType) {
+        setError(`This challenge only allows ${allowedAsset} — ${d.symbol} is ${quoteType}`)
+        setLoading(false)
+        return
+      }
       setQuote(d)
       setShowPopular(false)
     } catch { setError('Failed to fetch quote') }
@@ -126,7 +142,7 @@ function AssetSearch({ onSelect }) {
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={styles.label}>Symbol — search any stock, future, forex, crypto</label>
+      <label style={styles.label}>{allowedType ? `${allowedAsset} symbols only` : 'Symbol — search any stock, future, forex, crypto'}</label>
       <div style={{ display: 'flex', gap: 6 }}>
         <input
           value={query}
@@ -147,7 +163,7 @@ function AssetSearch({ onSelect }) {
       {/* Popular asset chips */}
       {showPopular && !quote && (
         <div style={{ marginTop: 10 }}>
-          {Object.entries(POPULAR).map(([cat, syms]) => (
+          {Object.entries(POPULAR).filter(([cat]) => !allowedType || ASSET_CLASS_MAP[cat] === allowedType).map(([cat, syms]) => (
             <div key={cat} style={{ marginBottom: 8 }}>
               <div style={{ fontFamily: F, fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>{cat}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -457,7 +473,7 @@ function PositionRow({ pos, onClose, onModify }) {
   }
 
   const handleClose = async () => {
-    if (!confirm(`Close ${pos.direction.toUpperCase()} ${pos.symbol}? P&L: ${fmtDollar(pos.pnl)}`)) return
+    if (!confirm(`Close ${pos.direction.toUpperCase()} ${pos.symbol}?`)) return
     setClosing(true)
     await onClose(pos.id)
     setClosing(false)
@@ -515,7 +531,7 @@ function PositionRow({ pos, onClose, onModify }) {
           <i className="ti ti-adjustments-horizontal" style={{ marginRight: 3 }} />Modify SL/TP
         </button>
         <button onClick={handleClose} disabled={closing} style={{ flex: 1, padding: '5px', border: `1px solid ${pos.pnl >= 0 ? '#22c55e' : '#ef4444'}`, borderRadius: 7, background: 'transparent', color: pos.pnl >= 0 ? '#22c55e' : '#ef4444', fontFamily: F, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-          {closing ? '…' : `Close @ ${fmtDollar(pos.pnl)}`}
+          {closing ? '…' : 'Close'}
         </button>
       </div>
     </div>
@@ -628,7 +644,7 @@ function LeaderboardPanel({ competitionId }) {
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-export default function CompetitionTradingView({ competitionId, competitionType = 'h2h', endDate, title }) {
+export default function CompetitionTradingView({ competitionId, competitionType = 'h2h', endDate, title, allowedAsset }) {
   const [tab, setTab] = useState('trade')
   const [portfolio, setPortfolio] = useState(null)
   const [positions, setPositions] = useState([])
@@ -765,7 +781,7 @@ export default function CompetitionTradingView({ competitionId, competitionType 
         {/* Trade tab */}
         {tab === 'trade' && (
           <div>
-            <AssetSearch onSelect={q => { setSelectedQuote(q); }} />
+            <AssetSearch onSelect={q => { setSelectedQuote(q); }} allowedAsset={allowedAsset} />
             {selectedQuote && (
               <OrderForm
                 competitionId={competitionId}
