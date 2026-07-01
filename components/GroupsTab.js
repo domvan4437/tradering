@@ -9,7 +9,25 @@ function saveGroups(groups) {
 }
 function loadGroups() {
   if (typeof window === "undefined") return [];
-  try { const d = localStorage.getItem('tr_groups'); if (!d) return []; return JSON.parse(d).map(g => ({ visibility:'open', country:'', desc:'', profileImg:null, ...g })); } catch(e) { return []; }
+  try { const d = localStorage.getItem('tr_groups'); if (!d) return []; return JSON.parse(d).map(g => ({ type:'club', visibility:'open', country:'', desc:'', profileImg:null, ...g })); } catch(e) { return []; }
+}
+function compressImage(file, maxPx = 200, quality = 0.8) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(maxPx / img.width, maxPx / img.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 function saveChatKey(groupId) { return 'tr_chat_' + groupId; }
 function saveChat(groupId, messages) {
@@ -206,12 +224,11 @@ function GroupSettings({ group, onUpdate }) {
     { key:'closed', label:'Closed',       icon:'🔒', desc:'Hidden from discovery, invite link only' },
   ];
 
-  const handleImg = (e) => {
+  const handleImg = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setProfileImg(ev.target.result);
-    reader.readAsDataURL(f);
+    const compressed = await compressImage(f);
+    setProfileImg(compressed);
   };
 
   const save = () => {
@@ -614,11 +631,10 @@ function CreateGroupModal({ onClose, onCreate }) {
     { key:'invite', label:'Invite Only',  icon:'✉️',  desc:'Members must be approved by the founder' },
     { key:'closed', label:'Closed',       icon:'🔒', desc:'Hidden from discovery, invite link only' },
   ];
-  const handleImg = (e) => {
+  const handleImg = async (e) => {
     const f = e.target.files[0]; if (!f) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setProfileImg(ev.target.result);
-    reader.readAsDataURL(f);
+    const compressed = await compressImage(f);
+    setProfileImg(compressed);
   };
   const submit = () => {
     if (!name.trim()) return;
