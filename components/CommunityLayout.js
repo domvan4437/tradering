@@ -17,7 +17,25 @@ function getColor(name) {
 }
 function loadGroups() {
   if (typeof window === 'undefined') return [];
-  try { const d = localStorage.getItem('tr_groups'); if (!d) return []; return JSON.parse(d).map(g => ({ visibility:'open', country:'', desc:'', profileImg:null, ...g })); } catch(e) { return []; }
+  try { const d = localStorage.getItem('tr_groups'); if (!d) return []; return JSON.parse(d).map(g => ({ type:'club', visibility:'open', country:'', desc:'', profileImg:null, ...g })); } catch(e) { return []; }
+}
+function compressImage(file, maxPx = 200, quality = 0.8) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(maxPx / img.width, maxPx / img.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function UserSearch() {
@@ -243,8 +261,10 @@ function GroupSettings({ group, onClose, onUpdate }) {
   const save = () => {
     const updated = { name, desc, country, visibility, price:parseFloat(price)||0, profileImg, grad };
     const all = loadGroups();
-    const idx = all.findIndex(g => g.id === group.id);
-    if (idx !== -1) { all[idx] = { ...all[idx], ...updated }; localStorage.setItem('tr_groups', JSON.stringify(all)); }
+    const idx = all.findIndex(g => String(g.id) === String(group.id));
+    if (idx !== -1) { all[idx] = { ...all[idx], ...updated }; }
+    else { all.push({ ...group, ...updated }); } // persist DB group overrides locally
+    try { localStorage.setItem('tr_groups', JSON.stringify(all)); } catch(e) {}
     if (onUpdate) onUpdate(updated);
     setSaved(true); setTimeout(() => setSaved(false), 2000);
   };
@@ -260,7 +280,7 @@ function GroupSettings({ group, onClose, onUpdate }) {
             <div onClick={() => imgRef.current && imgRef.current.click()} style={{ width:56, height:56, borderRadius:12, background:grad, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', border:'2px solid var(--border)', flexShrink:0 }}>
               {profileImg ? <img src={profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <span style={{ fontSize:20, fontWeight:700, color:'#fff' }}>{name?name[0].toUpperCase():'?'}</span>}
             </div>
-            <input ref={imgRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev=>setProfileImg(ev.target.result); r.readAsDataURL(f); }} />
+            <input ref={imgRef} type="file" accept="image/*" style={{ display:'none' }} onChange={async e => { const f=e.target.files[0]; if(!f) return; const compressed = await compressImage(f); setProfileImg(compressed); }} />
             <div>
               <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)', marginBottom:6 }}>Group Photo</div>
               <div style={{ display:'flex', gap:5, marginBottom:6 }}>{GRADS.map(g => <div key={g} onClick={() => { setGrad(g); setProfileImg(null); }} style={{ width:20, height:20, borderRadius:5, background:g, cursor:'pointer', border:grad===g&&!profileImg?'2px solid var(--text)':'2px solid transparent' }} />)}</div>
@@ -361,19 +381,23 @@ function GroupsView({ currentUserId }) {
       .then(r => r.json())
       .then(d => {
         if (!d.groups) return;
+        const localAll = loadGroups();
+        const localById = {};
+        localAll.forEach(g => { localById[String(g.id)] = g; });
         const dbGroups = d.groups.map(g => ({
           id: g.id,
           name: g.name,
           desc: g.description || '',
-          type: 'club',
+          type: localById[String(g.id)]?.type || 'club',
           visibility: g.isPublic ? 'open' : 'invite',
           members: g._count?.members || g.memberCount || 1,
           joined: true,
           creator: g.ownerId === currentUserId ? 'me' : (g.owner?.name || g.owner?.username || ''),
-          grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+          grad: localById[String(g.id)]?.grad || 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+          profileImg: localById[String(g.id)]?.profileImg || null,
           fromDB: true,
         }));
-        const localGroups = loadGroups().filter(lg => !dbGroups.find(dg => String(dg.id) === String(lg.id)));
+        const localGroups = localAll.filter(lg => !dbGroups.find(dg => String(dg.id) === String(lg.id)));
         const all = [...dbGroups, ...localGroups];
         setGroups(all);
         const lastId = localStorage.getItem('tr_last_group');
@@ -445,7 +469,7 @@ function GroupsView({ currentUserId }) {
       {dropdownOpen && openGroup && typeof document !== 'undefined' && ReactDOM.createPortal(
         <div onClick={e => e.stopPropagation()} style={{ position:'fixed', top:dropdownPos.top, left:dropdownPos.left, width:230, zIndex:99999, transform:'translateZ(0)', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.25)' }}>
           <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:32, height:32, borderRadius:10, background:openGroup.grad||PURPLE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0 }}>
+            <div style={{ width:32, height:32, borderRadius: openGroup.type === 'club' ? '50%' : 10, background:openGroup.grad||PURPLE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0 }}>
               {openGroup.profileImg ? <img src={openGroup.profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (openGroup.name||'G')[0].toUpperCase()}
             </div>
             <div>
@@ -514,7 +538,7 @@ function GroupsView({ currentUserId }) {
             const active = openGroup && openGroup.id === g.id;
             return (
               <button key={g.id} onClick={e => handleIconClick(e, g, active)} title={g.name}
-                style={{ width:40, height:40, borderRadius:active?14:'50%', background:g.grad||PURPLE, border:active?'2px solid '+PURPLE:'2px solid transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'#fff', cursor:'pointer', flexShrink:0, overflow:'hidden', transition:'all 0.2s', outline:'none', padding:0 }}>
+                style={{ width:40, height:40, borderRadius: g.type === 'club' ? '50%' : 10, background:g.grad||PURPLE, border:active?'2px solid '+PURPLE:'2px solid transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'#fff', cursor:'pointer', flexShrink:0, overflow:'hidden', transition:'all 0.2s', outline:'none', padding:0 }}>
                 {g.profileImg ? <img src={g.profileImg} alt={g.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
               </button>
             );
