@@ -1751,7 +1751,7 @@ function TeamBattleView({ contestId, currentUserId, teamSize: propTeamSize }) {
 
 // ─── CONTEST DETAIL VIEW ───────────────────────────────────────────────────────
 function ContestDetailView({ contest, onBack, currentUserId }) {
-  const [tab, setTab] = useState('paper');
+  const [tab, setTab] = useState(hasTeamFormat ? 'battle' : 'leaderboard');
   const [detail, setDetail] = useState(null);
   const hasTeamFormat = !!(contest.teamFormat);
 
@@ -1765,8 +1765,8 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
 
   const endDate = detail?.endDate || contest.endDate || null;
   const tabs = hasTeamFormat
-    ? [['paper', '📊 Trade'], ['battle', '⚔️ Battle'], ['info', 'ℹ️ Info']]
-    : [['paper', '📊 Trade'], ['leaderboard', '🏆 Leaderboard'], ['teams', '⚔️ Teams'], ['info', 'ℹ️ Info']];
+    ? [['battle', '⚔️ Battle'], ['paper', '📊 Trade'], ['info', 'ℹ️ Info']]
+    : [['leaderboard', '🏆 Leaderboard'], ['paper', '📊 Trade'], ['teams', '⚔️ Teams'], ['info', 'ℹ️ Info']];
 
   return (
     <div style={{ paddingBottom: 32 }}>
