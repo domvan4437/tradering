@@ -1942,7 +1942,7 @@ function GroupTab({ currentUserId, onOpenProfile }) {
 }
 
 // ─── LEADERBOARD TAB ──────────────────────────────────────────────────────────
-function LeaderboardTab({ currentUserId }) {
+function LeaderboardTab({ currentUserId, onOpenProfile }) {
   const [timePeriod, setTimePeriod] = useState('month');
   const [metric, setMetric] = useState('pnl');
   const [freeBoard, setFreeBoard] = useState([]);
@@ -1992,9 +1992,15 @@ function LeaderboardTab({ currentUserId }) {
         </div>
       ) : (
         board.slice(0, 10).map((e, i) => (
-          <div key={e.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid var(--border)', background: e.isMe ? '#EEEDFE' : 'transparent' }}>
+          <div
+            key={e.id}
+            onClick={() => !e.isMe && e.profileSlug && onOpenProfile(e.profileSlug)}
+            style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid var(--border)', background: e.isMe ? '#EEEDFE' : 'transparent', cursor: e.isMe ? 'default' : 'pointer', transition: 'background 0.1s' }}
+            onMouseEnter={ev => { if (!e.isMe) ev.currentTarget.style.background = '#F5F4FE'; }}
+            onMouseLeave={ev => { ev.currentTarget.style.background = e.isMe ? '#EEEDFE' : 'transparent'; }}
+          >
             <div style={{ width: 24, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: i < 3 ? '#534AB7' : 'var(--text-muted)' }}>{e.rank}</div>
-            <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text)', fontWeight: e.isMe ? 600 : 400 }}>
+            <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 13, color: e.isMe ? '#534AB7' : 'var(--text)', fontWeight: e.isMe ? 600 : 400 }}>
               {e.name}
               {e.isMe && <span style={{ marginLeft: 6, fontSize: 10, color: '#534AB7', fontWeight: 500 }}>you</span>}
             </div>
@@ -2165,7 +2171,7 @@ export default function CompeteTab({ currentUserId, externalTab }) {
           {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
           {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
           {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} />}
+          {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
           {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
         </div>
       </div>

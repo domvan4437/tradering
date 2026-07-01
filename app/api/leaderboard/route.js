@@ -25,8 +25,8 @@ export async function GET(request) {
         tournament: type === 'paid' ? { buyIn: { gt: 0 } } : { buyIn: 0 },
       },
       include: {
-        challenger: { select: { id: true, name: true, username: true, displayName: true } },
-        opponent: { select: { id: true, name: true, username: true, displayName: true } },
+        challenger: { select: { id: true, name: true, username: true, displayName: true, profileSlug: true } },
+        opponent:   { select: { id: true, name: true, username: true, displayName: true, profileSlug: true } },
       },
     })
 
@@ -38,6 +38,7 @@ export async function GET(request) {
           id: u.id,
           name: u.displayName || u.name || u.username || 'Trader',
           username: u.username || '',
+          profileSlug: u.profileSlug || u.username || u.id,
           wins: 0, losses: 0, matches: 0, totalPnl: 0,
           isMe: u.id === session.user.id,
         }
@@ -65,7 +66,7 @@ export async function GET(request) {
     if (!userMap[session.user.id]) {
       const me = await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { id: true, name: true, username: true, displayName: true },
+        select: { id: true, name: true, username: true, displayName: true, profileSlug: true },
       })
       if (me) upsert(me)
     }
