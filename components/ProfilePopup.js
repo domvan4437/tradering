@@ -359,7 +359,7 @@ export default function ProfilePopup({ slug, onClose }) {
               <>
                 {/* ── Tabs ── */}
                 <div style={{ display: 'flex', borderBottom: '0.5px solid var(--border)', padding: '0 22px' }}>
-                  {[['posts', 'Posts'], ['groups', 'Groups'], ['stats', 'Stats']].map(([key, label]) => (
+                  {[['posts', 'Posts'], ['groups', 'Groups']].map(([key, label]) => (
                     <button key={key} onClick={() => setActiveTab(key)} style={{
                       all: 'unset', padding: '10px 14px', cursor: 'pointer',
                       fontFamily: 'var(--font)', fontSize: 13, fontWeight: activeTab === key ? 600 : 400,
@@ -435,58 +435,6 @@ export default function ProfilePopup({ slug, onClose }) {
                     ));
                   })()}
 
-                  {/* ── STATS TAB ── */}
-                  {activeTab === 'stats' && (() => {
-                    const stats = data?.stats;
-                    const comps = data?.competitionResults || [];
-                    return (
-                      <div>
-                        {/* Trading stats */}
-                        {stats && (
-                          <>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Trading Stats</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
-                              {[
-                                { label: 'Verified Trades', value: stats.totalVerifiedTrades ?? '—' },
-                                { label: 'Win Rate', value: stats.winRate ? `${stats.winRate}%` : '—', color: stats.winRate >= 50 ? '#22c55e' : stats.winRate ? '#ef4444' : undefined },
-                                { label: 'Wins', value: stats.wins ?? '—', color: '#22c55e' },
-                                { label: 'Avg R:R', value: stats.avgRR ?? '—' },
-                              ].map(({ label, value, color }) => (
-                                <div key={label} style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
-                                  <div style={{ fontSize: 18, fontWeight: 700, color: color || 'var(--text)', marginBottom: 2 }}>{value}</div>
-                                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-
-                        {/* Competition results */}
-                        {comps.length > 0 && (
-                          <>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Competitions</div>
-                            {comps.slice(0, 8).map((c, i) => (
-                              <div key={c.id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 8, borderRadius: 10, border: '0.5px solid var(--border)', background: 'var(--surface)' }}>
-                                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: PURPLE, flexShrink: 0 }}>
-                                  {i + 1}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 1 }}>{c.tournament?.name || 'Competition'}</div>
-                                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                    Score: <span style={{ color: (c.score || 0) >= 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{(c.score || 0) >= 0 ? '+' : ''}${(c.score || 0).toFixed(2)}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </>
-                        )}
-
-                        {!stats && comps.length === 0 && (
-                          <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>No stats yet.</div>
-                        )}
-                      </div>
-                    );
-                  })()}
 
                 </div>
               </>
