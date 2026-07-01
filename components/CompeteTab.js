@@ -355,7 +355,7 @@ function H2HPreviewModal({ match, onAccept, onClose, onOpenProfile }) {
 }
 
 // ─── Group Preview Modal ───────────────────────────────────────────────────────
-function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile }) {
+function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile, onDelete }) {
   const [step, setStep] = useState('info'); // 'info' | 'teams'
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(true);
@@ -549,6 +549,16 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile }) {
             </button>
           ) : null}
         </div>
+        {contest.isCreator && onDelete && (
+          <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+            <button
+              onClick={() => { if (confirm('Delete this contest? All trades and entries will be removed. This cannot be undone.')) { onDelete(contest.id); onClose(); } }}
+              style={{ width: '100%', padding: '8px', background: 'none', border: '1px solid #dc2626', borderRadius: 8, color: '#dc2626', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            >
+              <i className="ti ti-trash" style={{ fontSize: 14 }} /> Delete contest
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -711,11 +721,11 @@ function InviteCard({ match, onAccept, onDecline, onOpenProfile }) {
   );
 }
 
-function ContestCard({ contest, onJoin, onOpenProfile }) {
+function ContestCard({ contest, onJoin, onOpenProfile, onDelete }) {
   const [preview, setPreview] = useState(false);
   return (
     <>
-      {preview && <GroupPreviewModal contest={contest} onJoin={onJoin} onClose={() => setPreview(false)} onOpenProfile={onOpenProfile} />}
+      {preview && <GroupPreviewModal contest={contest} onJoin={onJoin} onClose={() => setPreview(false)} onOpenProfile={onOpenProfile} onDelete={onDelete} />}
       <div onClick={() => setPreview(true)} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
         onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
         onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
@@ -1823,17 +1833,7 @@ function GroupTab({ currentUserId, onOpenProfile }) {
             <EmptyState icon="ti-users" title="No open contests" sub="Create one or wait for others to post" btnLabel="Create contest" onBtnClick={() => setShowModal(true)} />
           ) : (
             filteredContests.map(c => (
-              <div key={c.id} style={{ position: 'relative' }}>
-                <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />
-                {c.isCreator && (
-                  <button
-                    onClick={e => { e.stopPropagation(); handleDeleteContest(c.id); }}
-                    style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', zIndex: 1 }}
-                    title="Delete contest">
-                    <i className="ti ti-trash" style={{ fontSize: 14 }} />
-                  </button>
-                )}
-              </div>
+              <ContestCard key={c.id} contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} />
             ))
           )}
         </>
@@ -1846,18 +1846,8 @@ function GroupTab({ currentUserId, onOpenProfile }) {
           <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />
         ) : (
           (data.myContests || []).map(c => (
-            <div key={c.id} style={{ position: 'relative' }}>
-              <div onClick={() => setSelectedContest(c)} style={{ cursor: 'pointer' }}>
-                <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} />
-              </div>
-              {c.isCreator && (
-                <button
-                  onClick={e => { e.stopPropagation(); handleDeleteContest(c.id); }}
-                  style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', zIndex: 1 }}
-                  title="Delete contest">
-                  <i className="ti ti-trash" style={{ fontSize: 14 }} />
-                </button>
-              )}
+            <div key={c.id} onClick={() => c.joined && setSelectedContest(c)} style={{ cursor: c.joined ? 'pointer' : 'default' }}>
+              <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} />
             </div>
           ))
         )
