@@ -1251,7 +1251,7 @@ function H2HTab({ currentUserId, onOpenProfile }) {
 
   // Show match detail view if one is selected
   if (selectedMatchId) {
-    return <MatchDetailView matchId={selectedMatchId} onBack={() => { setSelectedMatchId(null); fetchData(); }} />;
+    return <MatchDetailView matchId={selectedMatchId} onBack={() => { setSelectedMatchId(null); fetchData(); }} onDelete={() => { setSelectedMatchId(null); fetchData(); }} />;
   }
 
   const handleAccept = async (matchId) => {

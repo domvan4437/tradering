@@ -329,7 +329,7 @@ function AnalyticsPanel({ analytics, label }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function MatchDetailView({ matchId, onBack }) {
+export default function MatchDetailView({ matchId, onBack, onDelete }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -382,6 +382,19 @@ export default function MatchDetailView({ matchId, onBack }) {
         <button onClick={fetchData} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13 }} title="Refresh">
           <i className="ti ti-refresh" />
         </button>
+        {match.isChallenger && onDelete && (
+          <button
+            onClick={async () => {
+              if (!confirm('Delete this challenge? This cannot be undone.')) return;
+              await fetch('/api/challenges', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) });
+              onDelete();
+            }}
+            style={{ background: 'none', border: '1px solid #ef444444', borderRadius: 7, padding: '4px 10px', cursor: 'pointer', color: '#ef4444', fontSize: 13 }}
+            title="Delete challenge"
+          >
+            <i className="ti ti-trash" />
+          </button>
+        )}
       </div>
 
       <div style={{ padding: '0 18px' }}>
