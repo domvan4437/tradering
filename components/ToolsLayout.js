@@ -262,7 +262,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
           const isActive = tab === t.key;
           return (
             <div key={t.key} title={t.label} onClick={() => setTab(t.key)}
-              style={{ width:38, height:38, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background:isActive?'#534AB7':'transparent', color:isActive?'#fff':'var(--text-muted)', fontSize:19, transition:'all .15s', flexShrink:0 }}
+              style={{ width:38, height:38, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background:isActive?'#EEEDFE':'transparent', color:isActive?'#534AB7':'var(--text-muted)', fontSize:19, transition:'all .15s', flexShrink:0 }}
               onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background='#EEEDFE'; e.currentTarget.style.color='#534AB7'; } }}
               onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; } }}
             >
