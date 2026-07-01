@@ -432,9 +432,14 @@ function GroupsView({ currentUserId }) {
     return () => document.removeEventListener('click', handler);
   }, [dropdownOpen]);
 
-  const handleIconClick = (e, g, active) => {
+  const handleIconClick = (e, g) => {
     e.stopPropagation();
-    if (!active) { switchGroup(g); return; }
+    switchGroup(g);
+  };
+
+  const openGroupMenu = (e) => {
+    e.stopPropagation();
+    if (!openGroup) return;
     const rect = e.currentTarget.getBoundingClientRect();
     setDropdownPos({ top: rect.bottom + 8, left: rect.left });
     setDropdownOpen(d => !d);
@@ -537,7 +542,7 @@ function GroupsView({ currentUserId }) {
           : groups.map(g => {
             const active = openGroup && openGroup.id === g.id;
             return (
-              <button key={g.id} onClick={e => handleIconClick(e, g, active)} title={g.name}
+              <button key={g.id} onClick={e => handleIconClick(e, g)} title={g.name}
                 style={{ width:40, height:40, borderRadius: g.type === 'club' ? '50%' : 10, background:g.grad||PURPLE, border:active?'2px solid '+PURPLE:'2px solid transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'#fff', cursor:'pointer', flexShrink:0, overflow:'hidden', transition:'all 0.2s', outline:'none', padding:0 }}>
                 {g.profileImg ? <img src={g.profileImg} alt={g.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
               </button>
@@ -561,6 +566,20 @@ function GroupsView({ currentUserId }) {
           )}
         </div>
       </div>
+
+      {/* Group header bar */}
+      {openGroup && (
+        <div style={{ padding:'7px 14px', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0, display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:22, height:22, borderRadius: openGroup.type === 'club' ? '50%' : 6, background:openGroup.grad||PURPLE, overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff' }}>
+            {openGroup.profileImg ? <img src={openGroup.profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (openGroup.name||'G')[0].toUpperCase()}
+          </div>
+          <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)', flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{openGroup.name}</span>
+          <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>#{activeRoom}</span>
+          <button onClick={openGroupMenu} title="Rooms & settings" style={{ width:28, height:28, borderRadius:7, background:'transparent', border:'1px solid var(--border)', color:'var(--text-muted)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, flexShrink:0 }}
+            onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
+            onMouseLeave={e => e.currentTarget.style.background='transparent'}>⋯</button>
+        </div>
+      )}
 
       {/* Chat */}
       <div style={{ flex:1, overflow:'hidden' }}>
