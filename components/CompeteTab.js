@@ -1952,14 +1952,25 @@ function LeaderboardTab({ currentUserId }) {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      fetch(`/api/leaderboard?period=${timePeriod}&type=free`).then(r => r.json()),
-      fetch(`/api/leaderboard?period=${timePeriod}&type=paid`).then(r => r.json()),
+      fetch(`/api/leaderboard?period=${timePeriod}&type=free&metric=${metric}`).then(r => r.json()),
+      fetch(`/api/leaderboard?period=${timePeriod}&type=paid&metric=${metric}`).then(r => r.json()),
     ]).then(([free, paid]) => {
       setFreeBoard(free.leaderboard || []);
       setPaidBoard(paid.leaderboard || []);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [timePeriod]);
+  }, [timePeriod, metric]);
+
+  const colHeader = metric === 'winrate' ? 'Win Rate' : 'P&L';
+  const colValue = (e) => {
+    if (metric === 'winrate') {
+      const color = e.winRate >= 50 ? '#22c55e' : '#ef4444';
+      return <span style={{ color, fontWeight: 600 }}>{e.winRate}%</span>;
+    }
+    const pnl = e.totalPnl || 0;
+    const color = pnl > 0 ? '#22c55e' : pnl < 0 ? '#ef4444' : 'var(--text-muted)';
+    return <span style={{ color, fontWeight: 600 }}>{pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span>;
+  };
 
   const renderBoard = (board, label, color, emptyIcon, emptyMsg) => (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -1970,7 +1981,7 @@ function LeaderboardTab({ currentUserId }) {
       <div style={{ display: 'flex', padding: '6px 14px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
         <div style={{ width: 24, fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>#</div>
         <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Trader</div>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>W/L</div>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{colHeader}</div>
       </div>
       {loading ? (
         <div style={{ padding: '24px', textAlign: 'center', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
@@ -1987,8 +1998,8 @@ function LeaderboardTab({ currentUserId }) {
               {e.name}
               {e.isMe && <span style={{ marginLeft: 6, fontSize: 10, color: '#534AB7', fontWeight: 500 }}>you</span>}
             </div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-              {e.wins}W / {e.losses}L
+            <div style={{ fontFamily: 'var(--font)', fontSize: 13 }}>
+              {colValue(e)}
             </div>
           </div>
         ))
@@ -2005,9 +2016,8 @@ function LeaderboardTab({ currentUserId }) {
           <option value="month">This month</option>
         </select>
         <select value={metric} onChange={e => setMetric(e.target.value)} style={{ ...S.input, width: 'auto', cursor: 'pointer' }}>
-          <option value="pnl">P&L %</option>
+          <option value="pnl">P&L</option>
           <option value="winrate">Win rate</option>
-          <option value="trades">Total trades</option>
         </select>
       </div>
 

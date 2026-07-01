@@ -10,6 +10,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'month'
     const type = searchParams.get('type') || 'free' // 'free' | 'paid'
+    const metric = searchParams.get('metric') || 'pnl' // 'pnl' | 'winrate'
 
     const now = new Date()
     const since = period === 'week' ? new Date(now - 7*86400000) :
@@ -37,7 +38,7 @@ export async function GET(request) {
           id: u.id,
           name: u.displayName || u.name || u.username || 'Trader',
           username: u.username || '',
-          wins: 0, losses: 0, matches: 0,
+          wins: 0, losses: 0, matches: 0, totalPnl: 0,
           isMe: u.id === session.user.id,
         }
       }
@@ -48,11 +49,13 @@ export async function GET(request) {
       upsert(m.opponent)
       if (m.challengerId && userMap[m.challengerId]) {
         userMap[m.challengerId].matches++
+        userMap[m.challengerId].totalPnl += m.challengerScore || 0
         if (m.winnerId === m.challengerId) userMap[m.challengerId].wins++
         else userMap[m.challengerId].losses++
       }
       if (m.opponentId && userMap[m.opponentId]) {
         userMap[m.opponentId].matches++
+        userMap[m.opponentId].totalPnl += m.opponentScore || 0
         if (m.winnerId === m.opponentId) userMap[m.opponentId].wins++
         else userMap[m.opponentId].losses++
       }
@@ -67,13 +70,18 @@ export async function GET(request) {
       if (me) upsert(me)
     }
 
-    const leaderboard = Object.values(userMap)
-      .sort((a, b) => b.wins - a.wins || a.losses - b.losses)
-      .map((e, i) => ({
-        ...e,
-        rank: i + 1,
-        winRate: e.matches ? Math.round(e.wins / e.matches * 100) : 0,
-      }))
+    const sorted = Object.values(userMap).map(e => ({
+      ...e,
+      winRate: e.matches ? Math.round(e.wins / e.matches * 100) : 0,
+    }))
+
+    if (metric === 'winrate') {
+      sorted.sort((a, b) => b.winRate - a.winRate || b.matches - a.matches)
+    } else {
+      sorted.sort((a, b) => b.totalPnl - a.totalPnl)
+    }
+
+    const leaderboard = sorted.map((e, i) => ({ ...e, rank: i + 1 }))
 
     return Response.json({ leaderboard })
   } catch (e) {
