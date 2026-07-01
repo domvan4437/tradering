@@ -463,11 +463,42 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile, onDelete }
           </div>
           {detailLoading ? (
             <div style={{ textAlign: 'center', padding: 16, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+          ) : detail?.teams && detail.teams.length > 0 ? (
+            // Team contest — show per-team breakdown
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {detail.teams.map(team => (
+                <div key={team.id} style={{ border: `1.5px solid ${team.color}44`, borderRadius: 10, overflow: 'hidden' }}>
+                  {/* Team header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: team.color + '12' }}>
+                    <span style={{ fontSize: 16 }}>{team.emoji}</span>
+                    <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: team.color }}>{team.name}</div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: team.teamPnl >= 0 ? '#059669' : '#dc2626' }}>
+                      {team.teamPnl >= 0 ? '+' : ''}${team.teamPnl.toFixed(2)}
+                    </div>
+                  </div>
+                  {/* Team members */}
+                  {team.members.length === 0 ? (
+                    <div style={{ padding: '10px 12px', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>No members yet</div>
+                  ) : (
+                    team.members.map((m, i) => (
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderTop: '1px solid var(--border)' }}>
+                        <div style={{ width: 18, textAlign: 'center', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>{i + 1}</div>
+                        <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text)' }}>{m.name}</div>
+                        <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: m.pnl >= 0 ? '#059669' : '#dc2626' }}>
+                          {m.pnl >= 0 ? '+' : ''}${Math.abs(m.pnl).toFixed(2)}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ))}
+            </div>
           ) : (detail?.members || []).length === 0 ? (
             <div style={{ textAlign: 'center', padding: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', background: 'var(--surface2)', borderRadius: 9 }}>
               No one joined yet — be the first!
             </div>
           ) : (
+            // Solo contest — flat leaderboard
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {(detail?.members || []).map((m, i) => {
                 const pnl = m.pnl ?? m.score ?? 0;
