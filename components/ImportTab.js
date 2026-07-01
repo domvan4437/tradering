@@ -383,12 +383,25 @@ async function parseJoplin(file) {
   return notes;
 }
 
+// ── Platform logo renderer ────────────────────────────────────
+function PlatformLogo({ p, size = 36 }) {
+  const r = Math.round(size * 0.22);
+  return (
+    <div style={{ width:size, height:size, borderRadius:r, background:p.lb, display:'flex', alignItems:'center', justifyContent:'center', fontSize:size*0.3, fontWeight:800, color:p.lc, flexShrink:0, overflow:'hidden' }}>
+      {p.logoUrl
+        ? <img src={p.logoUrl} alt={p.name} style={{ width:'78%', height:'78%', objectFit:'contain' }} onError={e => { e.currentTarget.style.display='none'; }} />
+        : p.logo}
+    </div>
+  );
+}
+
 // ── PLATFORM DEFINITIONS ──────────────────────────────────────
 const PLATFORMS = [
   {
     id: 'notion',
     name: 'Notion',
     logo: 'N',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=notion.so&sz=64',
     lb: '#000',
     lc: '#fff',
     desc: 'Import your entire Notion workspace including all pages and subpages.',
@@ -410,6 +423,7 @@ const PLATFORMS = [
     id: 'obsidian',
     name: 'Obsidian',
     logo: '⬡',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=obsidian.md&sz=64',
     lb: '#7c3aed',
     lc: '#fff',
     desc: 'Import your entire Obsidian vault with full folder structure.',
@@ -430,6 +444,7 @@ const PLATFORMS = [
     id: 'evernote',
     name: 'Evernote',
     logo: 'E',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=evernote.com&sz=64',
     lb: '#00a82d',
     lc: '#fff',
     desc: 'Import Evernote notebooks with tags and creation dates preserved.',
@@ -451,6 +466,7 @@ const PLATFORMS = [
     id: 'apple-notes',
     name: 'Apple Notes',
     logo: '🍎',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=apple.com&sz=64',
     lb: '#f5f5f7',
     lc: '#1d1d1f',
     desc: 'Import Apple Notes exported as text files.',
@@ -472,6 +488,7 @@ const PLATFORMS = [
     id: 'google-docs',
     name: 'Google Docs / Keep',
     logo: 'G',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=docs.google.com&sz=64',
     lb: '#4285f4',
     lc: '#fff',
     desc: 'Import Google Docs or Keep notes as plain text or HTML.',
@@ -493,6 +510,7 @@ const PLATFORMS = [
     id: 'onenote',
     name: 'Microsoft OneNote',
     logo: 'O',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=onenote.com&sz=64',
     lb: '#7719aa',
     lc: '#fff',
     desc: 'Import OneNote sections exported as Word documents.',
@@ -514,6 +532,7 @@ const PLATFORMS = [
     id: 'bear',
     name: 'Bear',
     logo: '🐻',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=bear.app&sz=64',
     lb: '#c9513a',
     lc: '#fff',
     desc: 'Import Bear notes with tags preserved.',
@@ -534,6 +553,7 @@ const PLATFORMS = [
     id: 'roam',
     name: 'Roam Research',
     logo: 'R',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=roamresearch.com&sz=64',
     lb: '#1a1a2e',
     lc: '#8b9cf4',
     desc: 'Import your entire Roam graph via JSON export.',
@@ -554,6 +574,7 @@ const PLATFORMS = [
     id: 'logseq',
     name: 'Logseq',
     logo: 'L',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=logseq.com&sz=64',
     lb: '#085b6f',
     lc: '#fff',
     desc: 'Import Logseq pages as markdown notes.',
@@ -574,6 +595,7 @@ const PLATFORMS = [
     id: 'simplenote',
     name: 'Simplenote',
     logo: 'S',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=simplenote.com&sz=64',
     lb: '#3360cc',
     lc: '#fff',
     desc: 'Import all Simplenote notes with tags via JSON export.',
@@ -594,6 +616,7 @@ const PLATFORMS = [
     id: 'joplin',
     name: 'Joplin',
     logo: 'J',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=joplinapp.org&sz=64',
     lb: '#2b2b2b',
     lc: '#68b5fb',
     desc: 'Import Joplin notes exported as markdown.',
@@ -614,6 +637,7 @@ const PLATFORMS = [
     id: 'word',
     name: 'Microsoft Word',
     logo: 'W',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=microsoft.com/en-us/microsoft-365/word&sz=64',
     lb: '#2b579a',
     lc: '#fff',
     desc: 'Import Word documents (.docx) directly as notes.',
@@ -651,6 +675,7 @@ const PLATFORMS = [
     id: 'tradingview',
     name: 'TradingView Watchlist',
     logo: 'TV',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=tradingview.com&sz=64',
     lb: '#2962ff',
     lc: '#fff',
     desc: 'Import your TradingView watchlist symbols as a note.',
@@ -670,6 +695,7 @@ const PLATFORMS = [
     id: 'forexfactory',
     name: 'Forex Factory Notes',
     logo: 'FF',
+    logoUrl: 'https://www.google.com/s2/favicons?domain=forexfactory.com&sz=64',
     lb: '#cc3300',
     lc: '#fff',
     desc: 'Import your Forex Factory analysis and notes as a text file.',
@@ -810,7 +836,7 @@ export default function ImportTab() {
                     style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:10, border:'1px solid '+(selectedPlatform?.id===p.id?PURPLE:'var(--border)'), background:selectedPlatform?.id===p.id?'rgba(79,70,229,0.08)':'var(--surface)', cursor:'pointer', transition:'all 0.15s' }}
                     onMouseEnter={e=>e.currentTarget.style.borderColor=PURPLE}
                     onMouseLeave={e=>e.currentTarget.style.borderColor=selectedPlatform?.id===p.id?PURPLE:'var(--border)'}>
-                    <div style={{ width:24, height:24, borderRadius:6, background:p.lb, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, color:p.lc, flexShrink:0 }}>{p.logo}</div>
+                    <PlatformLogo p={p} size={24} />
                     <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:selectedPlatform?.id===p.id?PURPLE:'var(--text)', whiteSpace:'nowrap' }}>{p.name}</span>
                     {selectedPlatform?.id===p.id && <span style={{ fontSize:12, color:PURPLE }}>✓</span>}
                   </button>
@@ -829,7 +855,7 @@ export default function ImportTab() {
                 style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:10, border:'1px solid '+(selectedPlatform?.id===p.id?PURPLE:'var(--border)'), background:selectedPlatform?.id===p.id?'rgba(79,70,229,0.08)':'var(--surface)', cursor:'pointer', transition:'all 0.15s' }}
                 onMouseEnter={e=>{ if(selectedPlatform?.id!==p.id) e.currentTarget.style.borderColor=PURPLE; }}
                 onMouseLeave={e=>{ if(selectedPlatform?.id!==p.id) e.currentTarget.style.borderColor='var(--border)'; }}>
-                <div style={{ width:36, height:36, borderRadius:8, background:p.lb, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:p.lc, flexShrink:0 }}>{p.logo}</div>
+                <PlatformLogo p={p} size={36} />
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:selectedPlatform?.id===p.id?PURPLE:'var(--text)', marginBottom:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
                   <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{p.category}</div>
@@ -846,7 +872,7 @@ export default function ImportTab() {
             {selectedPlatform ? (
               <>
                 <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-                  <div style={{ width:40, height:40, borderRadius:10, background:selectedPlatform.lb, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:selectedPlatform.lc, flexShrink:0 }}>{selectedPlatform.logo}</div>
+                  <PlatformLogo p={selectedPlatform} size={40} />
                   <div>
                     <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:700, color:'var(--text)' }}>{selectedPlatform.name}</div>
                     <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{selectedPlatform.category}</div>
