@@ -1751,9 +1751,9 @@ function TeamBattleView({ contestId, currentUserId, teamSize: propTeamSize }) {
 
 // ─── CONTEST DETAIL VIEW ───────────────────────────────────────────────────────
 function ContestDetailView({ contest, onBack, currentUserId }) {
+  const hasTeamFormat = !!(contest.teamFormat);
   const [tab, setTab] = useState(hasTeamFormat ? 'battle' : 'leaderboard');
   const [detail, setDetail] = useState(null);
-  const hasTeamFormat = !!(contest.teamFormat);
 
   useEffect(() => {
     if (!contest?.id) return;
