@@ -5,6 +5,13 @@ import CompetitionTradingView from './CompetitionTradingView';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ASSET_CLASSES = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
+const INSTRUMENTS = {
+  Crypto:      [{ sym: 'BTC-USD', label: 'Bitcoin' }, { sym: 'ETH-USD', label: 'Ethereum' }, { sym: 'SOL-USD', label: 'Solana' }, { sym: 'BNB-USD', label: 'BNB' }, { sym: 'XRP-USD', label: 'XRP' }, { sym: 'ADA-USD', label: 'Cardano' }, { sym: 'DOGE-USD', label: 'Dogecoin' }, { sym: 'AVAX-USD', label: 'Avalanche' }, { sym: 'DOT-USD', label: 'Polkadot' }, { sym: 'LINK-USD', label: 'Chainlink' }, { sym: 'LTC-USD', label: 'Litecoin' }, { sym: 'MATIC-USD', label: 'Polygon' }],
+  Forex:       [{ sym: 'EURUSD=X', label: 'EUR/USD' }, { sym: 'GBPUSD=X', label: 'GBP/USD' }, { sym: 'USDJPY=X', label: 'USD/JPY' }, { sym: 'AUDUSD=X', label: 'AUD/USD' }, { sym: 'USDCAD=X', label: 'USD/CAD' }, { sym: 'USDCHF=X', label: 'USD/CHF' }, { sym: 'NZDUSD=X', label: 'NZD/USD' }, { sym: 'EURJPY=X', label: 'EUR/JPY' }, { sym: 'GBPJPY=X', label: 'GBP/JPY' }, { sym: 'EURGBP=X', label: 'EUR/GBP' }],
+  Futures:     [{ sym: 'NQ=F', label: 'NASDAQ' }, { sym: 'ES=F', label: 'S&P 500' }, { sym: 'YM=F', label: 'Dow Jones' }, { sym: 'RTY=F', label: 'Russell 2000' }, { sym: 'GC=F', label: 'Gold' }, { sym: 'SI=F', label: 'Silver' }, { sym: 'CL=F', label: 'Crude Oil' }, { sym: 'NG=F', label: 'Nat. Gas' }, { sym: 'HG=F', label: 'Copper' }, { sym: 'ZC=F', label: 'Corn' }, { sym: 'ZS=F', label: 'Soybeans' }],
+  Commodities: [{ sym: 'GC=F', label: 'Gold' }, { sym: 'SI=F', label: 'Silver' }, { sym: 'CL=F', label: 'Crude Oil' }, { sym: 'NG=F', label: 'Nat. Gas' }, { sym: 'HG=F', label: 'Copper' }, { sym: 'ZC=F', label: 'Corn' }, { sym: 'ZS=F', label: 'Soybeans' }, { sym: 'ZW=F', label: 'Wheat' }],
+  Stocks:      [{ sym: 'AAPL', label: 'Apple' }, { sym: 'TSLA', label: 'Tesla' }, { sym: 'NVDA', label: 'Nvidia' }, { sym: 'MSFT', label: 'Microsoft' }, { sym: 'AMZN', label: 'Amazon' }, { sym: 'GOOGL', label: 'Alphabet' }, { sym: 'META', label: 'Meta' }, { sym: 'AMD', label: 'AMD' }, { sym: 'NFLX', label: 'Netflix' }, { sym: 'SPY', label: 'S&P 500 ETF' }, { sym: 'QQQ', label: 'NASDAQ ETF' }],
+};
 const H2H_DURATION_PRESETS = ['1 Day', '3 Days', '1 Week', '2 Weeks', '1 Month', 'Custom'];
 const GROUP_DURATION_PRESETS = ['1 Day', '3 Days', '1 Week', '2 Weeks', '1 Month', '3 Months', 'Custom'];
 const PRIZE_STRUCTURES = ['Winner Take All', 'Top 2 Split', 'Top 3 Split', 'Top 5 Split'];
@@ -443,7 +450,7 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile, onDelete }
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: contest.allowedSymbols ? 10 : 16 }}>
           {[
             { label: 'Asset', value: contest.asset || 'Any' },
             { label: 'Buy-in', value: contest.buyIn > 0 ? `$${contest.buyIn}` : 'Free' },
@@ -455,6 +462,21 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile, onDelete }
             </div>
           ))}
         </div>
+
+        {contest.allowedSymbols && contest.allowedSymbols.length > 0 && (
+          <div style={{ marginBottom: 14, padding: '8px 12px', background: '#EEEDFE', borderRadius: 9, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <i className="ti ti-lock" style={{ fontSize: 13, color: '#534AB7', marginTop: 1, flexShrink: 0 }} />
+            <div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: '#534AB7', marginBottom: 4 }}>Allowed instruments only</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {contest.allowedSymbols.map(sym => {
+                  const label = Object.values(INSTRUMENTS).flat().find(i => i.sym === sym)?.label || sym;
+                  return <span key={sym} style={{ fontFamily: 'var(--font)', fontSize: 11, background: '#fff', color: '#534AB7', border: '1px solid #534AB733', padding: '2px 8px', borderRadius: 12 }}>{label}</span>;
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Live leaderboard preview */}
         <div style={{ marginBottom: 18 }}>
@@ -929,6 +951,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
   const [form, setForm] = useState({
     name: '',
     asset: 'Any',
+    allowedSymbols: [],
     durationType: 'preset',
     durationPreset: '1 Month',
     durationCustom: '',
@@ -978,6 +1001,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
           name: form.name,
           description: form.desc,
           asset: form.asset,
+          allowedSymbols: form.allowedSymbols.length > 0 ? form.allowedSymbols : null,
           duration,
           buyIn: type === 'paid' ? form.fee : '0',
           teamFormat: finalTeamFormat,
@@ -1009,10 +1033,38 @@ function CreateGroupModal({ onClose, onSuccess }) {
         </div>
         <div>
           <label style={S.label}>Asset class</label>
-          <select value={form.asset} onChange={e => set('asset', e.target.value)} style={{ ...S.input, cursor: 'pointer' }}>
+          <select value={form.asset} onChange={e => { set('asset', e.target.value); set('allowedSymbols', []); }} style={{ ...S.input, cursor: 'pointer' }}>
             {ASSET_CLASSES.map(a => <option key={a}>{a}</option>)}
           </select>
         </div>
+        {form.asset !== 'Any' && INSTRUMENTS[form.asset] && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={S.label}>
+              Allowed instruments
+              <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6, color: 'var(--text-muted)' }}>
+                — leave blank to allow any {form.asset}
+              </span>
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              {INSTRUMENTS[form.asset].map(({ sym, label }) => {
+                const selected = form.allowedSymbols.includes(sym);
+                return (
+                  <button key={sym} type="button"
+                    onClick={() => set('allowedSymbols', selected ? form.allowedSymbols.filter(s => s !== sym) : [...form.allowedSymbols, sym])}
+                    style={{ padding: '5px 12px', borderRadius: 20, cursor: 'pointer', border: `1.5px solid ${selected ? '#534AB7' : 'var(--border)'}`, background: selected ? '#EEEDFE' : 'transparent', color: selected ? '#534AB7' : 'var(--text-muted)', fontFamily: 'var(--font)', fontSize: 12, fontWeight: selected ? 600 : 400 }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {form.allowedSymbols.length > 0 && (
+              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: '#534AB7', marginTop: 6 }}>
+                {form.allowedSymbols.length} instrument{form.allowedSymbols.length !== 1 ? 's' : ''} selected — only these can be traded
+              </div>
+            )}
+          </div>
+        )}
         <div>
           <label style={S.label}>Duration</label>
           <DurationField
@@ -1753,7 +1805,8 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
           competitionType="group"
           endDate={endDate}
           title={contest.name}
-          allowedAsset={contest.asset !== 'Any' ? contest.asset : null}
+          allowedAsset={!contest.allowedSymbols && contest.asset !== 'Any' ? contest.asset : null}
+          allowedSymbols={contest.allowedSymbols || null}
         />
       )}
 

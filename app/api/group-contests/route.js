@@ -55,22 +55,29 @@ export async function GET(request) {
       }),
     ])
 
-    const fmtContest = (c) => ({
-      id: c.id,
-      name: c.name,
-      description: c.description,
-      asset: c.assetClasses?.[0] || 'Any',
-      buyIn: c.buyIn,
-      status: c.status,
-      endDate: c.endDate,
-      memberCount: c._count?.entries ?? 0,
-      joined: (c.entries?.length ?? 0) > 0,
-      creatorName: c.creator?.displayName || c.creator?.name || c.creator?.username || 'Trader',
-      creatorSlug: c.creator?.profileSlug || c.creator?.id,
-      isCreator: c.creatorId === uid,
-      teamFormat: c.teamFormat || null,
-      teamSize: c.teamSize || null,
-    })
+    const CATEGORY_NAMES = new Set(['Any', 'Forex', 'Crypto', 'Stocks', 'Futures', 'Commodities']);
+    const fmtContest = (c) => {
+      const assetClasses = c.assetClasses || ['Any'];
+      const category = assetClasses[0] || 'Any';
+      const specificSymbols = assetClasses.slice(1).filter(s => !CATEGORY_NAMES.has(s));
+      return {
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        asset: category,
+        allowedSymbols: specificSymbols.length > 0 ? specificSymbols : null,
+        buyIn: c.buyIn,
+        status: c.status,
+        endDate: c.endDate,
+        memberCount: c._count?.entries ?? 0,
+        joined: (c.entries?.length ?? 0) > 0,
+        creatorName: c.creator?.displayName || c.creator?.name || c.creator?.username || 'Trader',
+        creatorSlug: c.creator?.profileSlug || c.creator?.id,
+        isCreator: c.creatorId === uid,
+        teamFormat: c.teamFormat || null,
+        teamSize: c.teamSize || null,
+      };
+    }
 
     return Response.json({ contests: allContests.map(fmtContest), myContests: myContests.map(fmtContest) })
   } catch (e) {
@@ -83,7 +90,7 @@ export async function POST(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const { action, contestId, name, description, asset, duration, buyIn, teamFormat, teamSize, teamNameA, teamNameB } = await request.json()
+    const { action, contestId, name, description, asset, allowedSymbols, duration, buyIn, teamFormat, teamSize, teamNameA, teamNameB } = await request.json()
 
     if (action === 'join') {
       const existing = await prisma.tournamentEntry.findFirst({ where: { tournamentId: contestId, userId: session.user.id } })
@@ -104,7 +111,7 @@ export async function POST(request) {
           description: description || '',
           type: 'group',
           status: 'open',
-          assetClasses: [asset || 'Any'],
+          assetClasses: allowedSymbols?.length > 0 ? [asset || 'Any', ...allowedSymbols] : [asset || 'Any'],
           maxCallsPerDay: 99,
           startDate: now,
           endDate,

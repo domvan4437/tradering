@@ -92,8 +92,8 @@ const ASSET_CLASS_MAP = {
   'Stocks': 'stock',
 }
 
-function AssetSearch({ onSelect, allowedAsset }) {
-  const allowedType = ASSET_CLASS_MAP[allowedAsset] || null // null = any
+function AssetSearch({ onSelect, allowedAsset, allowedSymbols }) {
+  const allowedType = allowedSymbols ? null : (ASSET_CLASS_MAP[allowedAsset] || null) // specific symbols override category
   const [query, setQuery] = useState('')
   const [quote, setQuote] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -108,6 +108,12 @@ function AssetSearch({ onSelect, allowedAsset }) {
       const res = await fetch(`/api/compete/quote?symbol=${encodeURIComponent(sym.trim().toUpperCase())}`)
       const d = await res.json()
       if (d.error) { setError(d.error); setLoading(false); return }
+      // Validate against specific allowed symbols first
+      if (allowedSymbols && allowedSymbols.length > 0 && !allowedSymbols.includes(d.symbol)) {
+        setError(`This contest only allows specific instruments — ${d.symbol} is not permitted`)
+        setLoading(false)
+        return
+      }
       // Validate against allowed asset class
       const quoteType = d.assetType
       if (allowedType && quoteType !== allowedType) {
@@ -142,7 +148,7 @@ function AssetSearch({ onSelect, allowedAsset }) {
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={styles.label}>{allowedType ? `${allowedAsset} symbols only` : 'Symbol — search any stock, future, forex, crypto'}</label>
+      <label style={styles.label}>{allowedSymbols ? `Allowed instruments only` : allowedType ? `${allowedAsset} symbols only` : 'Symbol — search any stock, future, forex, crypto'}</label>
       <div style={{ display: 'flex', gap: 6 }}>
         <input
           value={query}
@@ -163,7 +169,16 @@ function AssetSearch({ onSelect, allowedAsset }) {
       {/* Popular asset chips */}
       {showPopular && !quote && (
         <div style={{ marginTop: 10 }}>
-          {Object.entries(POPULAR).filter(([cat]) => !allowedType || ASSET_CLASS_MAP[cat] === allowedType).map(([cat, syms]) => (
+          {allowedSymbols && allowedSymbols.length > 0 ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {allowedSymbols.map(sym => (
+                <button key={sym} onClick={() => lookupSymbol(sym)}
+                  style={{ padding: '4px 10px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontFamily: F, fontSize: 11, cursor: 'pointer' }}>
+                  {sym.replace('=X','').replace('-USD',' USD').replace('=F','')}
+                </button>
+              ))}
+            </div>
+          ) : Object.entries(POPULAR).filter(([cat]) => !allowedType || ASSET_CLASS_MAP[cat] === allowedType).map(([cat, syms]) => (
             <div key={cat} style={{ marginBottom: 8 }}>
               <div style={{ fontFamily: F, fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>{cat}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -644,7 +659,7 @@ function LeaderboardPanel({ competitionId }) {
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-export default function CompetitionTradingView({ competitionId, competitionType = 'h2h', endDate, title, allowedAsset }) {
+export default function CompetitionTradingView({ competitionId, competitionType = 'h2h', endDate, title, allowedAsset, allowedSymbols }) {
   const [tab, setTab] = useState('trade')
   const [portfolio, setPortfolio] = useState(null)
   const [positions, setPositions] = useState([])
@@ -781,7 +796,7 @@ export default function CompetitionTradingView({ competitionId, competitionType 
         {/* Trade tab */}
         {tab === 'trade' && (
           <div>
-            <AssetSearch onSelect={q => { setSelectedQuote(q); }} allowedAsset={allowedAsset} />
+            <AssetSearch onSelect={q => { setSelectedQuote(q); }} allowedAsset={allowedAsset} allowedSymbols={allowedSymbols} />
             {selectedQuote && (
               <OrderForm
                 competitionId={competitionId}
