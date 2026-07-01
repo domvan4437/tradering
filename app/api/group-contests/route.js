@@ -23,7 +23,7 @@ export async function GET(request) {
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const uid = session.user.id
 
-    const [allContests, myContests] = await Promise.all([
+    const [allContestsRaw, myContests] = await Promise.all([
       prisma.tournament.findMany({
         where: { type: 'group', status: { in: ['open', 'active'] } },
         include: {
@@ -32,7 +32,7 @@ export async function GET(request) {
           entries: { where: { userId: uid }, select: { id: true } },
         },
         orderBy: { createdAt: 'desc' },
-        take: 30,
+        take: 50,
       }),
       prisma.tournament.findMany({
         where: {
@@ -54,6 +54,20 @@ export async function GET(request) {
         orderBy: { createdAt: 'desc' },
       }),
     ])
+
+    // Filter out full contests from browse
+    const allContests = allContestsRaw.filter(c => {
+      const count = c._count?.entries ?? 0
+      if (c.teamSize) {
+        // Team contest: full when both teams have all slots (teamSize * 2 total)
+        return count < c.teamSize * 2
+      }
+      if (c.maxTeams) {
+        // Non-team contest: full when max participants reached
+        return count < c.maxTeams
+      }
+      return true // no cap set — always show
+    })
 
     const CATEGORY_NAMES = new Set(['Any', 'Forex', 'Crypto', 'Stocks', 'Futures', 'Commodities']);
     const fmtContest = (c) => {
@@ -90,7 +104,7 @@ export async function POST(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const { action, contestId, name, description, asset, allowedSymbols, duration, buyIn, teamFormat, teamSize, teamNameA, teamNameB } = await request.json()
+    const { action, contestId, name, description, asset, allowedSymbols, duration, buyIn, maxParticipants, teamFormat, teamSize, teamNameA, teamNameB } = await request.json()
 
     if (action === 'join') {
       const existing = await prisma.tournamentEntry.findFirst({ where: { tournamentId: contestId, userId: session.user.id } })
@@ -119,6 +133,7 @@ export async function POST(request) {
           prizePool: 0,
           teamFormat: teamFormat || null,
           teamSize: parsedTeamSize,
+          maxTeams: maxParticipants ? parseInt(maxParticipants) : null,
         },
       })
 

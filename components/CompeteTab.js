@@ -1004,6 +1004,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
           allowedSymbols: form.allowedSymbols.length > 0 ? form.allowedSymbols : null,
           duration,
           buyIn: type === 'paid' ? form.fee : '0',
+          maxParticipants: form.maxGroups || null,
           teamFormat: finalTeamFormat,
           teamSize: parsedTeamSize,
           teamNameA: form.teamNameA,
