@@ -30,6 +30,25 @@ export async function GET(request) {
       },
     })
 
+    // Get all tournament IDs from these matches
+    const tournamentIds = [...new Set(matches.map(m => m.tournamentId).filter(Boolean))]
+
+    // Fetch closed trades for all users in those competitions
+    const trades = tournamentIds.length > 0
+      ? await prisma.competitionTrade.findMany({
+          where: { competitionId: { in: tournamentIds } },
+          select: { userId: true, pnl: true },
+        })
+      : []
+
+    // Build per-user trade stats map
+    const tradeStats = {}
+    for (const t of trades) {
+      if (!tradeStats[t.userId]) tradeStats[t.userId] = { tradeWins: 0, tradeLosses: 0 }
+      if (t.pnl > 0) tradeStats[t.userId].tradeWins++
+      else if (t.pnl < 0) tradeStats[t.userId].tradeLosses++
+    }
+
     const userMap = {}
     const upsert = (u) => {
       if (!u) return
@@ -39,7 +58,7 @@ export async function GET(request) {
           name: u.displayName || u.name || u.username || 'Trader',
           username: u.username || '',
           profileSlug: u.profileSlug || u.username || u.id,
-          wins: 0, losses: 0, matches: 0, totalPnl: 0,
+          matches: 0, totalPnl: 0,
           isMe: u.id === session.user.id,
         }
       }
@@ -51,14 +70,10 @@ export async function GET(request) {
       if (m.challengerId && userMap[m.challengerId]) {
         userMap[m.challengerId].matches++
         userMap[m.challengerId].totalPnl += m.challengerScore || 0
-        if (m.winnerId === m.challengerId) userMap[m.challengerId].wins++
-        else userMap[m.challengerId].losses++
       }
       if (m.opponentId && userMap[m.opponentId]) {
         userMap[m.opponentId].matches++
         userMap[m.opponentId].totalPnl += m.opponentScore || 0
-        if (m.winnerId === m.opponentId) userMap[m.opponentId].wins++
-        else userMap[m.opponentId].losses++
       }
     }
 
@@ -71,10 +86,16 @@ export async function GET(request) {
       if (me) upsert(me)
     }
 
-    const sorted = Object.values(userMap).map(e => ({
-      ...e,
-      winRate: e.matches ? Math.round(e.wins / e.matches * 100) : 0,
-    }))
+    const sorted = Object.values(userMap).map(e => {
+      const ts = tradeStats[e.id] || { tradeWins: 0, tradeLosses: 0 }
+      const totalTrades = ts.tradeWins + ts.tradeLosses
+      return {
+        ...e,
+        tradeWins: ts.tradeWins,
+        tradeLosses: ts.tradeLosses,
+        winRate: totalTrades > 0 ? Math.round(ts.tradeWins / totalTrades * 100) : 0,
+      }
+    })
 
     if (metric === 'winrate') {
       sorted.sort((a, b) => b.winRate - a.winRate || b.matches - a.matches)
