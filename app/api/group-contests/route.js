@@ -35,7 +35,13 @@ export async function GET(request) {
         take: 30,
       }),
       prisma.tournament.findMany({
-        where: { type: 'group', entries: { some: { userId: uid } } },
+        where: {
+          type: 'group',
+          OR: [
+            { entries: { some: { userId: uid } } },
+            { creatorId: uid },
+          ],
+        },
         include: {
           creator: { select: { id: true, name: true, username: true, displayName: true, profileSlug: true } },
           _count: { select: { entries: true } },
