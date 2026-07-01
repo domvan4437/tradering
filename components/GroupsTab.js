@@ -246,7 +246,7 @@ function GroupSettings({ group, onUpdate }) {
 
       {/* Photo */}
       <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18, padding:'14px', borderRadius:12, background:'var(--surface2)', border:'1px solid var(--border)' }}>
-        <div onClick={() => imgRef.current && imgRef.current.click()} style={{ width:56, height:56, borderRadius:12, background:grad, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', border:'2px solid var(--border)', flexShrink:0 }}>
+        <div onClick={() => imgRef.current && imgRef.current.click()} style={{ width:56, height:56, borderRadius: group.type === 'club' ? '50%' : 12, background:grad, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', border:'2px solid var(--border)', flexShrink:0 }}>
           {profileImg
             ? <img src={profileImg} alt="group" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
             : <span style={{ fontFamily:'var(--font-mono)', fontSize:20, fontWeight:800, color:'#fff' }}>{name ? name[0].toUpperCase() : '?'}</span>}
@@ -478,7 +478,7 @@ function GroupRoom({ group, onBack, onUpdateGroup }) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           Back
         </button>
-        <div style={{ width:28, height:28, borderRadius:7, background:group.grad, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:11, fontWeight:800, color:'#fff', overflow:'hidden', flexShrink:0 }}>{group.profileImg ? <img src={group.profileImg} alt={group.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : group.name[0]}</div>
+        <div style={{ width:28, height:28, borderRadius: group.type === 'club' ? '50%' : 7, background:group.grad, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:11, fontWeight:800, color:'#fff', overflow:'hidden', flexShrink:0 }}>{group.profileImg ? <img src={group.profileImg} alt={group.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : group.name[0]}</div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:700, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{group.name}</div>
           <div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{group.type==='club' ? group.members+'/'+group.max+' members' : (group.members||1)+' members'}</div>
@@ -632,7 +632,7 @@ function CreateGroupModal({ onClose, onCreate }) {
         <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:20 }}>Create a Group</div>
         {/* Photo */}
         <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20 }}>
-          <div onClick={() => imgRef.current && imgRef.current.click()} style={{ width:64, height:64, borderRadius:14, background:grad, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', border:'2px solid var(--border)', flexShrink:0, position:'relative' }}>
+          <div onClick={() => imgRef.current && imgRef.current.click()} style={{ width:64, height:64, borderRadius: type === 'club' ? '50%' : 14, background:grad, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', border:'2px solid var(--border)', flexShrink:0, position:'relative' }}>
             {profileImg ? <img src={profileImg} alt="group" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <span style={{ fontFamily:'var(--font-mono)', fontSize:22, fontWeight:800, color:'#fff' }}>{name ? name[0].toUpperCase() : '?'}</span>}
           </div>
           <input ref={imgRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleImg} />
@@ -821,7 +821,7 @@ function GroupRow({ g, onSelect }) {
         cursor: 'pointer', margin: '6px 10px', transition: 'all 0.15s',
       }}>
       <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
-        <div style={{ width:48, height:48, borderRadius:12, background:g.grad||'linear-gradient(135deg,#4f46e5,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+        <div style={{ width:48, height:48, borderRadius: g.type === 'club' ? '50%' : 10, background:g.grad||'linear-gradient(135deg,#4f46e5,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
           {g.profileImg ? <img src={g.profileImg} alt={g.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
         </div>
         <div style={{ flex:1, minWidth:0 }}>
