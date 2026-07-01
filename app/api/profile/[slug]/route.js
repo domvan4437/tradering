@@ -16,8 +16,18 @@ export async function GET(req, { params }) {
 
   if (!user) return Response.json({ error: 'Profile not found' }, { status: 404 });
 
-  // Private profiles: return name + bio only, no content
-  if (user.profileVisibility === 'private') {
+  // Check if current user is following this profile
+  let isFollowing = false;
+  if (session?.user?.id && session.user.id !== user.id) {
+    const follow = await prisma.userFollow.findUnique({
+      where: { followerId_followingId: { followerId: session.user.id, followingId: user.id } }
+    });
+    isFollowing = !!follow;
+  }
+
+  // Private profiles: only show full content to followers (or self)
+  const isSelf = session?.user?.id === user.id;
+  if (user.profileVisibility === 'private' && !isFollowing && !isSelf) {
     return Response.json({
       profile: {
         id: user.id,
@@ -45,15 +55,6 @@ export async function GET(req, { params }) {
       following: [],
       leaderboardPositions: [],
     });
-  }
-
-  // Check if current user is following this profile
-  let isFollowing = false;
-  if (session?.user?.id && session.user.id !== user.id) {
-    const follow = await prisma.userFollow.findUnique({
-      where: { followerId_followingId: { followerId: session.user.id, followingId: user.id } }
-    });
-    isFollowing = !!follow;
   }
 
   // Posts

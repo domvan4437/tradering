@@ -55,6 +55,7 @@ export default function ProfilePopup({ slug, onClose }) {
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [posts, setPosts]         = useState([]);
+  const [activeTab, setActiveTab] = useState('posts');
 
   useEffect(() => {
     if (!slug) return;
@@ -347,7 +348,7 @@ export default function ProfilePopup({ slug, onClose }) {
               </div>
             </div>
 
-            {/* ── Posts ── */}
+            {/* ── Private gate ── */}
             {isPrivate ? (
               <div style={{ padding: '60px 24px', textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
@@ -355,86 +356,140 @@ export default function ProfilePopup({ slug, onClose }) {
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Follow to see their posts.</div>
               </div>
             ) : (
-              <div style={{ padding: '16px 16px 40px' }}>
-
-                {/* Posts label */}
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>
-                  Posts
+              <>
+                {/* ── Tabs ── */}
+                <div style={{ display: 'flex', borderBottom: '0.5px solid var(--border)', padding: '0 22px' }}>
+                  {[['posts', 'Posts'], ['groups', 'Groups'], ['stats', 'Stats']].map(([key, label]) => (
+                    <button key={key} onClick={() => setActiveTab(key)} style={{
+                      all: 'unset', padding: '10px 14px', cursor: 'pointer',
+                      fontFamily: 'var(--font)', fontSize: 13, fontWeight: activeTab === key ? 600 : 400,
+                      color: activeTab === key ? PURPLE : 'var(--text-muted)',
+                      borderBottom: activeTab === key ? `2px solid ${PURPLE}` : '2px solid transparent',
+                    }}>{label}</button>
+                  ))}
                 </div>
 
-                {posts.length === 0 ? (
-                  <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-                    No posts yet.
-                  </div>
-                ) : posts.map(post => {
-                  const ts = TYPE_COLORS[post.postType] || TYPE_COLORS['General'];
-                  return (
-                    <div key={post.id} style={{
-                      marginBottom: 12, padding: '14px 16px',
-                      borderRadius: 16, border: '0.5px solid var(--border)',
-                      background: 'var(--surface)',
-                    }}>
-                      {/* Post header */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
-                        <div style={{
-                          width: 32, height: 32, borderRadius: '50%',
-                          background: avatarUrl ? 'transparent' : grad,
-                          overflow: 'hidden', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', fontSize: 12, fontWeight: 500,
-                          color: '#fff', flexShrink: 0,
-                        }}>
-                          {avatarUrl
-                            ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : initials}
+                <div style={{ padding: '16px 16px 40px' }}>
+
+                  {/* ── POSTS TAB ── */}
+                  {activeTab === 'posts' && (
+                    posts.length === 0 ? (
+                      <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>No posts yet.</div>
+                    ) : posts.map(post => {
+                      const ts = TYPE_COLORS[post.postType] || TYPE_COLORS['General'];
+                      return (
+                        <div key={post.id} style={{ marginBottom: 12, padding: '14px 16px', borderRadius: 16, border: '0.5px solid var(--border)', background: 'var(--surface)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: avatarUrl ? 'transparent' : grad, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 500, color: '#fff', flexShrink: 0 }}>
+                              {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{name}</span>
+                                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10, background: ts.bg, color: ts.color }}>{post.postType}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {post.time}</span>
+                              </div>
+                              {profile.profileSlug && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{profile.profileSlug}</div>}
+                            </div>
+                          </div>
+                          {post.body && <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.65, marginBottom: post.attachmentUrl ? 10 : 0 }}>{post.body}</div>}
+                          {post.attachmentUrl && (
+                            <div style={{ marginBottom: 10, borderRadius: 10, overflow: 'hidden', border: '0.5px solid var(--border)', display: 'inline-block', maxWidth: '100%' }}>
+                              <img src={post.attachmentUrl} alt="" style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 10 }}>
+                            <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}><IconComment /> {fmt(post.comments)}</button>
+                            <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.reposted ? '#16A34A' : 'var(--text-muted)', cursor: 'pointer' }}><IconRepost /> {fmt(post.reposts)}</button>
+                            <button onClick={() => handleLike(post.id)} style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.liked ? '#E11D48' : 'var(--text-muted)', cursor: 'pointer' }}><IconHeart filled={post.liked} /> {fmt(post.likes)}</button>
+                            <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 'auto' }}><IconShare /></button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* ── GROUPS TAB ── */}
+                  {activeTab === 'groups' && (() => {
+                    const ownedGroups = data?.ownedGroups || [];
+                    const memberGroups = data?.memberGroups || [];
+                    const allGroups = [
+                      ...ownedGroups.map(g => ({ ...g, role: 'owner' })),
+                      ...memberGroups.map(g => ({ ...g, role: 'member' })),
+                    ];
+                    return allGroups.length === 0 ? (
+                      <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>Not in any groups yet.</div>
+                    ) : allGroups.map(g => (
+                      <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', marginBottom: 8, borderRadius: 12, border: '0.5px solid var(--border)', background: 'var(--surface)' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: PURPLE + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                          {g.emoji || '👥'}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{name}</span>
-                            <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10, background: ts.bg, color: ts.color }}>
-                              {post.postType}
-                            </span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {post.time}</span>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{g.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                            {g._count?.members ?? 0} members
+                            {g.role === 'owner' && <span style={{ marginLeft: 8, color: PURPLE, fontWeight: 600 }}>Owner</span>}
                           </div>
-                          {profile.profileSlug && (
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{profile.profileSlug}</div>
-                          )}
                         </div>
-                        <span style={{ fontSize: 16, color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}>···</span>
                       </div>
+                    ));
+                  })()}
 
-                      {/* Body */}
-                      {post.body && (
-                        <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.65, marginBottom: post.attachmentUrl ? 10 : 0 }}>
-                          {post.body}
-                        </div>
-                      )}
+                  {/* ── STATS TAB ── */}
+                  {activeTab === 'stats' && (() => {
+                    const stats = data?.stats;
+                    const comps = data?.competitionResults || [];
+                    return (
+                      <div>
+                        {/* Trading stats */}
+                        {stats && (
+                          <>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Trading Stats</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
+                              {[
+                                { label: 'Verified Trades', value: stats.totalVerifiedTrades ?? '—' },
+                                { label: 'Win Rate', value: stats.winRate ? `${stats.winRate}%` : '—', color: stats.winRate >= 50 ? '#22c55e' : stats.winRate ? '#ef4444' : undefined },
+                                { label: 'Wins', value: stats.wins ?? '—', color: '#22c55e' },
+                                { label: 'Avg R:R', value: stats.avgRR ?? '—' },
+                              ].map(({ label, value, color }) => (
+                                <div key={label} style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
+                                  <div style={{ fontSize: 18, fontWeight: 700, color: color || 'var(--text)', marginBottom: 2 }}>{value}</div>
+                                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
 
-                      {/* Image */}
-                      {post.attachmentUrl && (
-                        <div style={{ marginBottom: 10, borderRadius: 10, overflow: 'hidden', border: '0.5px solid var(--border)', display: 'inline-block', maxWidth: '100%' }}>
-                          <img src={post.attachmentUrl} alt="" style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
-                        </div>
-                      )}
+                        {/* Competition results */}
+                        {comps.length > 0 && (
+                          <>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Competitions</div>
+                            {comps.slice(0, 8).map((c, i) => (
+                              <div key={c.id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 8, borderRadius: 10, border: '0.5px solid var(--border)', background: 'var(--surface)' }}>
+                                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: PURPLE, flexShrink: 0 }}>
+                                  {i + 1}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 1 }}>{c.tournament?.name || 'Competition'}</div>
+                                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Score: <span style={{ color: (c.score || 0) >= 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{(c.score || 0) >= 0 ? '+' : ''}${(c.score || 0).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        )}
 
-                      {/* Action buttons */}
-                      <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 10 }}>
-                        <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
-                          <IconComment /> {fmt(post.comments)}
-                        </button>
-                        <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.reposted ? '#16A34A' : 'var(--text-muted)', cursor: 'pointer' }}>
-                          <IconRepost /> {fmt(post.reposts)}
-                        </button>
-                        <button onClick={() => handleLike(post.id)} style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: post.liked ? '#E11D48' : 'var(--text-muted)', cursor: 'pointer' }}>
-                          <IconHeart filled={post.liked} /> {fmt(post.likes)}
-                        </button>
-                        <button style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 'auto' }}>
-                          <IconShare />
-                        </button>
+                        {!stats && comps.length === 0 && (
+                          <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>No stats yet.</div>
+                        )}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })()}
+
+                </div>
+              </>
             )}
           </div>
         )}
