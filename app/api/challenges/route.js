@@ -233,12 +233,15 @@ export async function DELETE(request) {
     const match = await prisma.h2HMatch.findUnique({ where: { id: matchId } })
     if (!match) return Response.json({ error: 'Not found' }, { status: 404 })
     if (match.challengerId !== uid) return Response.json({ error: 'Only the challenger can delete this match' }, { status: 403 })
-    if (match.status === 'active') return Response.json({ error: 'Cannot delete an active match' }, { status: 400 })
 
-    // Delete related trade calls then the match
-    if (match.tournamentId) {
-      await prisma.tradeCall.deleteMany({ where: { tournamentId: match.tournamentId } })
-      await prisma.tournamentEntry.deleteMany({ where: { tournamentId: match.tournamentId } })
+    // Delete all related data then the match
+    const tid = match.tournamentId
+    if (tid) {
+      await prisma.tradeCall.deleteMany({ where: { tournamentId: tid } })
+      await prisma.competitionPosition.deleteMany({ where: { competitionId: tid } })
+      await prisma.competitionOrder.deleteMany({ where: { competitionId: tid } })
+      await prisma.competitionPortfolio.deleteMany({ where: { competitionId: tid } })
+      await prisma.tournamentEntry.deleteMany({ where: { tournamentId: tid } })
     }
     await prisma.h2HMatch.delete({ where: { id: matchId } })
 

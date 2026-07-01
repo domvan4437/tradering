@@ -386,7 +386,9 @@ export default function MatchDetailView({ matchId, onBack, onDelete }) {
           <button
             onClick={async () => {
               if (!confirm('Delete this challenge? This cannot be undone.')) return;
-              await fetch('/api/challenges', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) });
+              const res = await fetch('/api/challenges', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) });
+              const d = await res.json();
+              if (!res.ok) { alert(d.error || 'Failed to delete'); return; }
               onDelete();
             }}
             style={{ background: 'none', border: '1px solid #ef444444', borderRadius: 7, padding: '4px 10px', cursor: 'pointer', color: '#ef4444', fontSize: 13 }}
