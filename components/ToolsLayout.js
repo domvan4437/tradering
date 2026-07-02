@@ -245,7 +245,7 @@ function Playbook({trades}){
   const avgR=setupTrades.length>0?(setupTrades.reduce((s,t)=>s+(parseFloat(t.r)||0),0)/setupTrades.length).toFixed(1):null;
   function ListSection({label,field,placeholder,dotColor}){
     const items=(setup&&setup[field])||[];
-    return(<Card>
+    return(<Card style={{height:'100%',boxSizing:'border-box'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
         <SH style={{marginBottom:0}}>{label}</SH>
         <button onClick={()=>addToList(field,setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,display:'flex',alignItems:'center',gap:3,fontFamily:'var(--font)',padding:'1px 4px',borderRadius:4}}><i className="ti ti-plus" style={{fontSize:12}}/>Add</button>
@@ -323,9 +323,12 @@ function Playbook({trades}){
             <Card style={{textAlign:'center',padding:'10px 8px'}}><div style={{fontSize:18,fontWeight:500}}>{avgR||'—'}</div><div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>Avg R</div></Card>
             <Card style={{textAlign:'center',padding:'10px 8px'}}><div style={{fontSize:18,fontWeight:500}}>{setupTrades.length}</div><div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>Trades</div></Card>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,alignItems:'start'}}>
-            <Card><SH>Overview</SH><Textarea value={setup.overview||''} onChange={e=>updateSetup('overview',e.target.value)} placeholder="Describe this setup — what it is, why it works, when you look for it..." style={{minHeight:56}}/></Card>
-            <Card>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,gridAutoRows:'1fr'}}>
+            <Card style={{height:'100%',boxSizing:'border-box',display:'flex',flexDirection:'column'}}>
+              <SH>Overview</SH>
+              <Textarea value={setup.overview||''} onChange={e=>updateSetup('overview',e.target.value)} placeholder="Describe this setup — what it is, why it works, when you look for it..." style={{flex:1,minHeight:48}}/>
+            </Card>
+            <Card style={{height:'100%',boxSizing:'border-box'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <SH style={{marginBottom:0}}>Pre-trade checklist</SH>
                 <button onClick={()=>addToList('checklist',setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,display:'flex',alignItems:'center',gap:3,fontFamily:'var(--font)',padding:'1px 4px',borderRadius:4}}><i className="ti ti-plus" style={{fontSize:12}}/>Add</button>
@@ -339,15 +342,16 @@ function Playbook({trades}){
                 </div>
               ))}
             </Card>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             <ListSection label="Entry conditions" field="entryConditions" placeholder="Add an entry condition" dotColor={PURPLE}/>
             <ListSection label="Invalidation" field="invalidation" placeholder="When does this setup fail?" dotColor="#993C1D"/>
             <ListSection label="Exit conditions" field="exitConditions" placeholder="Add an exit condition" dotColor="#0F6E56"/>
-            <Card><SH>Best market conditions</SH><Textarea value={setup.bestConditions||''} onChange={e=>updateSetup('bestConditions',e.target.value)} placeholder="When does this setup perform best? Seasonality, market regimes, instruments..."/></Card>
+            <Card style={{height:'100%',boxSizing:'border-box',display:'flex',flexDirection:'column'}}>
+              <SH>Best market conditions</SH>
+              <Textarea value={setup.bestConditions||''} onChange={e=>updateSetup('bestConditions',e.target.value)} placeholder="When does this setup perform best? Seasonality, market regimes, instruments..." style={{flex:1,minHeight:48}}/>
+            </Card>
           </div>
           {(setup.customSections||[]).map((cs,i)=>(
-            <Card key={i}>
+            <Card key={i} style={{minHeight:180,display:'flex',flexDirection:'column'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <input value={cs.title} onChange={e=>updateSection(i,'title',e.target.value,setup)}
                   style={{fontWeight:600,fontSize:10,background:'none',border:'none',outline:'none',color:'var(--text-muted)',fontFamily:'var(--font)',letterSpacing:'0.06em',textTransform:'uppercase'}}/>
