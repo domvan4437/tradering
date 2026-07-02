@@ -264,6 +264,7 @@ function Playbook({trades}){
   const [renameVal,setRenameVal]=useState('');
   const [newSetupName,setNewSetupName]=useState('');
   const [showNewSetup,setShowNewSetup]=useState(false);
+  React.useEffect(()=>{if(!activeId&&setups.length>0)setActiveId(setups[0].id);},[setups.length]);
   function saveSetups(updated){setSetups(updated);save(SETUPS_KEY,updated);}
   function createSetup(){
     if(!newSetupName.trim())return;
