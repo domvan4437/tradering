@@ -281,7 +281,7 @@ function Playbook({trades}){
   function addSection(setup){updateSetup('customSections',[...(setup.customSections||[]),{title:'New section',content:''}]);}
   function updateSection(idx,key,val,setup){const s=[...(setup.customSections||[])];s[idx]={...s[idx],[key]:val};updateSetup('customSections',s);}
   function removeSection(idx,setup){updateSetup('customSections',(setup.customSections||[]).filter((_,i)=>i!==idx));}
-  const setup=setups.find(s=>s.id===activeId)||null;
+  const setup=setups.find(s=>s.id===activeId)||setups[0]||null;
   const setupTrades=setup?trades.filter(t=>t.setup===setup.name):[];
   const wins=setupTrades.filter(t=>pnlNum(t.pnl)>0).length;
   const wr=setupTrades.length>0?Math.round((wins/setupTrades.length)*100):null;
