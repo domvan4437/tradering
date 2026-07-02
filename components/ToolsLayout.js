@@ -259,7 +259,7 @@ function Reports({trades,journals}){
 function Playbook({trades}){
   const SETUPS_KEY = STORAGE_KEY+'_setups2';
   const [setups,setSetups]=useState(()=>load(SETUPS_KEY,[]));
-  const [activeId,setActiveId]=useState(null);
+  const [activeId,setActiveId]=useState(()=>{const s=load(STORAGE_KEY+'_setups2',[]);return s[0]?.id||null;});
   const [renamingId,setRenamingId]=useState(null);
   const [renameVal,setRenameVal]=useState('');
   const [newSetupName,setNewSetupName]=useState('');
