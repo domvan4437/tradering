@@ -48,7 +48,6 @@ import ProfilePopup from './ProfilePopup'
 import SettingsTab from './SettingsTab'
 import FloatingAICoach from './FloatingAICoach'
 import CompetitionBanner from './CompetitionBanner'
-import ImportTab from './ImportTab'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
 import CreatorDashboard from './CreatorDashboard'
 import { StocksOverviewTab, StocksSectorsTab, StocksEarningsTab, StocksKeyLevelsTab } from './StocksSection'
@@ -91,7 +90,7 @@ const SECTION_TABS = {
   compete:     ['Home','H2H','Group Contests','Leaderboard','History'],
   markets:     ['Commodities','Futures','Forex','Stocks','Crypto','News'],
   charts:      ['Workspace'],
-  tools2:      ['Journal','COT Alerts','Screener','Import'],
+  tools2:      ['Journal','COT Alerts','Screener'],
   journal:     ['Journal'],
   account:     ['Overview'],
 }

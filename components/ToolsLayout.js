@@ -222,7 +222,6 @@ const TOOLS_TABS = [
   { key:'Journal',    label:'Journal',        sub:'Track & review your trades', icon:'ti-notebook'    },
   { key:'COT Alerts', label:'COT alerts',     sub:'Commitment of traders data',  icon:'ti-bell-ringing'},
   { key:'Screener',   label:'Custom screener',sub:'Build your own screeners',    icon:'ti-filter'      },
-  { key:'Import',     label:'Import data',    sub:'Import trades & history',     icon:'ti-file-import' },
 ]
 
 const JOURNAL_SUBTABS = [
@@ -231,6 +230,7 @@ const JOURNAL_SUBTABS = [
   { key:'daily',     label:'Daily journal',icon:'ti-pencil'           },
   { key:'reports',   label:'Reports',      icon:'ti-chart-bar'        },
   { key:'playbook',  label:'Playbook',     icon:'ti-book-2'           },
+  { key:'import',    label:'Import data',  icon:'ti-file-import'      },
 ]
 
 export default function ToolsLayout({tab, setTab, userInfo}){
@@ -248,8 +248,8 @@ export default function ToolsLayout({tab, setTab, userInfo}){
   React.useEffect(() => {
     if (tab === 'COT Alerts' && !COTAlertsTab) import('./COTAlertsTab').then(m => setCOTAlertsTab(() => m.default)).catch(() => {});
     if (tab === 'Screener'&& !ScreenerBuilder) import('./ScreenerBuilder').then(m => setScreenerBuilder(() => m.default)).catch(() => {});
-    if (tab === 'Import'  && !ImportTab)       import('./ImportTab').then(m => setImportTab(()          => m.default)).catch(() => {});
-  }, [tab]);
+    if (journalTab === 'import' && !ImportTab) import('./ImportTab').then(m => setImportTab(() => m.default)).catch(() => {});
+  }, [tab, journalTab]);
 
   const meta = TOOLS_TABS.find(t => t.key === tab) || TOOLS_TABS[0];
 
@@ -298,9 +298,9 @@ export default function ToolsLayout({tab, setTab, userInfo}){
           {tab==='Journal' && journalTab==='daily'     && <DailyJournal journals={journals} setJournals={setJournals}/>}
           {tab==='Journal' && journalTab==='reports'   && <Reports   trades={trades} journals={journals}/>}
           {tab==='Journal' && journalTab==='playbook'  && <Playbook  trades={trades}/>}
+          {tab==='Journal' && journalTab==='import'    && (ImportTab ? <ImportTab/> : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
           {tab==='COT Alerts'&&(COTAlertsTab    ? <COTAlertsTab/>                       : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
           {tab==='Screener'&& (ScreenerBuilder ? <ScreenerBuilder user={userInfo}/>    : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
-          {tab==='Import'  && (ImportTab       ? <ImportTab/>                          : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
         </div>
       </div>
     </div>
