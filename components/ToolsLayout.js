@@ -226,7 +226,7 @@ function Playbook({trades}){
   function saveSetups(updated){setSetups(updated);save(SETUPS_KEY,updated);}
   function createSetup(){
     if(!newSetupName.trim())return;
-    const s={id:'s_'+Date.now(),name:newSetupName.trim(),overview:'',entryConditions:[],exitConditions:[],invalidation:[],checklist:[],customSections:[]};
+    const s={id:'s_'+Date.now(),name:newSetupName.trim(),overview:'',entryConditions:[],exitConditions:[],invalidation:[],checklist:[],bestConditions:'',customSections:[]};
     const updated=[...setups,s];saveSetups(updated);setActiveId(s.id);setNewSetupName('');setShowNewSetup(false);
   }
   function deleteSetup(id){const updated=setups.filter(s=>s.id!==id);saveSetups(updated);if(activeId===id)setActiveId(updated[0]?.id||null);}
@@ -323,11 +323,8 @@ function Playbook({trades}){
             <Card style={{textAlign:'center',padding:'10px 8px'}}><div style={{fontSize:18,fontWeight:500}}>{avgR||'—'}</div><div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>Avg R</div></Card>
             <Card style={{textAlign:'center',padding:'10px 8px'}}><div style={{fontSize:18,fontWeight:500}}>{setupTrades.length}</div><div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>Trades</div></Card>
           </div>
-          <Card><SH>Overview</SH><Textarea value={setup.overview||''} onChange={e=>updateSetup('overview',e.target.value)} placeholder="Describe this setup — what it is, why it works, when you look for it..."/></Card>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-            <ListSection label="Entry conditions" field="entryConditions" placeholder="Add an entry condition" dotColor={PURPLE}/>
-            <ListSection label="Exit conditions" field="exitConditions" placeholder="Add an exit condition" dotColor="#0F6E56"/>
-            <ListSection label="Invalidation" field="invalidation" placeholder="When does this setup fail?" dotColor="#993C1D"/>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,alignItems:'start'}}>
+            <Card><SH>Overview</SH><Textarea value={setup.overview||''} onChange={e=>updateSetup('overview',e.target.value)} placeholder="Describe this setup — what it is, why it works, when you look for it..." style={{minHeight:56}}/></Card>
             <Card>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <SH style={{marginBottom:0}}>Pre-trade checklist</SH>
@@ -342,6 +339,12 @@ function Playbook({trades}){
                 </div>
               ))}
             </Card>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <ListSection label="Entry conditions" field="entryConditions" placeholder="Add an entry condition" dotColor={PURPLE}/>
+            <ListSection label="Invalidation" field="invalidation" placeholder="When does this setup fail?" dotColor="#993C1D"/>
+            <ListSection label="Exit conditions" field="exitConditions" placeholder="Add an exit condition" dotColor="#0F6E56"/>
+            <Card><SH>Best market conditions</SH><Textarea value={setup.bestConditions||''} onChange={e=>updateSetup('bestConditions',e.target.value)} placeholder="When does this setup perform best? Seasonality, market regimes, instruments..."/></Card>
           </div>
           {(setup.customSections||[]).map((cs,i)=>(
             <Card key={i}>
