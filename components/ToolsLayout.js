@@ -380,9 +380,9 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
 
 const TOOLS_TABS = [
   { key:'Journal',    label:'Journal',        sub:'Track & review your trades', icon:'ti-notebook'    },
+  { key:'Portfolio', label:'Portfolio',       sub:'Track long-term investments', icon:'ti-briefcase'   },
   { key:'COT Alerts', label:'COT alerts',     sub:'Commitment of traders data',  icon:'ti-bell-ringing'},
   { key:'Screener',   label:'Custom screener',sub:'Build your own screeners',    icon:'ti-filter'      },
-  { key:'Portfolio', label:'Portfolio',       sub:'Track long-term investments', icon:'ti-briefcase'   },
 ]
 
 const JOURNAL_SUBTABS = [
