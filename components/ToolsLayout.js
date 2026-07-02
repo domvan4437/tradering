@@ -240,10 +240,149 @@ function Playbook({trades}){
 
 const BOOKS_KEY = 'tr_journal_books';
 
+const PORTFOLIO_BOOKS_KEY = 'tr_portfolio_books';
+const SECTOR_COLORS = {Technology:'#534AB7',Crypto:'#BA7517',Financials:'#0F6E56',Consumer:'#185FA5',Healthcare:'#993556',Energy:'#993C1D',Materials:'#639922','Real Estate':'#D85A30',Utilities:'#5F5E5A',Communication:'#1D9E75',Cash:'#B4B2A9'};
+const ASSET_COLORS = ['#534AB7','#0F6E56','#BA7517','#185FA5','#993556','#993C1D','#639922','#1D9E75','#D85A30','#5F5E5A'];
+
+function donutPath(cx,cy,outerR,innerR,startA,endA){
+  const s=startA*Math.PI/180,e=endA*Math.PI/180;
+  const x1o=cx+outerR*Math.cos(s),y1o=cy+outerR*Math.sin(s);
+  const x2o=cx+outerR*Math.cos(e),y2o=cy+outerR*Math.sin(e);
+  const x1i=cx+innerR*Math.cos(s),y1i=cy+innerR*Math.sin(s);
+  const x2i=cx+innerR*Math.cos(e),y2i=cy+innerR*Math.sin(e);
+  const lg=(endA-startA)>180?1:0;
+  return `M${x1o},${y1o} A${outerR},${outerR},0,${lg},1,${x2o},${y2o} L${x2i},${y2i} A${innerR},${innerR},0,${lg},0,${x1i},${y1i}Z`;
+}
+
+function Portfolio({holdings,setHoldings,holdingsKey}){
+  const [allocView,setAllocView]=useState('sector');
+  const [showAdd,setShowAdd]=useState(false);
+  const [form,setForm]=useState({symbol:'',name:'',shares:'',avgCost:'',currentPrice:'',sector:'Technology'});
+  const fNum=(n)=>parseFloat(n)||0;
+  const totalValue=holdings.reduce((s,h)=>s+fNum(h.shares)*fNum(h.currentPrice),0);
+  const totalCost=holdings.reduce((s,h)=>s+fNum(h.shares)*fNum(h.avgCost),0);
+  const unrealizedPnl=totalValue-totalCost;
+  const pctReturn=totalCost>0?((unrealizedPnl/totalCost)*100):0;
+  function addHolding(){
+    if(!form.symbol.trim()||!form.shares||!form.avgCost)return;
+    const h={id:Date.now(),...form,shares:fNum(form.shares),avgCost:fNum(form.avgCost),currentPrice:fNum(form.currentPrice)||fNum(form.avgCost)};
+    const updated=[...holdings,h];
+    setHoldings(updated);save(holdingsKey,updated);
+    setForm({symbol:'',name:'',shares:'',avgCost:'',currentPrice:'',sector:'Technology'});setShowAdd(false);
+  }
+  function removeHolding(id){const updated=holdings.filter(h=>h.id!==id);setHoldings(updated);save(holdingsKey,updated);}
+  let donutData=[];
+  if(allocView==='sector'){
+    const sectorMap={};
+    holdings.forEach(h=>{const sec=h.sector||'Other';const v=fNum(h.shares)*fNum(h.currentPrice);sectorMap[sec]=(sectorMap[sec]||0)+v;});
+    Object.entries(sectorMap).forEach(([sec,v])=>donutData.push({label:sec,value:v,color:SECTOR_COLORS[sec]||'#888780'}));
+  } else {
+    holdings.forEach((h,i)=>{const v=fNum(h.shares)*fNum(h.currentPrice);if(v>0)donutData.push({label:h.symbol||h.name,value:v,color:ASSET_COLORS[i%ASSET_COLORS.length]});});
+  }
+  donutData.sort((a,b)=>b.value-a.value);
+  const donutTotal=donutData.reduce((s,d)=>s+d.value,0);
+  let startAngle=-90;
+  const segments=donutData.map(d=>{const sweep=donutTotal>0?(d.value/donutTotal)*360:0;const seg={...d,path:sweep>0?donutPath(60,60,50,30,startAngle,startAngle+sweep-0.5):''}; startAngle+=sweep;return seg;});
+  return (
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:16}}>
+        <Card><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>Total value</div><div style={{fontSize:22,fontWeight:500}}>${totalValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></Card>
+        <Card><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>Unrealized P&amp;L</div><div style={{fontSize:22,fontWeight:500,color:unrealizedPnl>=0?'var(--green)':'var(--red)'}}>{unrealizedPnl>=0?'+':''}{unrealizedPnl.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div style={{fontSize:11,color:unrealizedPnl>=0?'var(--green)':'var(--red)'}}>{pctReturn>=0?'+':''}{pctReturn.toFixed(2)}% total return</div></Card>
+        <Card><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>Positions</div><div style={{fontSize:22,fontWeight:500}}>{holdings.length}</div><div style={{fontSize:11,color:'var(--text-muted)'}}>{holdings.length===0?'No positions yet':'Across '+(new Set(holdings.map(h=>h.sector)).size)+' sectors'}</div></Card>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1.6fr 1fr',gap:14,alignItems:'start'}}>
+        <Card style={{padding:'12px 14px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+            <SH style={{marginBottom:0}}>Holdings</SH>
+            <BtnP onClick={()=>setShowAdd(p=>!p)} style={{padding:'4px 10px',fontSize:11}}>+ Add position</BtnP>
+          </div>
+          {showAdd&&(
+            <div style={{background:'var(--surface2)',borderRadius:8,padding:10,marginBottom:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              <Inp value={form.symbol} onChange={e=>setForm(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="Symbol (AAPL)"/>
+              <Inp value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Name (optional)"/>
+              <Inp value={form.shares} onChange={e=>setForm(p=>({...p,shares:e.target.value}))} placeholder="Shares" type="number"/>
+              <Inp value={form.avgCost} onChange={e=>setForm(p=>({...p,avgCost:e.target.value}))} placeholder="Avg cost $" type="number"/>
+              <Inp value={form.currentPrice} onChange={e=>setForm(p=>({...p,currentPrice:e.target.value}))} placeholder="Current price $" type="number"/>
+              <Sel value={form.sector} onChange={e=>setForm(p=>({...p,sector:e.target.value}))}>{Object.keys(SECTOR_COLORS).map(s=><option key={s}>{s}</option>)}</Sel>
+              <div style={{gridColumn:'1/-1',display:'flex',gap:6,justifyContent:'flex-end'}}><BtnS onClick={()=>setShowAdd(false)}>Cancel</BtnS><BtnP onClick={addHolding}>Add</BtnP></div>
+            </div>
+          )}
+          {holdings.length===0?(
+            <div style={{textAlign:'center',padding:'32px 0',color:'var(--text-muted)',fontSize:13}}>No positions yet — add your first holding above.</div>
+          ):(
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <thead><tr style={{borderBottom:'0.5px solid var(--border)'}}>
+                {['Symbol','Shares','Avg cost','Price','Value','Gain',''].map((h,i)=><th key={i} style={{textAlign:i>0?'right':'left',padding:'4px 6px',fontWeight:400,color:'var(--text-muted)',fontSize:11,width:i===6?24:undefined}}>{h}</th>)}
+              </tr></thead>
+              <tbody>{holdings.map(h=>{
+                const val=fNum(h.shares)*fNum(h.currentPrice);
+                const cost=fNum(h.shares)*fNum(h.avgCost);
+                const gain=val-cost;const gainPct=cost>0?(gain/cost*100):0;
+                return(<tr key={h.id} style={{borderBottom:'0.5px solid var(--border)'}}>
+                  <td style={{padding:'6px 6px',fontWeight:500}}>{h.symbol}</td>
+                  <td style={{textAlign:'right',padding:'6px 6px',color:'var(--text-muted)'}}>{h.shares}</td>
+                  <td style={{textAlign:'right',padding:'6px 6px',color:'var(--text-muted)'}}>${fNum(h.avgCost).toFixed(2)}</td>
+                  <td style={{textAlign:'right',padding:'6px 6px'}}>${fNum(h.currentPrice).toFixed(2)}</td>
+                  <td style={{textAlign:'right',padding:'6px 6px',fontWeight:500}}>${val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                  <td style={{textAlign:'right',padding:'6px 6px',color:gain>=0?'var(--green)':'var(--red)',whiteSpace:'nowrap'}}>{gain>=0?'+':''}{gain.toFixed(0)} <span style={{opacity:0.7}}>({gainPct>=0?'+':''}{gainPct.toFixed(1)}%)</span></td>
+                  <td><button onClick={()=>removeHolding(h.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:13,padding:'2px 4px',lineHeight:1}}>x</button></td>
+                </tr>);
+              })}</tbody>
+            </table>
+          )}
+        </Card>
+        <div>
+          <Card style={{marginBottom:12}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <SH style={{marginBottom:0}}>Allocation</SH>
+              <div style={{display:'flex',gap:4}}>
+                {['sector','asset'].map(v=>(
+                  <button key={v} onClick={()=>setAllocView(v)} style={{padding:'3px 9px',borderRadius:5,border:'0.5px solid var(--border)',background:allocView===v?'#EEEDFE':'transparent',color:allocView===v?'#534AB7':'var(--text-muted)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)',fontWeight:allocView===v?500:400,textTransform:'capitalize'}}>{v}</button>
+                ))}
+              </div>
+            </div>
+            {donutData.length===0?(
+              <div style={{textAlign:'center',padding:'24px 0',color:'var(--text-muted)',fontSize:12}}>Add positions to see allocation</div>
+            ):(
+              <div style={{display:'flex',gap:12,alignItems:'center'}}>
+                <svg width={120} height={120} viewBox="0 0 120 120">
+                  {segments.map((seg,i)=>seg.path?<path key={i} d={seg.path} fill={seg.color} stroke="var(--surface)" strokeWidth={1.5}/>:null)}
+                  <text x={60} y={56} textAnchor="middle" fontSize={10} fill="var(--text-muted)">{holdings.length} holdings</text>
+                  <text x={60} y={70} textAnchor="middle" fontSize={11} fontWeight="500" fill="var(--text)">${(donutTotal/1000).toFixed(1)}k</text>
+                </svg>
+                <div style={{flex:1,fontSize:11}}>
+                  {donutData.slice(0,7).map((d,i)=>(
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:d.color,flexShrink:0}}/>
+                      <span style={{flex:1,color:'var(--text-secondary)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.label}</span>
+                      <span style={{fontWeight:500}}>{donutTotal>0?((d.value/donutTotal)*100).toFixed(0):0}%</span>
+                    </div>
+                  ))}
+                  {donutData.length>7&&<div style={{fontSize:10,color:'var(--text-muted)',paddingLeft:14}}>+{donutData.length-7} more</div>}
+                </div>
+              </div>
+            )}
+          </Card>
+          <Card>
+            <SH>Summary</SH>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{color:'var(--text-muted)'}}>Total invested</span><span style={{fontWeight:500}}>${totalCost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{color:'var(--text-muted)'}}>Market value</span><span style={{fontWeight:500}}>${totalValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{color:'var(--text-muted)'}}>Total return</span><span style={{fontWeight:500,color:unrealizedPnl>=0?'var(--green)':'var(--red)'}}>{pctReturn>=0?'+':''}{pctReturn.toFixed(2)}%</span></div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 const TOOLS_TABS = [
   { key:'Journal',    label:'Journal',        sub:'Track & review your trades', icon:'ti-notebook'    },
   { key:'COT Alerts', label:'COT alerts',     sub:'Commitment of traders data',  icon:'ti-bell-ringing'},
   { key:'Screener',   label:'Custom screener',sub:'Build your own screeners',    icon:'ti-filter'      },
+  { key:'Portfolio', label:'Portfolio',       sub:'Track long-term investments', icon:'ti-briefcase'   },
 ]
 
 const JOURNAL_SUBTABS = [
@@ -264,6 +403,20 @@ export default function ToolsLayout({tab, setTab, userInfo}){
   const [showNewBook, setShowNewBook] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [renameVal, setRenameVal] = useState('');
+  const [portfolioBooks, setPortfolioBooks] = useState(() => load(PORTFOLIO_BOOKS_KEY, [{id:'default',name:'Main Portfolio'}]));
+  const [activePortfolioId, setActivePortfolioId] = useState(() => load('tr_active_portfolio','default'));
+  const [showPortfolioDrop, setShowPortfolioDrop] = useState(false);
+  const [newPortfolioName, setNewPortfolioName] = useState('');
+  const [showNewPortfolio, setShowNewPortfolio] = useState(false);
+  const [renamingPortfolioId, setRenamingPortfolioId] = useState(null);
+  const [renamePortfolioVal, setRenamePortfolioVal] = useState('');
+  const holdingsKey = 'tr_portfolio_holdings_'+activePortfolioId;
+  const [portfolioHoldings, setPortfolioHoldings] = useState(() => load('tr_portfolio_holdings_default', []));
+  const activePortfolio = portfolioBooks.find(b=>b.id===activePortfolioId)||portfolioBooks[0];
+  function switchPortfolio(id){save('tr_active_portfolio',id);setActivePortfolioId(id);setPortfolioHoldings(load('tr_portfolio_holdings_'+id,[]));setShowPortfolioDrop(false);setShowNewPortfolio(false);}
+  function createPortfolio(){if(!newPortfolioName.trim())return;const id='port_'+Date.now();const updated=[...portfolioBooks,{id,name:newPortfolioName.trim()}];setPortfolioBooks(updated);save(PORTFOLIO_BOOKS_KEY,updated);setNewPortfolioName('');setShowNewPortfolio(false);switchPortfolio(id);}
+  function deletePortfolio(id){if(id==='default')return;const updated=portfolioBooks.filter(b=>b.id!==id);setPortfolioBooks(updated);save(PORTFOLIO_BOOKS_KEY,updated);if(activePortfolioId===id)switchPortfolio('default');}
+  function renamePortfolio(id,name){if(!name.trim())return;const updated=portfolioBooks.map(b=>b.id===id?{...b,name:name.trim()}:b);setPortfolioBooks(updated);save(PORTFOLIO_BOOKS_KEY,updated);setRenamingPortfolioId(null);setRenamePortfolioVal('');}
   const tradesKey = activeBookId==='default'?STORAGE_KEY+'_trades':STORAGE_KEY+'_trades_'+activeBookId;
   const journalsKey = activeBookId==='default'?STORAGE_KEY+'_journals':STORAGE_KEY+'_journals_'+activeBookId;
   const [trades, setTrades] = useState(() => load(tradesKey, []));
@@ -391,6 +544,54 @@ export default function ToolsLayout({tab, setTab, userInfo}){
           </div>
         )}
 
+        {/* Portfolio selector bar */}
+        {tab === 'Portfolio' && (
+          <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:12, borderBottom:'0.5px solid var(--border)', flexShrink:0, height:44 }}>
+            <div style={{ fontSize:13, fontWeight:500, color:'var(--text)' }}>Portfolio tracker</div>
+            <div style={{ marginLeft:'auto', position:'relative' }}>
+              <button onClick={()=>setShowPortfolioDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
+                <i className="ti ti-briefcase" style={{fontSize:14}}/>{activePortfolio?.name}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
+              </button>
+              {showPortfolioDrop&&<div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:6, minWidth:210, zIndex:999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }} onClick={e=>e.stopPropagation()}>
+                {portfolioBooks.map(b=>(
+                  <div key={b.id} style={{ borderRadius:7, background:b.id===activePortfolioId?'#EEEDFE':'transparent' }}
+                    onMouseEnter={e=>{if(b.id!==activePortfolioId&&renamingPortfolioId!==b.id)e.currentTarget.style.background='var(--surface2)'}} onMouseLeave={e=>{if(b.id!==activePortfolioId)e.currentTarget.style.background=b.id===activePortfolioId?'#EEEDFE':'transparent'}}>
+                    {renamingPortfolioId===b.id?(
+                      <div style={{ display:'flex', gap:4, padding:'5px 6px' }} onClick={e=>e.stopPropagation()}>
+                        <input value={renamePortfolioVal} onChange={e=>setRenamePortfolioVal(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')renamePortfolio(b.id,renamePortfolioVal);if(e.key==='Escape'){setRenamingPortfolioId(null);setRenamePortfolioVal('');}}} autoFocus
+                          style={{ flex:1, padding:'4px 7px', border:'0.5px solid var(--border)', borderRadius:5, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}/>
+                        <button onClick={()=>renamePortfolio(b.id,renamePortfolioVal)} style={{ padding:'4px 8px', background:PURPLE, color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer', fontFamily:'var(--font)', fontWeight:500 }}>OK</button>
+                      </div>
+                    ):(
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', cursor:'pointer' }} onClick={()=>switchPortfolio(b.id)}>
+                        <span style={{ fontSize:13, fontWeight:b.id===activePortfolioId?500:400, color:b.id===activePortfolioId?'#534AB7':'var(--text)', flex:1 }}>{b.name}</span>
+                        <div style={{ display:'flex', gap:2 }} onClick={e=>e.stopPropagation()}>
+                          <button onClick={()=>{setRenamingPortfolioId(b.id);setRenamePortfolioVal(b.name);}} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:12, padding:'1px 3px', lineHeight:1, borderRadius:3 }} title="Rename"><i className="ti ti-pencil" style={{fontSize:11}}/></button>
+                          {b.id!=='default'&&<button onClick={()=>deletePortfolio(b.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:'1px 3px', lineHeight:1, borderRadius:3 }}>x</button>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div style={{ borderTop:'0.5px solid var(--border)', marginTop:4, paddingTop:4 }}>
+                  {showNewPortfolio?(
+                    <div style={{ padding:'4px 6px', display:'flex', gap:6 }}>
+                      <input value={newPortfolioName} onChange={e=>setNewPortfolioName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createPortfolio()} placeholder="Portfolio name..." autoFocus
+                        style={{ flex:1, padding:'5px 8px', border:'0.5px solid var(--border)', borderRadius:5, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}/>
+                      <button onClick={createPortfolio} style={{ padding:'5px 10px', background:PURPLE, color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer', fontFamily:'var(--font)', fontWeight:500 }}>Add</button>
+                    </div>
+                  ):(
+                    <div onClick={()=>setShowNewPortfolio(true)} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:7, cursor:'pointer', color:'var(--text-muted)', fontSize:12 }}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <i className="ti ti-plus" style={{fontSize:13}}/> New portfolio
+                    </div>
+                  )}
+                </div>
+              </div>}
+            </div>
+          </div>
+        )}
+
         {/* Scrollable content */}
         <div style={{ flex:1, overflowY:'auto', padding:'16px 24px' }}>
           {tab==='Journal' && journalTab==='dashboard' && <Dashboard trades={trades} journals={journals}/>}
@@ -401,6 +602,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
           {tab==='Journal' && journalTab==='import'    && (ImportTab ? <ImportTab/> : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
           {tab==='COT Alerts'&&(COTAlertsTab    ? <COTAlertsTab/>                       : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
           {tab==='Screener'&& (ScreenerBuilder ? <ScreenerBuilder user={userInfo}/>    : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
+          {tab==='Portfolio' && <Portfolio holdings={portfolioHoldings} setHoldings={setPortfolioHoldings} holdingsKey={holdingsKey}/>}
         </div>
       </div>
     </div>
