@@ -129,10 +129,51 @@ function Dashboard({trades,journals}){
 function TradeLog({trades,setTrades,tradesKey}){
   const empty={date:'',asset:'',direction:'Long',entry:'',exit:'',pnl:'',r:'',size:'',setup:'',emotion:'',rules:'',notes:''};
   const[form,setForm]=useState(empty);const[adding,setAdding]=useState(false);const[expanded,setExpanded]=useState(null);
+  const[showBroker,setShowBroker]=useState(false);
+  const fileRef=useRef(null);
   function addTrade(){if(!form.asset||!form.date)return;const u=[form,...trades];setTrades(u);save(tradesKey,u);setForm(empty);setAdding(false)}
   function removeTrade(i){const u=trades.filter((_,idx)=>idx!==i);setTrades(u);save(tradesKey,u)}
+  function handleCSV(e){
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      const rows=ev.target.result.trim().split(/\r?\n/);
+      if(rows.length<2)return;
+      const hdrs=rows[0].split(',').map(h=>h.trim().toLowerCase().replace(/['"]/g,''));
+      const col=(names)=>hdrs.findIndex(h=>names.some(n=>h.includes(n)));
+      const di=col(['date','time']),ai=col(['symbol','asset','ticker','instrument','market','coin']),
+            si=col(['side','direction','type','action']),eni=col(['entry','open_price','entry_price']),
+            exi=col(['exit','close_price','exit_price']),pi=col(['pnl','profit','p&l','realized','gain']),
+            szi=col(['size','qty','quantity','amount','volume']),ni=col(['note','comment','desc']);
+      const imported=[];
+      for(let i=1;i<rows.length;i++){
+        const c=rows[i].split(',').map(x=>x.trim().replace(/^["']|["']$/g,''));
+        if(!c[di]&&!c[ai])continue;
+        const dir=(c[si]||'').toLowerCase();
+        imported.push({date:(c[di]||'').slice(0,10),asset:c[ai]||'',direction:dir.includes('sell')||dir.includes('short')?'Short':'Long',entry:c[eni]||'',exit:c[exi]||'',pnl:c[pi]||'',r:'',size:c[szi]||'',setup:'',emotion:'',rules:'',notes:c[ni]||''});
+      }
+      if(imported.length>0){const u=[...imported,...trades];setTrades(u);save(tradesKey,u);}
+      alert(imported.length>0?`Imported ${imported.length} trades.`:'No valid rows found — check your column headers (date, symbol, side, pnl, etc.)');
+    };
+    reader.readAsText(file);e.target.value='';
+  }
   return(<div style={{display:'flex',flexDirection:'column',gap:12}}>
-    <div style={{display:'flex',gap:8}}><BtnP onClick={()=>setAdding(!adding)}>+ Add trade</BtnP><BtnS>Import CSV</BtnS><BtnS>Connect broker</BtnS><span style={{flex:1}}/><span style={{fontSize:11,color:'var(--text-muted)',alignSelf:'center'}}>{trades.length} trades logged</span></div>
+    <input ref={fileRef} type="file" accept=".csv" style={{display:'none'}} onChange={handleCSV}/>
+    <div style={{display:'flex',gap:8}}><BtnP onClick={()=>setAdding(!adding)}>+ Add trade</BtnP><BtnS onClick={()=>fileRef.current?.click()}>Import CSV</BtnS><BtnS onClick={()=>setShowBroker(p=>!p)}>Connect broker</BtnS><span style={{flex:1}}/><span style={{fontSize:11,color:'var(--text-muted)',alignSelf:'center'}}>{trades.length} trades logged</span></div>
+    {showBroker&&<Card style={{border:'0.5px solid var(--border)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><SH style={{marginBottom:0}}>Broker connection</SH><button onClick={()=>setShowBroker(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:16',lineHeight:1}}>x</button></div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14}}>
+        {[['Coinbase','ti-currency-bitcoin'],['Interactive Brokers','ti-building-bank'],['TD Ameritrade','ti-chart-line'],['Binance','ti-currency-ethereum'],['Tradovate','ti-trending-up'],['Kraken','ti-anchor']].map(([name,icon])=>(
+          <div key={name} style={{padding:'10px 12px',border:'0.5px solid var(--border)',borderRadius:8,display:'flex',alignItems:'center',gap:8,opacity:0.5}}>
+            <i className={`ti ${icon}`} style={{fontSize:16,color:PURPLE}}/>
+            <div><div style={{fontSize:12,fontWeight:500}}>{name}</div><div style={{fontSize:10,color:'var(--text-muted)'}}>Coming soon</div></div>
+          </div>
+        ))}
+      </div>
+      <div style={{background:'rgba(75,68,200,0.05)',border:'0.5px solid rgba(75,68,200,0.2)',borderRadius:7,padding:'10px 12px',fontSize:12,color:'var(--text-muted)',lineHeight:1.6}}>
+        <span style={{fontWeight:500,color:PURPLE}}>Live broker sync is on the roadmap.</span> Auto-logging requires a secure server-side OAuth connection to your broker. For now, the fastest way to import trades is to export a CSV from your broker and use the Import CSV button above — most brokers support this.
+      </div>
+    </Card>}
     {adding&&<Card style={{border:`0.5px solid ${PURPLE}`}}><SH color={PURPLE}>New trade</SH>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:10}}>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Date</div><Inp type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/></div>
