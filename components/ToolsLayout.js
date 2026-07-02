@@ -216,27 +216,153 @@ function Reports({trades,journals}){
 }
 
 function Playbook({trades}){
-  const defaultSetups=['COT breakout','Seasonal','Trend follow','Gap fill'].map(name=>({name,rules:['','',''],exitRules:['',''],checklist:['','','']}));
-  const[setups,setSetups]=useState(()=>load(STORAGE_KEY+'_setups',defaultSetups));const[active,setActive]=useState(0);
-  function saveSetups(){save(STORAGE_KEY+'_setups',setups)}
-  function updateRule(type,idx,val){const s=[...setups];s[active]={...s[active],[type]:s[active][type].map((r,i)=>i===idx?val:r)};setSetups(s)}
-  const setup=setups[active];const setupTrades=trades.filter(t=>t.setup===setup?.name);const wins=setupTrades.filter(t=>pnlNum(t.pnl)>0).length;const wr=setupTrades.length>0?Math.round((wins/setupTrades.length)*100):null;const netPnl=setupTrades.reduce((s,t)=>s+pnlNum(t.pnl),0);
-  return(<div style={{display:'grid',gridTemplateColumns:'200px 1fr',gap:14}}>
-    <div style={{display:'flex',flexDirection:'column',gap:6}}>
-      <SH>My setups</SH>
-      {setups.map((s,i)=>{const st=trades.filter(t=>t.setup===s.name);const w=st.filter(t=>pnlNum(t.pnl)>0).length;return(<div key={i} onClick={()=>setActive(i)} style={{padding:'8px 10px',borderRadius:7,border:`0.5px solid ${i===active?'rgba(75,68,200,0.3)':'var(--border)'}`,background:i===active?'rgba(75,68,200,0.06)':'var(--surface2)',cursor:'pointer'}}><div style={{fontSize:12,fontWeight:i===active?500:400,color:i===active?'#3C3489':'var(--text)',marginBottom:2}}>{s.name}</div><div style={{fontSize:10,color:'var(--text-muted)'}}>{st.length} trades{st.length>0?` · ${Math.round((w/st.length)*100)}% win`:''}</div></div>)})}
-    </div>
-    <div style={{display:'flex',flexDirection:'column',gap:12}}>
-      <Card><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><div><div style={{fontSize:14,fontWeight:500}}>{setup?.name}</div><div style={{fontSize:11,color:'var(--text-muted)'}}>{setupTrades.length} trades{wr!==null?` · ${wr}% win`:''}{netPnl!==0?` · ${netPnl>0?'+':''}$${netPnl.toFixed(0)}`:''}</div></div><BtnP onClick={saveSetups}>Save</BtnP></div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-          <div><SH>Entry rules</SH>{setup?.rules.map((r,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}><span style={{color:PURPLE,fontWeight:500,fontSize:12}}>✓</span><Inp value={r} onChange={e=>updateRule('rules',i,e.target.value)} placeholder={`Entry rule ${i+1}`}/></div>)}</div>
-          <div><SH>Exit rules</SH>{setup?.exitRules.map((r,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}><span style={{color:'#b45309',fontWeight:500,fontSize:12}}>→</span><Inp value={r} onChange={e=>updateRule('exitRules',i,e.target.value)} placeholder={`Exit rule ${i+1}`}/></div>)}</div>
+  const SETUPS_KEY = STORAGE_KEY+'_setups2';
+  const [setups,setSetups]=useState(()=>load(SETUPS_KEY,[]));
+  const [activeId,setActiveId]=useState(null);
+  const [renamingId,setRenamingId]=useState(null);
+  const [renameVal,setRenameVal]=useState('');
+  const [newSetupName,setNewSetupName]=useState('');
+  const [showNewSetup,setShowNewSetup]=useState(false);
+  function saveSetups(updated){setSetups(updated);save(SETUPS_KEY,updated);}
+  function createSetup(){
+    if(!newSetupName.trim())return;
+    const s={id:'s_'+Date.now(),name:newSetupName.trim(),overview:'',entryConditions:[],exitConditions:[],invalidation:[],checklist:[],customSections:[]};
+    const updated=[...setups,s];saveSetups(updated);setActiveId(s.id);setNewSetupName('');setShowNewSetup(false);
+  }
+  function deleteSetup(id){const updated=setups.filter(s=>s.id!==id);saveSetups(updated);if(activeId===id)setActiveId(updated[0]?.id||null);}
+  function updateSetup(field,val){saveSetups(setups.map(s=>s.id===activeId?{...s,[field]:val}:s));}
+  function addToList(field,setup){updateSetup(field,[...(setup[field]||[]),'']);}
+  function updateListItem(field,idx,val,setup){updateSetup(field,(setup[field]||[]).map((v,i)=>i===idx?val:v));}
+  function removeListItem(field,idx,setup){updateSetup(field,(setup[field]||[]).filter((_,i)=>i!==idx));}
+  function addSection(setup){updateSetup('customSections',[...(setup.customSections||[]),{title:'New section',content:''}]);}
+  function updateSection(idx,key,val,setup){const s=[...(setup.customSections||[])];s[idx]={...s[idx],[key]:val};updateSetup('customSections',s);}
+  function removeSection(idx,setup){updateSetup('customSections',(setup.customSections||[]).filter((_,i)=>i!==idx));}
+  const setup=setups.find(s=>s.id===activeId)||null;
+  const setupTrades=setup?trades.filter(t=>t.setup===setup.name):[];
+  const wins=setupTrades.filter(t=>pnlNum(t.pnl)>0).length;
+  const wr=setupTrades.length>0?Math.round((wins/setupTrades.length)*100):null;
+  const netPnl=setupTrades.reduce((s,t)=>s+pnlNum(t.pnl),0);
+  const avgR=setupTrades.length>0?(setupTrades.reduce((s,t)=>s+(parseFloat(t.r)||0),0)/setupTrades.length).toFixed(1):null;
+  function ListSection({label,field,placeholder,dotColor}){
+    const items=(setup&&setup[field])||[];
+    return(<Card>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+        <SH style={{marginBottom:0}}>{label}</SH>
+        <button onClick={()=>addToList(field,setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,display:'flex',alignItems:'center',gap:3,fontFamily:'var(--font)',padding:'1px 4px',borderRadius:4}}><i className="ti ti-plus" style={{fontSize:12}}/>Add</button>
+      </div>
+      {items.length===0&&<div style={{fontSize:12,color:'var(--text-muted)',padding:'4px 0'}}>None yet — add one above.</div>}
+      {items.map((item,i)=>(
+        <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+          <div style={{width:6,height:6,borderRadius:'50%',background:dotColor,flexShrink:0}}/>
+          <Inp value={item} onChange={e=>updateListItem(field,i,e.target.value,setup)} placeholder={placeholder}/>
+          <button onClick={()=>removeListItem(field,i,setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:13,padding:'1px 3px',lineHeight:1,flexShrink:0}}>x</button>
         </div>
-      </Card>
-      <Card><SH>Pre-trade checklist</SH>{setup?.checklist.map((item,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}><span style={{fontSize:14,color:item?PURPLE:'var(--text-muted)'}}>☑</span><Inp value={item} onChange={e=>updateRule('checklist',i,e.target.value)} placeholder={`Checklist item ${i+1}`}/></div>)}</Card>
+      ))}
+    </Card>);
+  }
+  return(
+    <div style={{display:'grid',gridTemplateColumns:'190px 1fr',gap:14,alignItems:'start'}}>
+      <div>
+        <SH>My setups</SH>
+        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+          {setups.map(s=>{
+            const st=trades.filter(t=>t.setup===s.name);const w=st.filter(t=>pnlNum(t.pnl)>0).length;
+            return(<div key={s.id}>
+              {renamingId===s.id?(
+                <div style={{display:'flex',gap:4,marginBottom:2}}>
+                  <input value={renameVal} onChange={e=>setRenameVal(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'){saveSetups(setups.map(x=>x.id===s.id?{...x,name:renameVal.trim()||x.name}:x));setRenamingId(null);}if(e.key==='Escape')setRenamingId(null);}} autoFocus
+                    style={{flex:1,padding:'5px 8px',border:'0.5px solid var(--border)',borderRadius:5,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none'}}/>
+                  <button onClick={()=>{saveSetups(setups.map(x=>x.id===s.id?{...x,name:renameVal.trim()||x.name}:x));setRenamingId(null);}}
+                    style={{padding:'4px 8px',background:PURPLE,color:'#fff',border:'none',borderRadius:5,fontSize:11,cursor:'pointer',fontFamily:'var(--font)',fontWeight:500}}>OK</button>
+                </div>
+              ):(
+                <div onClick={()=>setActiveId(s.id)} style={{padding:'8px 10px',borderRadius:7,border:`0.5px solid ${s.id===activeId?'rgba(75,68,200,0.3)':'var(--border)'}`,background:s.id===activeId?'rgba(75,68,200,0.06)':'var(--surface2)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:s.id===activeId?500:400,color:s.id===activeId?'#3C3489':'var(--text)',marginBottom:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
+                    <div style={{fontSize:10,color:'var(--text-muted)'}}>{st.length} trades{st.length>0?` · ${Math.round((w/st.length)*100)}% win`:''}</div>
+                  </div>
+                  <div style={{display:'flex',gap:2,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                    <button onClick={()=>{setRenamingId(s.id);setRenameVal(s.name);}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,padding:'1px 3px',borderRadius:3}}><i className="ti ti-pencil" style={{fontSize:10}}/></button>
+                    <button onClick={()=>deleteSetup(s.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:12,padding:'1px 3px',borderRadius:3}}>x</button>
+                  </div>
+                </div>
+              )}
+            </div>);
+          })}
+        </div>
+        <div style={{marginTop:8,borderTop:'0.5px solid var(--border)',paddingTop:8}}>
+          {showNewSetup?(
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              <input value={newSetupName} onChange={e=>setNewSetupName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createSetup()} placeholder="Setup name..." autoFocus
+                style={{width:'100%',padding:'6px 8px',border:'0.5px solid var(--border)',borderRadius:5,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none',boxSizing:'border-box'}}/>
+              <div style={{display:'flex',gap:4}}>
+                <BtnS onClick={()=>setShowNewSetup(false)} style={{flex:1,textAlign:'center'}}>Cancel</BtnS>
+                <BtnP onClick={createSetup} style={{flex:1,textAlign:'center'}}>Add</BtnP>
+              </div>
+            </div>
+          ):(
+            <div onClick={()=>setShowNewSetup(true)} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',borderRadius:7,cursor:'pointer',color:'var(--text-muted)',fontSize:12}}
+              onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <i className="ti ti-plus" style={{fontSize:13}}/>New setup
+            </div>
+          )}
+        </div>
+      </div>
+      {!setup?(
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 0',color:'var(--text-muted)',fontSize:13}}>
+          <i className="ti ti-book-2" style={{fontSize:32,marginBottom:12,opacity:0.4}}/>
+          <div style={{fontWeight:500,marginBottom:4,color:'var(--text)'}}>No setup selected</div>
+          <div style={{fontSize:12}}>Create your first setup to get started.</div>
+        </div>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+            <Card style={{textAlign:'center',padding:'10px 8px'}}><div style={{fontSize:18,fontWeight:500,color:wr!==null&&wr>=50?'var(--green)':'var(--text)'}}>{wr!==null?wr+'%':'—'}</div><div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>Win rate</div></Card>
+            <Card style={{textAlign:'center',padding:'10px 8px'}}><div style={{fontSize:18,fontWeight:500,color:netPnl>0?'var(--green)':netPnl<0?'var(--red)':'var(--text)'}}>{setupTrades.length>0?(netPnl>=0?'+':'')+'$'+Math.abs(netPnl).toFixed(0):'—'}</div><div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>Net P&amp;L</div></Card>
+            <Card style={{textAlign:'center',padding:'10px 8px'}}><div style={{fontSize:18,fontWeight:500}}>{avgR||'—'}</div><div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>Avg R</div></Card>
+            <Card style={{textAlign:'center',padding:'10px 8px'}}><div style={{fontSize:18,fontWeight:500}}>{setupTrades.length}</div><div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>Trades</div></Card>
+          </div>
+          <Card><SH>Overview</SH><Textarea value={setup.overview||''} onChange={e=>updateSetup('overview',e.target.value)} placeholder="Describe this setup — what it is, why it works, when you look for it..."/></Card>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <ListSection label="Entry conditions" field="entryConditions" placeholder="Add an entry condition" dotColor={PURPLE}/>
+            <ListSection label="Exit conditions" field="exitConditions" placeholder="Add an exit condition" dotColor="#0F6E56"/>
+            <ListSection label="Invalidation" field="invalidation" placeholder="When does this setup fail?" dotColor="#993C1D"/>
+            <Card>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <SH style={{marginBottom:0}}>Pre-trade checklist</SH>
+                <button onClick={()=>addToList('checklist',setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,display:'flex',alignItems:'center',gap:3,fontFamily:'var(--font)',padding:'1px 4px',borderRadius:4}}><i className="ti ti-plus" style={{fontSize:12}}/>Add</button>
+              </div>
+              {(setup.checklist||[]).length===0&&<div style={{fontSize:12,color:'var(--text-muted)',padding:'4px 0'}}>No checklist items yet.</div>}
+              {(setup.checklist||[]).map((item,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                  <div style={{width:14,height:14,borderRadius:3,border:`0.5px solid ${PURPLE}`,background:'rgba(75,68,200,0.08)',flexShrink:0}}/>
+                  <Inp value={item} onChange={e=>updateListItem('checklist',i,e.target.value,setup)} placeholder="Checklist item"/>
+                  <button onClick={()=>removeListItem('checklist',i,setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:13,padding:'1px 3px',lineHeight:1,flexShrink:0}}>x</button>
+                </div>
+              ))}
+            </Card>
+          </div>
+          {(setup.customSections||[]).map((cs,i)=>(
+            <Card key={i}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <input value={cs.title} onChange={e=>updateSection(i,'title',e.target.value,setup)}
+                  style={{fontWeight:600,fontSize:10,background:'none',border:'none',outline:'none',color:'var(--text-muted)',fontFamily:'var(--font)',letterSpacing:'0.06em',textTransform:'uppercase'}}/>
+                <button onClick={()=>removeSection(i,setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:12,padding:'1px 4px'}}>x</button>
+              </div>
+              <Textarea value={cs.content} onChange={e=>updateSection(i,'content',e.target.value,setup)} placeholder="Add your notes..."/>
+            </Card>
+          ))}
+          <div onClick={()=>addSection(setup)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'10px',borderRadius:8,border:'0.5px dashed var(--border)',color:'var(--text-muted)',fontSize:12,cursor:'pointer'}}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <i className="ti ti-layout-grid-add" style={{fontSize:14}}/>Add custom section
+          </div>
+        </div>
+      )}
     </div>
-  </div>)
+  );
 }
+
 
 const BOOKS_KEY = 'tr_journal_books';
 
