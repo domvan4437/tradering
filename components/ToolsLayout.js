@@ -38,6 +38,7 @@ function Dashboard({trades,journals}){
   const netPnl=trades.reduce((s,t)=>s+pnlNum(t.pnl),0);const avgRR=total>0?(trades.reduce((s,t)=>s+(parseFloat(t.r)||0),0)/total).toFixed(1):'—';
   const grossWin=trades.filter(t=>pnlNum(t.pnl)>0).reduce((s,t)=>s+pnlNum(t.pnl),0);const grossLoss=Math.abs(trades.filter(t=>pnlNum(t.pnl)<0).reduce((s,t)=>s+pnlNum(t.pnl),0));
   const profitFactor=grossLoss>0?(grossWin/grossLoss).toFixed(2):'—';
+  let _peak=0,_dd=0,_cum=0;[...trades].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(t=>{_cum+=pnlNum(t.pnl);if(_cum>_peak)_peak=_cum;const d=_peak-_cum;if(d>_dd)_dd=d});const maxDrawdown=_dd;
   const byDate={};trades.forEach(t=>{if(!t.date)return;byDate[t.date]=(byDate[t.date]||0)+pnlNum(t.pnl)});
   const calDays=getCalendarDays(calYear,calMonth);
   const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -59,7 +60,7 @@ function Dashboard({trades,journals}){
   const dayWr=dayTrades.length>0?Math.round((dayWins/dayTrades.length)*100):null;
   return(<div style={{display:'flex',flexDirection:'column',gap:14}}>
     <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8}}>
-      {[{label:'Win rate',value:total>0?`${winRate}%`:'—',color:winRate>=60?'var(--green)':winRate>0?'var(--red)':'var(--text)'},{label:'Total trades',value:total||'—'},{label:'Avg R:R',value:avgRR},{label:'Net P&L',value:netPnl!==0?`${netPnl>0?'+':''}$${netPnl.toFixed(0)}`:'—',color:netPnl>0?'var(--green)':netPnl<0?'var(--red)':'var(--text)'},{label:'Profit factor',value:profitFactor}].map(s=>(<Card2 key={s.label} style={{textAlign:'center'}}><div style={{fontSize:20,fontWeight:500,color:s.color||'var(--text)',marginBottom:3}}>{s.value}</div><div style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em'}}>{s.label}</div></Card2>))}
+      {[{label:'Win rate',value:total>0?`${winRate}%`:'—',color:winRate>=60?'var(--green)':winRate>0?'var(--red)':'var(--text)'},{label:'Total trades',value:total||'—'},{label:'Avg R:R',value:avgRR},{label:'Net P&L',value:netPnl!==0?`${netPnl>0?'+':''}$${netPnl.toFixed(0)}`:'—',color:netPnl>0?'var(--green)':netPnl<0?'var(--red)':'var(--text)'},{label:'Max drawdown',value:maxDrawdown>0?`-$${maxDrawdown.toFixed(0)}`:'—',color:maxDrawdown>0?'var(--red)':'var(--text)'}].map(s=>(<Card2 key={s.label} style={{textAlign:'center'}}><div style={{fontSize:20,fontWeight:500,color:s.color||'var(--text)',marginBottom:3}}>{s.value}</div><div style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em'}}>{s.label}</div></Card2>))}
     </div>
     <div style={{display:'grid',gridTemplateColumns:'1fr 340px',gap:12}}>
       <Card>
@@ -94,13 +95,12 @@ function Dashboard({trades,journals}){
     </div>
     <div style={{display:'grid',gridTemplateColumns:'1fr 280px',gap:12}}>
       <Card><SH>Recent trades</SH>{recentTrades.length===0?<div style={{fontSize:12,color:'var(--text-muted)',textAlign:'center',padding:'20px 0'}}>No trades yet</div>:<table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr>{['Date','Asset','Side','Setup','Emotion','P&L'].map(h=><th key={h} style={{fontSize:9,color:'var(--text-muted)',fontWeight:500,textTransform:'uppercase',letterSpacing:'0.04em',padding:'4px 6px',textAlign:h==='P&L'?'right':'left',borderBottom:'0.5px solid var(--border)'}}>{h}</th>)}</tr></thead><tbody>{recentTrades.map((t,i)=><tr key={i} style={{borderBottom:'0.5px solid var(--border)'}}><td style={{fontSize:11,padding:'6px 6px',color:'var(--text-muted)'}}>{t.date}</td><td style={{fontSize:12,padding:'6px 6px',fontWeight:500}}>{t.asset}</td><td style={{fontSize:11,padding:'6px 6px'}}><span style={{fontSize:10,fontWeight:500,padding:'2px 5px',borderRadius:3,background:t.direction==='Long'?'rgba(22,163,74,0.1)':'rgba(220,38,38,0.08)',color:t.direction==='Long'?'#15803d':'#991b1b'}}>{t.direction}</span></td><td style={{fontSize:10,padding:'6px 6px'}}>{t.setup&&<span style={{background:'var(--surface2)',padding:'1px 5px',borderRadius:3}}>{t.setup}</span>}</td><td style={{fontSize:10,padding:'6px 6px'}}>{t.emotion&&<span style={{padding:'1px 6px',borderRadius:10,background:EMOTION_BG[t.emotion]||'var(--surface2)',color:EMOTION_COLOR[t.emotion]||'var(--text-muted)',fontSize:9}}>{t.emotion}</span>}</td><td style={{fontSize:12,padding:'6px 6px',fontWeight:500,color:pnlColor(t.pnl),textAlign:'right'}}>{t.pnl||'—'}</td></tr>)}</tbody></table>}</Card>
-      <Card><SH>Assets traded this month</SH>{assetsThisMonth.length===0?<div style={{fontSize:11,color:'var(--text-muted)'}}>No trades this month yet</div>:<div style={{display:'flex',flexDirection:'column',gap:6}}>{assetsThisMonth.map(asset=>{const at=trades.filter(t=>t.asset===asset&&t.date?.startsWith(thisMonthStr));const aw=at.filter(t=>pnlNum(t.pnl)>0).length;const ap=at.reduce((s,t)=>s+pnlNum(t.pnl),0);return(<div key={asset} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:'0.5px solid var(--border)',fontSize:11}}><div><div style={{fontWeight:500}}>{asset}</div><div style={{fontSize:9,color:'var(--text-muted)'}}>{at.length} trade{at.length!==1?'s':''} \xb7 {Math.round((aw/at.length)*100)}% win</div></div><span style={{fontWeight:500,color:ap>0?'var(--green)':ap<0?'var(--red)':'var(--text-muted)'}}>{ap>0?'+':''}${ap.toFixed(0)}</span></div>)})}</div>}</Card>
     </div>
     {dayModal&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999}} onClick={()=>setDayModal(null)}>
       <div style={{background:'var(--surface)',borderRadius:16,padding:24,width:540,maxHeight:'82vh',overflowY:'auto',boxShadow:'0 16px 48px rgba(0,0,0,0.25)'}} onClick={e=>e.stopPropagation()}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}}>
           <div><div style={{fontSize:16,fontWeight:700,color:'var(--text)'}}>{dayModal}</div><div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{dayTrades.length>0?`${dayTrades.length} trade${dayTrades.length!==1?'s':''} \xb7 `:'No trades \xb7 '}{dayWr!==null?`${dayWr}% win rate`:''}</div></div>
-          <button onClick={()=>setDayModal(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'var(--text-muted)',lineHeight:1}}>\xd7</button>
+          <button onClick={()=>setDayModal(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:'var(--text-muted)',lineHeight:1}}>X</button>
         </div>
         {dayTrades.length>0&&<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:14}}>
           {[{label:'Net P&L',value:`${dayPnl>=0?'+':''}$${dayPnl.toFixed(0)}`,color:dayPnl>0?'var(--green)':dayPnl<0?'var(--red)':'var(--text)'},{label:'Win rate',value:dayWr!==null?`${dayWr}%`:'—',color:dayWr!==null&&dayWr>=60?'var(--green)':dayWr!==null&&dayWr<50?'var(--red)':'var(--text)'},{label:'Trades',value:dayTrades.length},{label:'Avg R',value:dayTrades.length>0?(dayTrades.reduce((s,t)=>s+(parseFloat(t.r)||0),0)/dayTrades.length).toFixed(1):'—'}].map(s=><Card2 key={s.label} style={{textAlign:'center',padding:'10px 8px'}}><div style={{fontSize:17,fontWeight:500,color:s.color||'var(--text)',marginBottom:2}}>{s.value}</div><div style={{fontSize:9,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em'}}>{s.label}</div></Card2>)}
@@ -262,6 +262,8 @@ export default function ToolsLayout({tab, setTab, userInfo}){
   const [showBookDrop, setShowBookDrop] = useState(false);
   const [newBookName, setNewBookName] = useState('');
   const [showNewBook, setShowNewBook] = useState(false);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameVal, setRenameVal] = useState('');
   const tradesKey = activeBookId==='default'?STORAGE_KEY+'_trades':STORAGE_KEY+'_trades_'+activeBookId;
   const journalsKey = activeBookId==='default'?STORAGE_KEY+'_journals':STORAGE_KEY+'_journals_'+activeBookId;
   const [trades, setTrades] = useState(() => load(tradesKey, []));
@@ -287,6 +289,12 @@ export default function ToolsLayout({tab, setTab, userInfo}){
     const updated=books.filter(b=>b.id!==id);
     setBooks(updated);save(BOOKS_KEY,updated);
     if(activeBookId===id)switchBook('default');
+  }
+  function renameBook(id,name){
+    if(!name.trim())return;
+    const updated=books.map(b=>b.id===id?{...b,name:name.trim()}:b);
+    setBooks(updated);save(BOOKS_KEY,updated);
+    setRenamingId(null);setRenameVal('');
   }
 
   React.useEffect(() => { if (!tab) setTab('Journal'); }, []);
@@ -345,10 +353,23 @@ export default function ToolsLayout({tab, setTab, userInfo}){
               </button>
               {showBookDrop&&<div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:6, minWidth:190, zIndex:999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }} onClick={e=>e.stopPropagation()}>
                 {books.map(b=>(
-                  <div key={b.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', borderRadius:7, cursor:'pointer', background:b.id===activeBookId?'#EEEDFE':'transparent' }} onClick={()=>switchBook(b.id)}
-                    onMouseEnter={e=>{if(b.id!==activeBookId)e.currentTarget.style.background='var(--surface2)'}} onMouseLeave={e=>{if(b.id!==activeBookId)e.currentTarget.style.background='transparent'}}>
-                    <span style={{ fontSize:13, fontWeight:b.id===activeBookId?500:400, color:b.id===activeBookId?'#534AB7':'var(--text)' }}>{b.name}</span>
-                    {b.id!=='default'&&<button onClick={e=>{e.stopPropagation();deleteBook(b.id)}} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:15, padding:'0 2px', lineHeight:1 }}>×</button>}
+                  <div key={b.id} style={{ borderRadius:7, background:b.id===activeBookId?'#EEEDFE':'transparent' }}
+                    onMouseEnter={e=>{if(b.id!==activeBookId&&renamingId!==b.id)e.currentTarget.style.background='var(--surface2)'}} onMouseLeave={e=>{if(b.id!==activeBookId)e.currentTarget.style.background=b.id===activeBookId?'#EEEDFE':'transparent'}}>
+                    {renamingId===b.id?(
+                      <div style={{ display:'flex', gap:4, padding:'5px 6px' }} onClick={e=>e.stopPropagation()}>
+                        <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')renameBook(b.id,renameVal);if(e.key==='Escape'){setRenamingId(null);setRenameVal('');}}} autoFocus
+                          style={{ flex:1, padding:'4px 7px', border:'0.5px solid var(--border)', borderRadius:5, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}/>
+                        <button onClick={()=>renameBook(b.id,renameVal)} style={{ padding:'4px 8px', background:PURPLE, color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer', fontFamily:'var(--font)', fontWeight:500 }}>OK</button>
+                      </div>
+                    ):(
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', cursor:'pointer' }} onClick={()=>switchBook(b.id)}>
+                        <span style={{ fontSize:13, fontWeight:b.id===activeBookId?500:400, color:b.id===activeBookId?'#534AB7':'var(--text)', flex:1 }}>{b.name}</span>
+                        <div style={{ display:'flex', gap:2 }} onClick={e=>e.stopPropagation()}>
+                          <button onClick={()=>{setRenamingId(b.id);setRenameVal(b.name);}} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:12, padding:'1px 3px', lineHeight:1, borderRadius:3 }} title="Rename"><i className="ti ti-pencil" style={{fontSize:11}}/></button>
+                          {b.id!=='default'&&<button onClick={()=>deleteBook(b.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:'1px 3px', lineHeight:1, borderRadius:3 }}>x</button>}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div style={{ borderTop:'0.5px solid var(--border)', marginTop:4, paddingTop:4 }}>
