@@ -3,6 +3,8 @@ import React, { useState, useRef } from 'react'
 
 const PURPLE = '#4B44C8'
 const STORAGE_KEY = 'tr_journal_v3'
+const JOURNAL_TREE_KEY = STORAGE_KEY+'_jtree'
+const JOURNAL_ACTIVE_KEY = STORAGE_KEY+'_jactive'
 
 function load(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback } catch { return fallback }
@@ -161,7 +163,7 @@ function TradeLog({trades,setTrades,tradesKey}){
     <input ref={fileRef} type="file" accept=".csv" style={{display:'none'}} onChange={handleCSV}/>
     <div style={{display:'flex',gap:8}}><BtnP onClick={()=>setAdding(!adding)}>+ Add trade</BtnP><BtnS onClick={()=>fileRef.current?.click()}>Import CSV</BtnS><BtnS onClick={()=>setShowBroker(p=>!p)}>Connect broker</BtnS><span style={{flex:1}}/><span style={{fontSize:11,color:'var(--text-muted)',alignSelf:'center'}}>{trades.length} trades logged</span></div>
     {showBroker&&<Card style={{border:'0.5px solid var(--border)'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><SH style={{marginBottom:0}}>Broker connection</SH><button onClick={()=>setShowBroker(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:16',lineHeight:1}}>x</button></div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><SH style={{marginBottom:0}}>Broker connection</SH><button onClick={()=>setShowBroker(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:16,lineHeight:1}}>x</button></div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14}}>
         {[['Coinbase','ti-currency-bitcoin'],['Interactive Brokers','ti-building-bank'],['TD Ameritrade','ti-chart-line'],['Binance','ti-currency-ethereum'],['Tradovate','ti-trending-up'],['Kraken','ti-anchor']].map(([name,icon])=>(
           <div key={name} style={{padding:'10px 12px',border:'0.5px solid var(--border)',borderRadius:8,display:'flex',alignItems:'center',gap:8,opacity:0.5}}>
@@ -218,28 +220,167 @@ function TradeLog({trades,setTrades,tradesKey}){
   </div>)
 }
 
-function DailyJournal({journals,setJournals,journalsKey}){
-  const today=new Date().toISOString().slice(0,10);const[selectedDate,setSelectedDate]=useState(today);
-  const[entry,setEntry]=useState({premarket:'',went_well:'',went_wrong:'',discipline:5,emotions:[]});
-  React.useEffect(()=>{const e=journals.find(j=>j.date===selectedDate);setEntry(e||{premarket:'',went_well:'',went_wrong:'',discipline:5,emotions:[]})},[selectedDate,journals]);
-  function saveEntry(){const u=[...journals.filter(j=>j.date!==selectedDate),{...entry,date:selectedDate}];setJournals(u);save(journalsKey,u)}
-  function toggleEmotion(em){setEntry(e=>({...e,emotions:e.emotions.includes(em)?e.emotions.filter(x=>x!==em):[...e.emotions,em]}))}
-  return(<div style={{display:'grid',gridTemplateColumns:'1fr 280px',gap:14}}>
-    <div style={{display:'flex',flexDirection:'column',gap:12}}>
-      <div style={{display:'flex',alignItems:'center',gap:10}}><Inp type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} style={{width:160}}/><BtnP onClick={saveEntry}>Save entry</BtnP><span style={{fontSize:11,color:'var(--text-muted)'}}>{journals.length} entries</span></div>
-      <Card><SH>Pre-market plan</SH><Textarea value={entry.premarket} onChange={e=>setEntry(en=>({...en,premarket:e.target.value}))} placeholder="Today I'm watching..." style={{minHeight:100}}/></Card>
-      <Card><SH>End of day review</SH><div style={{display:'flex',flexDirection:'column',gap:10}}>
-        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>What went well?</div><Textarea value={entry.went_well} onChange={e=>setEntry(en=>({...en,went_well:e.target.value}))} placeholder="Followed my plan..."/></div>
-        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>What went wrong?</div><Textarea value={entry.went_wrong} onChange={e=>setEntry(en=>({...en,went_wrong:e.target.value}))} placeholder="Took a FOMO trade..." style={{background:'rgba(220,38,38,0.03)',borderColor:'rgba(220,38,38,0.2)'}}/></div>
-        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>Discipline: {entry.discipline}/10</div><div style={{display:'flex',gap:4}}>{[1,2,3,4,5,6,7,8,9,10].map(n=><button key={n} onClick={()=>setEntry(en=>({...en,discipline:n}))} style={{width:28,height:28,borderRadius:5,border:'none',background:n<=entry.discipline?PURPLE:'var(--surface2)',color:n<=entry.discipline?'#fff':'var(--text-muted)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'}}>{n}</button>)}</div></div>
-      </div></Card>
+function JournalFolderItem({item,tree,activeJId,onEntry,onNewEntry,onNewFolder}){
+  const [open,setOpen]=useState(false);
+  if(item.type==='entry'){
+    const isActive=item.id===activeJId;
+    return(<div onClick={()=>onEntry(item.id)} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:6,cursor:'pointer',background:isActive?'#EEEDFE':'transparent'}}
+      onMouseEnter={e=>{if(!isActive)e.currentTarget.style.background='var(--surface2)'}} onMouseLeave={e=>{if(!isActive)e.currentTarget.style.background=isActive?'#EEEDFE':'transparent'}}>
+      <i className="ti ti-file-text" style={{fontSize:13,color:'var(--text-muted)',flexShrink:0}}/>
+      <span style={{fontSize:13,color:isActive?'#534AB7':'var(--text)',fontWeight:isActive?500:400,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</span>
+      {isActive&&<i className="ti ti-check" style={{fontSize:11,color:'#534AB7',flexShrink:0}}/>}
+    </div>);
+  }
+  const children=(tree.items||[]).filter(i=>i.parentId===item.id).sort((a,b)=>a.order-b.order);
+  return(<div style={{position:'relative'}} onMouseEnter={()=>setOpen(true)} onMouseLeave={()=>setOpen(false)}>
+    <div style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:6,cursor:'pointer',background:open?'var(--surface2)':'transparent'}}>
+      <i className="ti ti-folder" style={{fontSize:13,color:'#BA7517',flexShrink:0}}/>
+      <span style={{fontSize:13,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</span>
+      <i className="ti ti-chevron-left" style={{fontSize:10,color:'var(--text-muted)',flexShrink:0}}/>
     </div>
-    <div style={{display:'flex',flexDirection:'column',gap:10}}>
-      <Card><SH>Emotion check-in</SH><div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:10}}>{EMOTIONS.map(em=>{const sel=entry.emotions.includes(em);return(<button key={em} onClick={()=>toggleEmotion(em)} style={{fontSize:10,fontWeight:sel?500:400,padding:'3px 8px',borderRadius:10,border:`0.5px solid ${sel?EMOTION_COLOR[em]:'var(--border2)'}`,background:sel?EMOTION_BG[em]:'transparent',color:sel?EMOTION_COLOR[em]:'var(--text-muted)',cursor:'pointer',fontFamily:'var(--font)'}}>{em}</button>)})}</div>{entry.emotions.some(e=>['FOMO','Revenge','Anxious','Greedy'].includes(e))&&<div style={{fontSize:10,padding:'6px 8px',background:'rgba(220,38,38,0.05)',border:'0.5px solid rgba(220,38,38,0.2)',borderRadius:5,color:'#991b1b',lineHeight:1.4}}>⚠ Negative emotions detected.</div>}</Card>
-      <Card><SH>Recent entries</SH>{journals.length===0?<div style={{fontSize:11,color:'var(--text-muted)'}}>No entries yet.</div>:[...journals].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7).map(j=><div key={j.date} onClick={()=>setSelectedDate(j.date)} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'0.5px solid var(--border)',cursor:'pointer',fontSize:11}}><span style={{color:j.date===selectedDate?PURPLE:'var(--text)'}}>{j.date}</span><div style={{display:'flex',gap:4}}><span style={{fontSize:10,color:'var(--text-muted)'}}>{j.discipline}/10</span>{(j.emotions||[]).slice(0,2).map(em=><span key={em} style={{fontSize:9,padding:'1px 4px',borderRadius:3,background:EMOTION_BG[em],color:EMOTION_COLOR[em]}}>{em}</span>)}</div></div>)}</Card>
-    </div>
-  </div>)
+    {open&&<div style={{position:'absolute',right:'calc(100% + 4px)',top:-5,background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:200,zIndex:1100,boxShadow:'0 4px 20px rgba(0,0,0,0.13)'}}>
+      {children.length===0&&<div style={{padding:'8px 10px',fontSize:12,color:'var(--text-muted)'}}>Empty folder</div>}
+      {children.map(child=><JournalFolderItem key={child.id} item={child} tree={tree} activeJId={activeJId} onEntry={onEntry} onNewEntry={onNewEntry} onNewFolder={onNewFolder}/>)}
+      <div style={{borderTop:'0.5px solid var(--border)',margin:'4px 0'}}/>
+      <div onClick={e=>{e.stopPropagation();onNewEntry(item.id);}} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-file-plus" style={{fontSize:12}}/>New entry here</div>
+      <div onClick={e=>{e.stopPropagation();onNewFolder(item.id);}} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-folder-plus" style={{fontSize:12}}/>New folder here</div>
+    </div>}
+  </div>);
 }
+
+function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChangeType}){
+  const [hov,setHov]=useState(false);
+  const BLOCK_TYPES=[
+    {type:'text',label:'Text',icon:'ti-align-left'},
+    {type:'h1',label:'Heading 1',icon:'ti-heading'},
+    {type:'h2',label:'Heading 2',icon:'ti-heading'},
+    {type:'bullet',label:'Bullet list',icon:'ti-list'},
+    {type:'check',label:'Checklist',icon:'ti-checkbox'},
+    {type:'divider',label:'Divider',icon:'ti-minus'},
+    {type:'callout',label:'Callout',icon:'ti-info-circle'},
+  ];
+  function handleKey(e){
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();onEnter();}
+    if(e.key==='Backspace'&&!block.content){e.preventDefault();onDelete();}
+  }
+  function handleChange(e){
+    const val=e.target.value;
+    if(val==='/'&&!block.content){onSlashOpen();return;}
+    onUpdate({content:val});
+    e.target.style.height='auto';
+    e.target.style.height=e.target.scrollHeight+'px';
+  }
+  if(block.type==='divider')return(
+    <div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
+      <span style={{width:16,flexShrink:0,opacity:hov?1:0,fontSize:10,color:'var(--text-muted)',cursor:'grab',userSelect:'none'}}>⠿</span>
+      <div style={{flex:1,height:'0.5px',background:'var(--border)'}}/>
+      {hov&&<button onClick={onDelete} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,padding:'0 2px'}}>x</button>}
+    </div>
+  );
+  const isH1=block.type==='h1',isH2=block.type==='h2',isCallout=block.type==='callout',isCheck=block.type==='check',isBullet=block.type==='bullet';
+  const taStyle={display:'block',width:'100%',border:'none',outline:'none',resize:'none',overflow:'hidden',fontFamily:'var(--font)',background:'none',padding:0,lineHeight:1.65,fontSize:isH1?20:isH2?15:13,fontWeight:isH1||isH2?500:400,color:isCheck&&block.checked?'var(--text-muted)':'var(--text)',textDecoration:isCheck&&block.checked?'line-through':'none'};
+  const calloutWrap=isCallout?{background:'var(--surface2)',borderLeft:'3px solid #534AB7',borderRadius:'0 6px 6px 0',padding:'8px 12px'}:{};
+  return(
+    <div style={{display:'flex',alignItems:'flex-start',gap:8,padding:'1px 0',position:'relative',marginBottom:2}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
+      <span style={{width:16,flexShrink:0,marginTop:isH1?5:3,opacity:hov?1:0,fontSize:10,color:'var(--text-muted)',cursor:'grab',userSelect:'none'}}>⠿</span>
+      {isBullet&&<span style={{flexShrink:0,marginTop:4,fontSize:14,color:'var(--text-muted)',lineHeight:1}}>•</span>}
+      {isCheck&&<div onClick={()=>onUpdate({checked:!block.checked})} style={{flexShrink:0,marginTop:4,width:14,height:14,borderRadius:3,border:'0.5px solid '+(block.checked?'#534AB7':'#AFA9EC'),background:block.checked?'#534AB7':'#EEEDFE',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {block.checked&&<i className="ti ti-check" style={{fontSize:9,color:'#fff'}}/>}
+      </div>}
+      <div style={{flex:1,position:'relative',...calloutWrap}}>
+        <textarea id={'blk_'+block.id} value={block.content} onChange={handleChange} onKeyDown={handleKey} rows={1}
+          placeholder={isH1?'Heading 1':isH2?'Heading 2':isBullet?'List item':isCheck?'Checklist item':isCallout?'Callout...':'Type '/' for blocks…'}
+          style={{...taStyle,minHeight:'1.65em'}}/>
+        {slashOpen&&<div style={{position:'absolute',left:0,top:'100%',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:8,padding:5,zIndex:200,boxShadow:'0 4px 16px rgba(0,0,0,0.12)',width:180}}>
+          {BLOCK_TYPES.map(bt=><div key={bt.type} onClick={()=>{onUpdate({content:''});onChangeType(bt.type);}} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text)'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <i className={'ti '+bt.icon} style={{fontSize:13,color:'var(--text-muted)'}}/>{bt.label}
+          </div>)}
+        </div>}
+      </div>
+      {hov&&!isH1&&<button onClick={onDelete} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,padding:'0 2px',marginTop:3,flexShrink:0}}>x</button>}
+    </div>
+  );
+}
+
+function DailyJournal({jTree,saveJTree,activeJId,setActiveJId}){
+  const [slashBlockId,setSlashBlockId]=useState(null);
+  const entry=activeJId&&jTree.entries?.[activeJId]?jTree.entries[activeJId]:null;
+  const item=activeJId?(jTree.items||[]).find(i=>i.id===activeJId):null;
+
+  function updateEntryField(field,val){
+    if(!activeJId)return;
+    const updated={...jTree,entries:{...jTree.entries,[activeJId]:{...(jTree.entries[activeJId]||{}),[field]:val}}};
+    if(field==='name')updated.items=(updated.items||[]).map(i=>i.id===activeJId?{...i,name:val}:i);
+    saveJTree(updated);
+  }
+  function updateBlock(blockId,changes){
+    if(!entry)return;
+    updateEntryField('blocks',(entry.blocks||[]).map(b=>b.id===blockId?{...b,...changes}:b));
+  }
+  function addBlockAfter(blockId){
+    if(!entry)return;
+    const nb={id:'b_'+Date.now(),type:'text',content:'',checked:false};
+    const blocks=[...(entry.blocks||[])];
+    const idx=blocks.findIndex(b=>b.id===blockId);
+    blocks.splice(idx+1,0,nb);
+    updateEntryField('blocks',blocks);
+    setTimeout(()=>document.getElementById('blk_'+nb.id)?.focus(),50);
+  }
+  function removeBlock(blockId){
+    if(!entry||(entry.blocks||[]).length<=1)return;
+    const idx=(entry.blocks||[]).findIndex(b=>b.id===blockId);
+    const blocks=(entry.blocks||[]).filter(b=>b.id!==blockId);
+    updateEntryField('blocks',blocks);
+    if(idx>0)setTimeout(()=>document.getElementById('blk_'+(entry.blocks[idx-1].id))?.focus(),30);
+  }
+  function changeBlockType(blockId,type){
+    updateBlock(blockId,{type});
+    setSlashBlockId(null);
+    setTimeout(()=>document.getElementById('blk_'+blockId)?.focus(),30);
+  }
+  function addBlock(){
+    if(!entry)return;
+    const nb={id:'b_'+Date.now(),type:'text',content:'',checked:false};
+    updateEntryField('blocks',[...(entry.blocks||[]),nb]);
+    setTimeout(()=>document.getElementById('blk_'+nb.id)?.focus(),50);
+  }
+
+  if(!entry)return(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'80px 0',color:'var(--text-muted)',fontSize:13}}>
+      <i className="ti ti-notebook" style={{fontSize:40,marginBottom:16,opacity:0.3}}/>
+      <div style={{fontWeight:500,marginBottom:6,color:'var(--text)',fontSize:15}}>No entry open</div>
+      <div style={{fontSize:12}}>Use the journal menu (top right) to open or create an entry.</div>
+    </div>
+  );
+
+  return(
+    <div style={{maxWidth:740,margin:'0 auto',paddingBottom:60}}>
+      <input value={item?.name||''} onChange={e=>updateEntryField('name',e.target.value)}
+        style={{display:'block',width:'100%',border:'none',outline:'none',fontSize:26,fontWeight:500,color:'var(--text)',background:'none',fontFamily:'var(--font)',marginBottom:8,padding:0}}
+        placeholder="Untitled"/>
+      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:24,fontSize:12,color:'var(--text-muted)'}}>
+        <span>{entry.date||new Date().toISOString().slice(0,10)}</span>
+        {(entry.tags||[]).map(t=><span key={t} style={{background:'#EEEDFE',color:'#3C3489',padding:'2px 8px',borderRadius:20,fontSize:11,fontWeight:500,cursor:'pointer'}} onClick={()=>updateEntryField('tags',(entry.tags||[]).filter(x=>x!==t))}>{t} x</span>)}
+        <span onClick={()=>{const t=prompt('Tag:');if(t&&t.trim())updateEntryField('tags',[...(entry.tags||[]),t.trim()]);}} style={{cursor:'pointer',padding:'2px 6px',border:'0.5px solid var(--border)',borderRadius:4,fontSize:11}}>+ tag</span>
+      </div>
+      {(entry.blocks||[]).map(block=>(
+        <BlockRow key={block.id} block={block}
+          slashOpen={slashBlockId===block.id}
+          onUpdate={changes=>updateBlock(block.id,changes)}
+          onEnter={()=>addBlockAfter(block.id)}
+          onDelete={()=>removeBlock(block.id)}
+          onSlashOpen={()=>setSlashBlockId(slashBlockId===block.id?null:block.id)}
+          onChangeType={type=>changeBlockType(block.id,type)}
+        />
+      ))}
+      <div onClick={addBlock} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0 0 24px',color:'var(--text-muted)',fontSize:12,cursor:'pointer',marginTop:4}}
+        onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
+        <i className="ti ti-plus" style={{fontSize:12}}/>Add block
+      </div>
+    </div>
+  );
+}
+
 
 function Reports({trades,journals}){
   if(trades.length===0)return(<Card style={{textAlign:'center',padding:'40px 20px'}}><div style={{fontSize:32,marginBottom:10}}>📊</div><div style={{fontSize:14,fontWeight:500,marginBottom:6}}>No data yet</div><div style={{fontSize:12,color:'var(--text-muted)'}}>Log at least 5 trades to see reports.</div></Card>);
@@ -573,6 +714,14 @@ const JOURNAL_SUBTABS = [
 
 export default function ToolsLayout({tab, setTab, userInfo}){
   const [journalTab, setJournalTab] = useState('dashboard');
+  const [jTree,setJTree]=useState(()=>load(JOURNAL_TREE_KEY,{items:[],entries:{}}));
+  const [activeJId,setActiveJId]=useState(()=>{const t=load(JOURNAL_TREE_KEY,{items:[],entries:{}});const saved=load(JOURNAL_ACTIVE_KEY,null);if(saved&&(t.items||[]).find(i=>i.id===saved&&i.type==='entry'))return saved;return (t.items||[]).find(i=>i.type==='entry')?.id||null;});
+  const [showJDrop,setShowJDrop]=useState(false);
+  function saveJTree(t){setJTree(t);save(JOURNAL_TREE_KEY,t);}
+  React.useEffect(()=>{function h(e){if(showJDrop&&!e.target.closest('[data-jdrop]'))setShowJDrop(false);}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[showJDrop]);
+  function openJEntry(id){setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setShowJDrop(false);}
+  function newJEntry(parentId=null){const id='je_'+Date.now();const it={id,type:'entry',name:'Untitled',parentId,order:Date.now()};const en={blocks:[{id:'b_'+Date.now(),type:'text',content:'',checked:false}],tags:[],date:new Date().toISOString().slice(0,10)};const t={...jTree,items:[...(jTree.items||[]),it],entries:{...(jTree.entries||{}),[id]:en}};saveJTree(t);openJEntry(id);}
+  function newJFolder(parentId=null){const id='jf_'+Date.now();const it={id,type:'folder',name:'New folder',parentId,order:Date.now()};const t={...jTree,items:[...(jTree.items||[]),it]};saveJTree(t);setShowJDrop(false);}
   const [books, setBooks] = useState(() => load(BOOKS_KEY, [{id:'default',name:'Main Journal'}]));
   const [activeBookId, setActiveBookId] = useState(() => load('tr_active_book','default'));
   const [showBookDrop, setShowBookDrop] = useState(false);
@@ -678,9 +827,24 @@ export default function ToolsLayout({tab, setTab, userInfo}){
               </span>
             ))}
             <div style={{ marginLeft:'auto', position:'relative' }}>
-              <button onClick={()=>setShowBookDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
-                <i className="ti ti-books" style={{fontSize:14}}/>{activeBook?.name}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
-              </button>
+              {journalTab==='daily'?(
+                <button onClick={()=>setShowJDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
+                  <i className="ti ti-notebook" style={{fontSize:14,color:'#534AB7'}}/>{activeJId?(jTree.items||[]).find(i=>i.id===activeJId)?.name||'Journal':'Journal'}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
+                </button>
+              ):(
+                <button onClick={()=>setShowBookDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
+                  <i className="ti ti-books" style={{fontSize:14}}/>{activeBook?.name}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
+                </button>
+              )}
+              {journalTab==='daily'&&showJDrop&&<div style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:210,zIndex:999,boxShadow:'0 4px 20px rgba(0,0,0,0.13)'}} onClick={e=>e.stopPropagation()}>
+                {(jTree.items||[]).filter(i=>!i.parentId).sort((a,b)=>a.order-b.order).map(item=>(
+                  <JournalFolderItem key={item.id} item={item} tree={jTree} activeJId={activeJId} onEntry={openJEntry} onNewEntry={newJEntry} onNewFolder={newJFolder}/>
+                ))}
+                {(jTree.items||[]).filter(i=>!i.parentId).length===0&&<div style={{padding:'8px 10px',fontSize:12,color:'var(--text-muted)'}}>No entries yet</div>}
+                <div style={{borderTop:'0.5px solid var(--border)',margin:'4px 0'}}/>
+                <div onClick={()=>newJEntry(null)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-file-plus" style={{fontSize:12}}/>New entry</div>
+                <div onClick={()=>newJFolder(null)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-folder-plus" style={{fontSize:12}}/>New folder</div>
+              </div>}
               {showBookDrop&&<div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:6, minWidth:190, zIndex:999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }} onClick={e=>e.stopPropagation()}>
                 {books.map(b=>(
                   <div key={b.id} style={{ borderRadius:7, background:b.id===activeBookId?'#EEEDFE':'transparent' }}
@@ -773,7 +937,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
         <div style={{ flex:1, overflowY:'auto', padding:'16px 24px' }}>
           {tab==='Journal' && journalTab==='dashboard' && <Dashboard trades={trades} journals={journals}/>}
           {tab==='Journal' && journalTab==='tradelog'  && <TradeLog  trades={trades} setTrades={setTrades} tradesKey={tradesKey}/>}
-          {tab==='Journal' && journalTab==='daily'     && <DailyJournal journals={journals} setJournals={setJournals} journalsKey={journalsKey}/>}
+          {tab==='Journal' && journalTab==='daily'     && <DailyJournal jTree={jTree} saveJTree={saveJTree} activeJId={activeJId} setActiveJId={setActiveJId}/>}
           {tab==='Journal' && journalTab==='reports'   && <Reports   trades={trades} journals={journals}/>}
           {tab==='Journal' && journalTab==='playbook'  && <Playbook  trades={trades}/>}
           {tab==='Journal' && journalTab==='import'    && (ImportTab ? <ImportTab/> : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
