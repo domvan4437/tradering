@@ -824,7 +824,17 @@ export default function ToolsLayout({tab, setTab, userInfo}){
   const [activeJId,setActiveJId]=useState(()=>{const t=load(JOURNAL_TREE_KEY,{items:[],entries:{}});const saved=load(JOURNAL_ACTIVE_KEY,null);if(saved&&(t.items||[]).find(i=>i.id===saved&&i.type==='entry'))return saved;return (t.items||[]).find(i=>i.type==='entry')?.id||null;});
   const [jNavHistory,setJNavHistory]=useState([]);
   const [showJDrop,setShowJDrop]=useState(false);
-  function saveJTree(t){setJTree(t);save(JOURNAL_TREE_KEY,t);}
+  function sanitizeTree(t){
+    const items=(t.items||[]).filter(i=>i&&i.id&&i.type);
+    const entries={...(t.entries||{})};
+    Object.keys(entries).forEach(id=>{
+      if(entries[id]){
+        entries[id]={...entries[id],blocks:(entries[id].blocks||[]).filter(b=>b&&b.id).map(b=>({...b,content:typeof b.content==='string'?b.content:''}))}
+      }
+    });
+    return {items,entries};
+  }
+  function saveJTree(t){const s=sanitizeTree(t);setJTree(s);save(JOURNAL_TREE_KEY,s);}
   React.useEffect(()=>{function h(e){if(showJDrop&&!e.target.closest('[data-jdrop]'))setShowJDrop(false);}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[showJDrop]);
   React.useEffect(()=>{setShowJDrop(false);setShowBookDrop(false);},[tab]);
   function openJEntry(id){setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setJNavHistory([]);}
@@ -946,8 +956,8 @@ export default function ToolsLayout({tab, setTab, userInfo}){
             </span>
           ))}
           <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8, position:'relative' }}>
-            {/* Page picker — Journal tab only */}
-            {tab==='Journal'&&<div style={{position:'relative'}} data-jdrop="true">
+            {/* Page picker — journal subtab only */}
+            {tab==='Journal'&&journalTab==='daily'&&<div style={{position:'relative'}} data-jdrop="true">
               <button data-jdrop="true" onClick={()=>setShowJDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
                 <i className="ti ti-notebook" style={{fontSize:14,color:'#534AB7'}}/>{activeJId?(jTree.items||[]).find(i=>i.id===activeJId)?.name||'Journal':'Journal'}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
               </button>
