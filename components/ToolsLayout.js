@@ -814,7 +814,7 @@ const TOOLS_TABS = [
 const JOURNAL_SUBTABS = [
   { key:'dashboard', label:'Dashboard',    icon:'ti-layout-dashboard' },
   { key:'tradelog',  label:'Trade log',    icon:'ti-list-details'     },
-  { key:'daily',     label:'Daily journal',icon:'ti-pencil'           },
+  { key:'daily',     label:'Journal',icon:'ti-pencil'           },
   { key:'reports',   label:'Reports',      icon:'ti-chart-bar'        },
   { key:'playbook',  label:'Playbook',     icon:'ti-book-2'           },
   { key:'import',    label:'Import data',  icon:'ti-file-import'      },
@@ -828,7 +828,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
   const [showJDrop,setShowJDrop]=useState(false);
   function saveJTree(t){setJTree(t);save(JOURNAL_TREE_KEY,t);}
   React.useEffect(()=>{function h(e){if(showJDrop&&!e.target.closest('[data-jdrop]'))setShowJDrop(false);}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[showJDrop]);
-  function openJEntry(id){setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setShowJDrop(false);setJNavHistory([]);}
+  function openJEntry(id){setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setJNavHistory([]);}
   function navigateJTo(id){setJNavHistory(h=>[...h,activeJId]);setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setShowJDrop(false);}
   function jGoBack(){setJNavHistory(h=>{const prev=[...h];const last=prev.pop();if(last){setActiveJId(last);save(JOURNAL_ACTIVE_KEY,last);}return prev;});}
   function newJEntry(parentId=null){const id='je_'+Date.now();const it={id,type:'entry',name:'Untitled',parentId,order:Date.now()};const en={blocks:[],tags:[],date:new Date().toISOString().slice(0,10)};const t={...jTree,items:[...(jTree.items||[]),it],entries:{...(jTree.entries||{}),[id]:en}};saveJTree(t);openJEntry(id);}
@@ -936,28 +936,23 @@ export default function ToolsLayout({tab, setTab, userInfo}){
 
 
 
-        {/* Journal horizontal subtab strip + book selector */}
-        {tab === 'Journal' && (
-          <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:24, borderBottom:'0.5px solid var(--border)', flexShrink:0, height:44 }}>
-            {JOURNAL_SUBTABS.map(s => (
-              <span key={s.key} onClick={() => setJournalTab(s.key)}
-                style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:journalTab===s.key?600:400, color:journalTab===s.key?'var(--text)':'var(--text-muted)', position:'relative', height:44, display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
-                <i className={`ti ${s.icon}`} style={{ fontSize:14 }} aria-hidden="true" />
-                {s.label}
-                {journalTab===s.key && <span style={{ position:'absolute', bottom:-1, left:0, right:0, height:2, background:'#534AB7', borderRadius:1 }} />}
-              </span>
-            ))}
-            <div style={{ marginLeft:'auto', position:'relative' }}>
-              {journalTab==='daily'?(
-                <button data-jdrop="true" onClick={()=>setShowJDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
-                  <i className="ti ti-notebook" style={{fontSize:14,color:'#534AB7'}}/>{activeJId?(jTree.items||[]).find(i=>i.id===activeJId)?.name||'Journal':'Journal'}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
-                </button>
-              ):(
-                <button onClick={()=>setShowBookDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
-                  <i className="ti ti-books" style={{fontSize:14}}/>{activeBook?.name}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
-                </button>
-              )}
-              {journalTab==='daily'&&showJDrop&&<div data-jdrop="true" style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:220,zIndex:999,boxShadow:'0 4px 20px rgba(0,0,0,0.13)',maxHeight:360,overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+        {/* Always-visible topbar: subtabs on Journal tab + persistent book/page selectors */}
+        <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:24, borderBottom:'0.5px solid var(--border)', flexShrink:0, height:44 }}>
+          {tab === 'Journal' && JOURNAL_SUBTABS.map(s => (
+            <span key={s.key} onClick={() => setJournalTab(s.key)}
+              style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:journalTab===s.key?600:400, color:journalTab===s.key?'var(--text)':'var(--text-muted)', position:'relative', height:44, display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
+              <i className={`ti ${s.icon}`} style={{ fontSize:14 }} aria-hidden="true" />
+              {s.label}
+              {journalTab===s.key && <span style={{ position:'absolute', bottom:-1, left:0, right:0, height:2, background:'#534AB7', borderRadius:1 }} />}
+            </span>
+          ))}
+          <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8, position:'relative' }}>
+            {/* Page picker — always visible */}
+            <div style={{position:'relative'}} data-jdrop="true">
+              <button data-jdrop="true" onClick={()=>setShowJDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
+                <i className="ti ti-notebook" style={{fontSize:14,color:'#534AB7'}}/>{activeJId?(jTree.items||[]).find(i=>i.id===activeJId)?.name||'Journal':'Journal'}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
+              </button>
+              {showJDrop&&<div data-jdrop="true" style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:220,zIndex:999,boxShadow:'0 4px 20px rgba(0,0,0,0.13)',maxHeight:360,overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
                 {(jTree.items||[]).filter(i=>!i.parentId).sort((a,b)=>a.order-b.order).map(item=>(
                   <JournalPageItem key={item.id} item={item} tree={jTree} activeJId={activeJId} onNavigate={openJEntry} onRename={renameJItem} onDelete={deleteJItem} depth={0}/>
                 ))}
@@ -965,6 +960,12 @@ export default function ToolsLayout({tab, setTab, userInfo}){
                 <div style={{borderTop:'0.5px solid var(--border)',margin:'4px 0'}}/>
                 <div onClick={()=>newJEntry(null)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-file-plus" style={{fontSize:12}}/>New page</div>
               </div>}
+            </div>
+            {/* Book selector — always visible */}
+            <div style={{position:'relative'}}>
+              <button onClick={()=>setShowBookDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
+                <i className="ti ti-books" style={{fontSize:14}}/>{activeBook?.name}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
+              </button>
               {showBookDrop&&<div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:6, minWidth:190, zIndex:999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }} onClick={e=>e.stopPropagation()}>
                 {books.map(b=>(
                   <div key={b.id} style={{ borderRadius:7, background:b.id===activeBookId?'#EEEDFE':'transparent' }}
@@ -1003,7 +1004,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
               </div>}
             </div>
           </div>
-        )}
+        </div>
 
         {/* Portfolio selector bar */}
         {tab === 'Portfolio' && (
