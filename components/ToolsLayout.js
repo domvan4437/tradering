@@ -936,8 +936,8 @@ export default function ToolsLayout({tab, setTab, userInfo}){
 
 
 
-        {/* Always-visible topbar: subtabs on Journal tab + persistent book/page selectors */}
-        <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:24, borderBottom:'0.5px solid var(--border)', flexShrink:0, height:44 }}>
+        {/* Journal tab topbar */}
+        {tab === 'Journal' && <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:24, borderBottom:'0.5px solid var(--border)', flexShrink:0, height:44 }}>
           {tab === 'Journal' && JOURNAL_SUBTABS.map(s => (
             <span key={s.key} onClick={() => setJournalTab(s.key)}
               style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:journalTab===s.key?600:400, color:journalTab===s.key?'var(--text)':'var(--text-muted)', position:'relative', height:44, display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
@@ -1004,7 +1004,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
               </div>}
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Portfolio selector bar */}
         {tab === 'Portfolio' && (
