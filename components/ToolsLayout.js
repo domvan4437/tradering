@@ -327,7 +327,7 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
         {block.checked&&<i className="ti ti-check" style={{fontSize:9,color:'#fff'}}/>}
       </div>}
       <div style={{flex:1,position:'relative',...calloutWrap}}>
-        <textarea id={'blk_'+block.id} value={block.content} onChange={handleChange} onKeyDown={handleKey} rows={1}
+        <textarea id={'blk_'+block.id} value={block.content==null||typeof block.content!=='string'?'':block.content} onChange={handleChange} onKeyDown={handleKey} rows={1}
           placeholder={isH1?'Heading 1':isH2?'Heading 2':isBullet?'List item':isCheck?'Checklist item':isCallout?'Callout...':'Type '/' for blocks…'}
           style={{...taStyle,minHeight:'1.65em'}}/>
         {slashOpen&&<div style={{position:'absolute',left:0,top:'100%',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:8,padding:5,zIndex:200,boxShadow:'0 4px 16px rgba(0,0,0,0.12)',width:180}}>
@@ -826,6 +826,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
   const [showJDrop,setShowJDrop]=useState(false);
   function saveJTree(t){setJTree(t);save(JOURNAL_TREE_KEY,t);}
   React.useEffect(()=>{function h(e){if(showJDrop&&!e.target.closest('[data-jdrop]'))setShowJDrop(false);}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[showJDrop]);
+  React.useEffect(()=>{setShowJDrop(false);setShowBookDrop(false);},[tab]);
   function openJEntry(id){setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setJNavHistory([]);}
   function navigateJTo(id){setJNavHistory(h=>[...h,activeJId]);setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setShowJDrop(false);}
   function jGoBack(){setJNavHistory(h=>{const prev=[...h];const last=prev.pop();if(last){setActiveJId(last);save(JOURNAL_ACTIVE_KEY,last);}return prev;});}
