@@ -220,58 +220,40 @@ function TradeLog({trades,setTrades,tradesKey}){
   </div>)
 }
 
-function JournalFolderItem({item,tree,activeJId,onEntry,onNewEntry,onNewFolder,onRename,onDelete}){
-  const [open,setOpen]=useState(false);
+function JournalPageItem({item,tree,activeJId,onNavigate,onRename,onDelete,depth=0}){
+  const [expanded,setExpanded]=useState(false);
   const [renaming,setRenaming]=useState(false);
   const [renameVal,setRenameVal]=useState('');
   const [hov,setHov]=useState(false);
-  function startRename(e){e.stopPropagation();setRenameVal(item.name);setRenaming(true);}
-  function commitRename(){if(renameVal.trim())onRename(item.id,renameVal.trim());setRenaming(false);}
-  if(item.type==='entry'){
-    const isActive=item.id===activeJId;
-    return(<div style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',borderRadius:6,cursor:'pointer',background:isActive?'#EEEDFE':'transparent'}} onMouseEnter={e=>{setHov(true);if(!isActive)e.currentTarget.style.background='var(--surface2)'}} onMouseLeave={e=>{setHov(false);if(!isActive)e.currentTarget.style.background=isActive?'#EEEDFE':'transparent'}}>
-      <i className="ti ti-file-text" style={{fontSize:12,color:'var(--text-muted)',flexShrink:0}}/>
-      {renaming?(
-        <input value={renameVal} autoFocus onChange={e=>setRenameVal(e.target.value)}
-          onKeyDown={e=>{if(e.key==='Enter')commitRename();if(e.key==='Escape')setRenaming(false);}}
-          onBlur={commitRename} onClick={e=>e.stopPropagation()}
-          style={{flex:1,border:'none',outline:'none',fontSize:13,fontFamily:'var(--font)',background:'transparent',color:'var(--text)',padding:0}}/>
-      ):(
-        <span onClick={()=>onEntry(item.id)} style={{fontSize:13,color:isActive?'#534AB7':'var(--text)',fontWeight:isActive?500:400,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</span>
-      )}
-      {hov&&!renaming&&<div style={{display:'flex',gap:2,flexShrink:0}}>
-        <button onClick={startRename} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'1px 3px',borderRadius:3,fontSize:11,lineHeight:1}} title="Rename"><i className="ti ti-pencil" style={{fontSize:10}}/></button>
-        <button onClick={e=>{e.stopPropagation();onDelete(item.id);}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'1px 3px',borderRadius:3,fontSize:11,lineHeight:1}} title="Delete">x</button>
-      </div>}
-    </div>);
-  }
   const children=(tree.items||[]).filter(i=>i.parentId===item.id).sort((a,b)=>a.order-b.order);
-  return(<div style={{position:'relative'}} onMouseEnter={()=>{setOpen(true);setHov(true);}} onMouseLeave={()=>{setOpen(false);setHov(false);}}>
-    <div style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',borderRadius:6,cursor:'pointer',background:open?'var(--surface2)':'transparent'}}>
-      <i className="ti ti-folder" style={{fontSize:12,color:'#BA7517',flexShrink:0}}/>
+  const isActive=item.id===activeJId;
+  function commitRename(){if(renameVal.trim())onRename(item.id,renameVal.trim());setRenaming(false);}
+  return(<div>
+    <div style={{display:'flex',alignItems:'center',gap:0,paddingLeft:depth*14,borderRadius:6,background:isActive?'#EEEDFE':'transparent'}}
+      onMouseEnter={e=>{setHov(true);if(!isActive)e.currentTarget.style.background='var(--surface2)'}}
+      onMouseLeave={e=>{setHov(false);if(!isActive)e.currentTarget.style.background=isActive?'#EEEDFE':'transparent'}}>
+      <div onClick={()=>setExpanded(p=>!p)} style={{width:18,height:28,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:children.length?'pointer':'default',color:'var(--text-muted)',fontSize:9}}>
+        {children.length>0?(expanded?'▾':'▸'):''}
+      </div>
+      <i className="ti ti-file-text" style={{fontSize:12,color:isActive?'#534AB7':'var(--text-muted)',flexShrink:0,marginRight:6}}/>
       {renaming?(
         <input value={renameVal} autoFocus onChange={e=>setRenameVal(e.target.value)}
           onKeyDown={e=>{if(e.key==='Enter')commitRename();if(e.key==='Escape')setRenaming(false);}}
           onBlur={commitRename} onClick={e=>e.stopPropagation()}
-          style={{flex:1,border:'none',outline:'none',fontSize:13,fontFamily:'var(--font)',background:'transparent',color:'var(--text)',padding:0}}/>
+          style={{flex:1,border:'none',outline:'none',fontSize:13,fontFamily:'var(--font)',background:'transparent',color:'var(--text)',padding:'4px 0'}}/>
       ):(
-        <span style={{fontSize:13,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</span>
+        <span onClick={()=>onNavigate(item.id)} style={{flex:1,fontSize:13,color:isActive?'#534AB7':'var(--text)',fontWeight:isActive?500:400,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',padding:'5px 0',cursor:'pointer'}}>{item.name}</span>
       )}
-      {hov&&!renaming&&<button onClick={startRename} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'1px 3px',borderRadius:3,fontSize:11,lineHeight:1,flexShrink:0}} title="Rename"><i className="ti ti-pencil" style={{fontSize:10}}/></button>}
-      {!renaming&&<i className="ti ti-chevron-left" style={{fontSize:10,color:'var(--text-muted)',flexShrink:0}}/>}
+      {hov&&!renaming&&<div style={{display:'flex',gap:1,flexShrink:0,marginLeft:4}}>
+        <button onClick={e=>{e.stopPropagation();setRenameVal(item.name);setRenaming(true);}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'2px 3px',borderRadius:3,fontSize:10,lineHeight:1}}><i className="ti ti-pencil" style={{fontSize:10}}/></button>
+        <button onClick={e=>{e.stopPropagation();onDelete(item.id);}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'2px 3px',borderRadius:3,fontSize:11,lineHeight:1}}>x</button>
+      </div>}
     </div>
-    {open&&<div data-jdrop="true" style={{position:'absolute',right:'calc(100% + 4px)',top:-5,background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:200,zIndex:1100,boxShadow:'0 4px 20px rgba(0,0,0,0.13)'}}>
-      {children.length===0&&<div style={{padding:'8px 10px',fontSize:12,color:'var(--text-muted)'}}>Empty folder</div>}
-      {children.map(child=><JournalFolderItem key={child.id} item={child} tree={tree} activeJId={activeJId} onEntry={onEntry} onNewEntry={onNewEntry} onNewFolder={onNewFolder} onRename={onRename} onDelete={onDelete}/>)}
-      <div style={{borderTop:'0.5px solid var(--border)',margin:'4px 0'}}/>
-      <div onClick={e=>{e.stopPropagation();onNewEntry(item.id);}} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-file-plus" style={{fontSize:12}}/>New entry here</div>
-      <div onClick={e=>{e.stopPropagation();onNewFolder(item.id);}} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-folder-plus" style={{fontSize:12}}/>New folder here</div>
-      <div onClick={e=>{e.stopPropagation();if(confirm('Delete this folder?'))onDelete(item.id);}} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'#993C1D'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><i className="ti ti-trash" style={{fontSize:12}}/>Delete folder</div>
-    </div>}
+    {expanded&&children.map(child=><JournalPageItem key={child.id} item={child} tree={tree} activeJId={activeJId} onNavigate={onNavigate} onRename={onRename} onDelete={onDelete} depth={depth+1}/>)}
   </div>);
 }
 
-function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChangeType}){
+function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChangeType,onNavigate,childPageName}){
   const [hov,setHov]=useState(false);
   const BLOCK_TYPES=[
     {type:'text',label:'Text',icon:'ti-align-left'},
@@ -281,6 +263,7 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
     {type:'check',label:'Checklist',icon:'ti-checkbox'},
     {type:'divider',label:'Divider',icon:'ti-minus'},
     {type:'callout',label:'Callout',icon:'ti-info-circle'},
+    {type:'subpage',label:'Sub-page',icon:'ti-file-text'},
   ];
   function handleKey(e){
     if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();onEnter();}
@@ -293,6 +276,14 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
     e.target.style.height='auto';
     e.target.style.height=e.target.scrollHeight+'px';
   }
+  if(block.type==='subpage')return(
+    <div onClick={()=>onNavigate&&onNavigate(block.pageId)} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',margin:'3px 0',borderRadius:8,border:'0.5px solid var(--border)',cursor:'pointer',background:'var(--surface2)'}}
+      onMouseEnter={e=>e.currentTarget.style.background='#EEEDFE'} onMouseLeave={e=>e.currentTarget.style.background='var(--surface2)'}>
+      <i className="ti ti-file-text" style={{fontSize:14,color:'#534AB7',flexShrink:0}}/>
+      <span style={{flex:1,fontSize:13,fontWeight:500,color:'var(--text)'}}>{childPageName||'Untitled'}</span>
+      <i className="ti ti-chevron-right" style={{fontSize:11,color:'var(--text-muted)'}}/>
+    </div>
+  );
   if(block.type==='divider')return(
     <div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
       <span style={{width:16,flexShrink:0,opacity:hov?1:0,fontSize:10,color:'var(--text-muted)',cursor:'grab',userSelect:'none'}}>⠿</span>
@@ -325,10 +316,20 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
   );
 }
 
-function DailyJournal({jTree,saveJTree,activeJId,setActiveJId}){
+function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,navigateJTo,jGoBack}){
   const [slashBlockId,setSlashBlockId]=useState(null);
   const entry=activeJId&&jTree.entries?.[activeJId]?jTree.entries[activeJId]:null;
   const item=activeJId?(jTree.items||[]).find(i=>i.id===activeJId):null;
+
+  // breadcrumb: walk parentId chain upward
+  const breadcrumb=[];
+  if(item){
+    let cur=item;
+    while(cur){
+      breadcrumb.unshift(cur);
+      cur=cur.parentId?(jTree.items||[]).find(i=>i.id===cur.parentId):null;
+    }
+  }
 
   function updateEntryField(field,val){
     if(!activeJId)return;
@@ -350,13 +351,31 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId}){
     setTimeout(()=>document.getElementById('blk_'+nb.id)?.focus(),50);
   }
   function removeBlock(blockId){
-    if(!entry||(entry.blocks||[]).length<=1)return;
-    const idx=(entry.blocks||[]).findIndex(b=>b.id===blockId);
+    if(!entry)return;
     const blocks=(entry.blocks||[]).filter(b=>b.id!==blockId);
+    if(blocks.length===0){updateEntryField('blocks',[]);return;}
+    const idx=(entry.blocks||[]).findIndex(b=>b.id===blockId);
     updateEntryField('blocks',blocks);
     if(idx>0)setTimeout(()=>document.getElementById('blk_'+(entry.blocks[idx-1].id))?.focus(),30);
   }
   function changeBlockType(blockId,type){
+    if(type==='subpage'){
+      // create a child page, convert this block to subpage link
+      const childId='je_'+Date.now();
+      const childItem={id:childId,type:'entry',name:'Untitled',parentId:activeJId,order:Date.now()};
+      const childEntry={blocks:[],tags:[],date:new Date().toISOString().slice(0,10)};
+      const newTree={...jTree,
+        items:[...(jTree.items||[]),childItem],
+        entries:{...(jTree.entries||{}),[childId]:childEntry}
+      };
+      // replace this block with a subpage block
+      const updatedBlocks=(entry.blocks||[]).map(b=>b.id===blockId?{...b,type:'subpage',content:'',pageId:childId}:b);
+      newTree.entries[activeJId]={...newTree.entries[activeJId],blocks:updatedBlocks};
+      saveJTree(newTree);
+      setSlashBlockId(null);
+      setTimeout(()=>navigateJTo(childId),50);
+      return;
+    }
     updateBlock(blockId,{type});
     setSlashBlockId(null);
     setTimeout(()=>document.getElementById('blk_'+blockId)?.focus(),30);
@@ -378,6 +397,27 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId}){
 
   return(
     <div style={{maxWidth:740,margin:'0 auto',paddingBottom:60}}>
+      {/* breadcrumb */}
+      {breadcrumb.length>1&&(
+        <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:16,flexWrap:'wrap'}}>
+          {breadcrumb.map((bc,idx)=>(
+            <React.Fragment key={bc.id}>
+              {idx>0&&<span style={{color:'var(--text-muted)',fontSize:12}}>/</span>}
+              <span onClick={()=>idx<breadcrumb.length-1&&navigateJTo(bc.id)}
+                style={{fontSize:12,color:idx===breadcrumb.length-1?'var(--text)':'var(--text-muted)',cursor:idx<breadcrumb.length-1?'pointer':'default',fontWeight:idx===breadcrumb.length-1?500:400}}
+                onMouseEnter={e=>{if(idx<breadcrumb.length-1)e.currentTarget.style.color='var(--text)';}}
+                onMouseLeave={e=>{if(idx<breadcrumb.length-1)e.currentTarget.style.color='var(--text-muted)';}}>
+                {bc.name||'Untitled'}
+              </span>
+            </React.Fragment>
+          ))}
+          {jNavHistory&&jNavHistory.length>0&&(
+            <button onClick={jGoBack} style={{marginLeft:6,display:'flex',alignItems:'center',gap:3,background:'none',border:'0.5px solid var(--border)',borderRadius:5,cursor:'pointer',color:'var(--text-muted)',fontSize:11,padding:'1px 7px',fontFamily:'var(--font)'}}>
+              <i className="ti ti-arrow-left" style={{fontSize:10}}/>Back
+            </button>
+          )}
+        </div>
+      )}
       <input value={item?.name||''} onChange={e=>updateEntryField('name',e.target.value)}
         style={{display:'block',width:'100%',border:'none',outline:'none',fontSize:26,fontWeight:500,color:'var(--text)',background:'none',fontFamily:'var(--font)',marginBottom:8,padding:0}}
         placeholder="Untitled"/>
@@ -394,6 +434,8 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId}){
           onDelete={()=>removeBlock(block.id)}
           onSlashOpen={()=>setSlashBlockId(slashBlockId===block.id?null:block.id)}
           onChangeType={type=>changeBlockType(block.id,type)}
+          onNavigate={navigateJTo}
+          childPageName={(jTree.items||[]).find(i=>i.id===block.pageId)?.name||'Untitled'}
         />
       ))}
       {(entry.blocks||[]).length===0&&(
@@ -741,14 +783,25 @@ export default function ToolsLayout({tab, setTab, userInfo}){
   const [journalTab, setJournalTab] = useState('dashboard');
   const [jTree,setJTree]=useState(()=>load(JOURNAL_TREE_KEY,{items:[],entries:{}}));
   const [activeJId,setActiveJId]=useState(()=>{const t=load(JOURNAL_TREE_KEY,{items:[],entries:{}});const saved=load(JOURNAL_ACTIVE_KEY,null);if(saved&&(t.items||[]).find(i=>i.id===saved&&i.type==='entry'))return saved;return (t.items||[]).find(i=>i.type==='entry')?.id||null;});
+  const [jNavHistory,setJNavHistory]=useState([]);
   const [showJDrop,setShowJDrop]=useState(false);
   function saveJTree(t){setJTree(t);save(JOURNAL_TREE_KEY,t);}
   React.useEffect(()=>{function h(e){if(showJDrop&&!e.target.closest('[data-jdrop]'))setShowJDrop(false);}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[showJDrop]);
-  function openJEntry(id){setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setShowJDrop(false);}
+  function openJEntry(id){setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setShowJDrop(false);setJNavHistory([]);}
+  function navigateJTo(id){setJNavHistory(h=>[...h,activeJId]);setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setShowJDrop(false);}
+  function jGoBack(){setJNavHistory(h=>{const prev=[...h];const last=prev.pop();if(last){setActiveJId(last);save(JOURNAL_ACTIVE_KEY,last);}return prev;});}
   function newJEntry(parentId=null){const id='je_'+Date.now();const it={id,type:'entry',name:'Untitled',parentId,order:Date.now()};const en={blocks:[],tags:[],date:new Date().toISOString().slice(0,10)};const t={...jTree,items:[...(jTree.items||[]),it],entries:{...(jTree.entries||{}),[id]:en}};saveJTree(t);openJEntry(id);}
-  function newJFolder(parentId=null){const id='jf_'+Date.now();const it={id,type:'folder',name:'New folder',parentId,order:Date.now()};const t={...jTree,items:[...(jTree.items||[]),it]};saveJTree(t);setShowJDrop(false);}
   function renameJItem(id,name){const t={...jTree,items:(jTree.items||[]).map(i=>i.id===id?{...i,name}:i)};saveJTree(t);}
-  function deleteJItem(id){const t={...jTree,items:(jTree.items||[]).filter(i=>i.id!==id),entries:{...jTree.entries}};delete t.entries[id];saveJTree(t);if(activeJId===id){const first=(t.items||[]).find(i=>i.type==='entry');setActiveJId(first?.id||null);save(JOURNAL_ACTIVE_KEY,first?.id||null);}}
+  function deleteJItem(id){
+    // also delete all descendants
+    function getDesc(pid){const kids=(jTree.items||[]).filter(i=>i.parentId===pid);return kids.flatMap(k=>[k.id,...getDesc(k.id)]);}
+    const toDelete=[id,...getDesc(id)];
+    const newEntries={...(jTree.entries||{})};
+    toDelete.forEach(d=>delete newEntries[d]);
+    const t={...jTree,items:(jTree.items||[]).filter(i=>!toDelete.includes(i.id)),entries:newEntries};
+    saveJTree(t);
+    if(toDelete.includes(activeJId)){const first=(t.items||[]).find(i=>i.type==='entry');setActiveJId(first?.id||null);save(JOURNAL_ACTIVE_KEY,first?.id||null);}
+  }
   const [books, setBooks] = useState(() => load(BOOKS_KEY, [{id:'default',name:'Main Journal'}]));
   const [activeBookId, setActiveBookId] = useState(() => load('tr_active_book','default'));
   const [showBookDrop, setShowBookDrop] = useState(false);
@@ -863,14 +916,13 @@ export default function ToolsLayout({tab, setTab, userInfo}){
                   <i className="ti ti-books" style={{fontSize:14}}/>{activeBook?.name}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
                 </button>
               )}
-              {journalTab==='daily'&&showJDrop&&<div data-jdrop="true" style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:210,zIndex:999,boxShadow:'0 4px 20px rgba(0,0,0,0.13)'}} onClick={e=>e.stopPropagation()}>
+              {journalTab==='daily'&&showJDrop&&<div data-jdrop="true" style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:220,zIndex:999,boxShadow:'0 4px 20px rgba(0,0,0,0.13)',maxHeight:360,overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
                 {(jTree.items||[]).filter(i=>!i.parentId).sort((a,b)=>a.order-b.order).map(item=>(
-                  <JournalFolderItem key={item.id} item={item} tree={jTree} activeJId={activeJId} onEntry={openJEntry} onNewEntry={newJEntry} onNewFolder={newJFolder} onRename={renameJItem} onDelete={deleteJItem}/>
+                  <JournalPageItem key={item.id} item={item} tree={jTree} activeJId={activeJId} onNavigate={openJEntry} onRename={renameJItem} onDelete={deleteJItem} depth={0}/>
                 ))}
-                {(jTree.items||[]).filter(i=>!i.parentId).length===0&&<div style={{padding:'8px 10px',fontSize:12,color:'var(--text-muted)'}}>No entries yet</div>}
+                {(jTree.items||[]).filter(i=>!i.parentId).length===0&&<div style={{padding:'8px 10px',fontSize:12,color:'var(--text-muted)'}}>No pages yet</div>}
                 <div style={{borderTop:'0.5px solid var(--border)',margin:'4px 0'}}/>
-                <div onClick={()=>newJEntry(null)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-file-plus" style={{fontSize:12}}/>New entry</div>
-                <div onClick={()=>newJFolder(null)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-folder-plus" style={{fontSize:12}}/>New folder</div>
+                <div onClick={()=>newJEntry(null)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-file-plus" style={{fontSize:12}}/>New page</div>
               </div>}
               {showBookDrop&&<div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:6, minWidth:190, zIndex:999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }} onClick={e=>e.stopPropagation()}>
                 {books.map(b=>(
@@ -964,7 +1016,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
         <div style={{ flex:1, overflowY:'auto', padding:'16px 24px' }}>
           {tab==='Journal' && journalTab==='dashboard' && <Dashboard trades={trades} journals={journals}/>}
           {tab==='Journal' && journalTab==='tradelog'  && <TradeLog  trades={trades} setTrades={setTrades} tradesKey={tradesKey}/>}
-          {tab==='Journal' && journalTab==='daily'     && <DailyJournal jTree={jTree} saveJTree={saveJTree} activeJId={activeJId} setActiveJId={setActiveJId}/>}
+          {tab==='Journal' && journalTab==='daily'     && <DailyJournal jTree={jTree} saveJTree={saveJTree} activeJId={activeJId} setActiveJId={setActiveJId} jNavHistory={jNavHistory} navigateJTo={navigateJTo} jGoBack={jGoBack}/>}
           {tab==='Journal' && journalTab==='reports'   && <Reports   trades={trades} journals={journals}/>}
           {tab==='Journal' && journalTab==='playbook'  && <Playbook  trades={trades}/>}
           {tab==='Journal' && journalTab==='import'    && (ImportTab ? <ImportTab/> : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
