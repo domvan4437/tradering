@@ -253,8 +253,32 @@ function JournalPageItem({item,tree,activeJId,onNavigate,onRename,onDelete,depth
   </div>);
 }
 
-function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChangeType,onNavigate,childPageName}){
+function DotMenu({onAddSubpage,onDelete,onClose,blockTypes,onChangeType,showTypes}){
+  const ref=React.useRef();
+  React.useEffect(()=>{function h(e){if(ref.current&&!ref.current.contains(e.target))onClose();}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
+  const menuItem=(icon,label,action,danger)=>(
+    <div onClick={action} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:danger?'var(--red)':'var(--text)'}}
+      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+      <i className={'ti '+icon} style={{fontSize:13,color:danger?'var(--red)':'var(--text-muted)',flexShrink:0}}/>{label}
+    </div>
+  );
+  return(
+    <div ref={ref} style={{position:'absolute',left:20,top:0,zIndex:300,background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:8,padding:4,boxShadow:'0 4px 16px rgba(0,0,0,0.13)',minWidth:170}}>
+      {menuItem('ti-file-plus','Add sub-page',onAddSubpage)}
+      {showTypes&&<><div style={{height:'0.5px',background:'var(--border)',margin:'3px 0'}}/>
+      {blockTypes.map(bt=><div key={bt.type} onClick={()=>onChangeType(bt.type)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text)'}}
+        onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+        <i className={'ti '+bt.icon} style={{fontSize:13,color:'var(--text-muted)',flexShrink:0}}/>{bt.label}
+      </div>)}</>}
+      <div style={{height:'0.5px',background:'var(--border)',margin:'3px 0'}}/>
+      {menuItem('ti-trash','Delete block',onDelete,true)}
+    </div>
+  );
+}
+
+function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChangeType,onNavigate,childPageName,onAddSubpage}){
   const [hov,setHov]=useState(false);
+  const [dotMenu,setDotMenu]=useState(false);
   const BLOCK_TYPES=[
     {type:'text',label:'Text',icon:'ti-align-left'},
     {type:'h1',label:'Heading 1',icon:'ti-heading'},
@@ -263,7 +287,6 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
     {type:'check',label:'Checklist',icon:'ti-checkbox'},
     {type:'divider',label:'Divider',icon:'ti-minus'},
     {type:'callout',label:'Callout',icon:'ti-info-circle'},
-    {type:'subpage',label:'Sub-page',icon:'ti-file-text'},
   ];
   function handleKey(e){
     if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();onEnter();}
@@ -285,8 +308,9 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
     </div>
   );
   if(block.type==='divider')return(
-    <div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
-      <span style={{width:16,flexShrink:0,opacity:hov?1:0,fontSize:10,color:'var(--text-muted)',cursor:'grab',userSelect:'none'}}>⠿</span>
+    <div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',position:'relative'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>{setHov(false);setDotMenu(false);}}>
+      <span onClick={e=>{e.stopPropagation();setDotMenu(p=>!p);}} style={{width:16,flexShrink:0,opacity:hov?1:0,fontSize:10,color:'var(--text-muted)',cursor:'pointer',userSelect:'none',borderRadius:3,padding:'1px 2px'}}>⠿</span>
+      {dotMenu&&<DotMenu onAddSubpage={()=>{setDotMenu(false);onAddSubpage&&onAddSubpage();}} onDelete={()=>{setDotMenu(false);onDelete();}} onClose={()=>setDotMenu(false)} blockTypes={BLOCK_TYPES} onChangeType={t=>{setDotMenu(false);onChangeType(t);}} showTypes={false}/>}
       <div style={{flex:1,height:'0.5px',background:'var(--border)'}}/>
       {hov&&<button onClick={onDelete} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,padding:'0 2px'}}>x</button>}
     </div>
@@ -295,8 +319,9 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
   const taStyle={display:'block',width:'100%',border:'none',outline:'none',resize:'none',overflow:'hidden',fontFamily:'var(--font)',background:'none',padding:0,lineHeight:1.65,fontSize:isH1?20:isH2?15:13,fontWeight:isH1||isH2?500:400,color:isCheck&&block.checked?'var(--text-muted)':'var(--text)',textDecoration:isCheck&&block.checked?'line-through':'none'};
   const calloutWrap=isCallout?{background:'var(--surface2)',borderLeft:'3px solid #534AB7',borderRadius:'0 6px 6px 0',padding:'8px 12px'}:{};
   return(
-    <div style={{display:'flex',alignItems:'flex-start',gap:8,padding:'1px 0',position:'relative',marginBottom:2}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
-      <span style={{width:16,flexShrink:0,marginTop:isH1?5:3,opacity:hov?1:0,fontSize:10,color:'var(--text-muted)',cursor:'grab',userSelect:'none'}}>⠿</span>
+    <div style={{display:'flex',alignItems:'flex-start',gap:8,padding:'1px 0',position:'relative',marginBottom:2}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>{setHov(false);setDotMenu(false);}}>
+      <span onClick={e=>{e.stopPropagation();setDotMenu(p=>!p);}} style={{width:16,flexShrink:0,marginTop:isH1?5:3,opacity:hov?1:0,fontSize:10,color:'var(--text-muted)',cursor:'pointer',userSelect:'none',borderRadius:3,padding:'1px 2px'}}>⠿</span>
+      {dotMenu&&<DotMenu onAddSubpage={()=>{setDotMenu(false);onAddSubpage&&onAddSubpage();}} onDelete={()=>{setDotMenu(false);onDelete();}} onClose={()=>setDotMenu(false)} blockTypes={BLOCK_TYPES} onChangeType={t=>{setDotMenu(false);onChangeType(t);}} showTypes={true}/>}
       {isBullet&&<span style={{flexShrink:0,marginTop:4,fontSize:14,color:'var(--text-muted)',lineHeight:1}}>•</span>}
       {isCheck&&<div onClick={()=>onUpdate({checked:!block.checked})} style={{flexShrink:0,marginTop:4,width:14,height:14,borderRadius:3,border:'0.5px solid '+(block.checked?'#534AB7':'#AFA9EC'),background:block.checked?'#534AB7':'#EEEDFE',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
         {block.checked&&<i className="ti ti-check" style={{fontSize:9,color:'#fff'}}/>}
@@ -386,18 +411,22 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
     updateEntryField('blocks',[...(entry.blocks||[]),nb]);
     setTimeout(()=>document.getElementById('blk_'+nb.id)?.focus(),50);
   }
-  function addSubpage(){
+  function addSubpageAfter(blockId){
     const childId='je_'+Date.now();
     const childItem={id:childId,type:'entry',name:'Untitled',parentId:activeJId,order:Date.now()};
     const childEntry={blocks:[],tags:[],date:new Date().toISOString().slice(0,10)};
     const spBlock={id:'b_'+Date.now(),type:'subpage',content:'',pageId:childId};
+    const blocks=[...(entry.blocks||[])];
+    const idx=blocks.findIndex(b=>b.id===blockId);
+    blocks.splice(idx<0?blocks.length:idx+1,0,spBlock);
     const newTree={...jTree,
       items:[...(jTree.items||[]),childItem],
-      entries:{...(jTree.entries||{}),[childId]:childEntry,[activeJId]:{...(entry||{}),...(jTree.entries[activeJId]||{}),blocks:[...(entry.blocks||[]),spBlock]}}
+      entries:{...(jTree.entries||{}),[childId]:childEntry,[activeJId]:{...(jTree.entries[activeJId]||{}),blocks}}
     };
     saveJTree(newTree);
     setTimeout(()=>navigateJTo(childId),50);
   }
+
 
   if(!entry)return(
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'80px 0',color:'var(--text-muted)',fontSize:13}}>
@@ -446,21 +475,16 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
           onChangeType={type=>changeBlockType(block.id,type)}
           onNavigate={navigateJTo}
           childPageName={(jTree.items||[]).find(i=>i.id===block.pageId)?.name||'Untitled'}
+          onAddSubpage={()=>addSubpageAfter(block.id)}
         />
       ))}
       {(entry.blocks||[]).length===0&&(
-        <div onClick={addBlock} style={{padding:'2px 0 0 24px',color:'var(--text-muted)',fontSize:14,cursor:'text',lineHeight:1.65,minHeight:80}}
+        <div onClick={addBlock} style={{padding:'2px 0 0 24px',color:'var(--text-muted)',fontSize:14,cursor:'text',lineHeight:1.65,minHeight:120}}
           onMouseEnter={e=>e.currentTarget.style.color='var(--text-secondary)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
           Start writing...
         </div>
       )}
-      <div style={{marginTop:32,paddingTop:16,borderTop:'0.5px solid var(--border)'}}>
-        <button onClick={addSubpage} style={{display:'flex',alignItems:'center',gap:7,padding:'7px 12px',border:'0.5px solid var(--border)',borderRadius:7,background:'var(--surface2)',cursor:'pointer',fontFamily:'var(--font)',fontSize:12,color:'var(--text-muted)',fontWeight:400}}
-          onMouseEnter={e=>{e.currentTarget.style.background='#EEEDFE';e.currentTarget.style.color='#534AB7';}}
-          onMouseLeave={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text-muted)';}}>
-          <i className="ti ti-file-plus" style={{fontSize:13}}/>Add sub-page
-        </button>
-      </div>
+
     </div>
   );
 }
