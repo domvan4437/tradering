@@ -828,7 +828,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
             ))}
             <div style={{ marginLeft:'auto', position:'relative' }}>
               {journalTab==='daily'?(
-                <button onClick={()=>setShowJDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
+                <button data-jdrop="true" onClick={()=>setShowJDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
                   <i className="ti ti-notebook" style={{fontSize:14,color:'#534AB7'}}/>{activeJId?(jTree.items||[]).find(i=>i.id===activeJId)?.name||'Journal':'Journal'}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
                 </button>
               ):(
@@ -836,7 +836,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
                   <i className="ti ti-books" style={{fontSize:14}}/>{activeBook?.name}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
                 </button>
               )}
-              {journalTab==='daily'&&showJDrop&&<div style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:210,zIndex:999,boxShadow:'0 4px 20px rgba(0,0,0,0.13)'}} onClick={e=>e.stopPropagation()}>
+              {journalTab==='daily'&&showJDrop&&<div data-jdrop="true" style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:210,zIndex:999,boxShadow:'0 4px 20px rgba(0,0,0,0.13)'}} onClick={e=>e.stopPropagation()}>
                 {(jTree.items||[]).filter(i=>!i.parentId).sort((a,b)=>a.order-b.order).map(item=>(
                   <JournalFolderItem key={item.id} item={item} tree={jTree} activeJId={activeJId} onEntry={openJEntry} onNewEntry={newJEntry} onNewFolder={newJFolder}/>
                 ))}
