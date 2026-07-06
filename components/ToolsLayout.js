@@ -462,9 +462,7 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
       <input value={item?.name||''} onChange={e=>updateEntryField('name',e.target.value)}
         style={{display:'block',width:'100%',border:'none',outline:'none',fontSize:26,fontWeight:500,color:'var(--text)',background:'none',fontFamily:'var(--font)',marginBottom:8,padding:0}}
         placeholder="Untitled"/>
-      <div style={{marginBottom:24,fontSize:11,color:'var(--text-muted)'}}>
-        {entry.date||new Date().toISOString().slice(0,10)}
-      </div>
+
       {(entry.blocks||[]).map(block=>(
         <BlockRow key={block.id} block={block}
           slashOpen={slashBlockId===block.id}
