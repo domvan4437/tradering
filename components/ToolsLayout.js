@@ -421,10 +421,8 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
       <input value={item?.name||''} onChange={e=>updateEntryField('name',e.target.value)}
         style={{display:'block',width:'100%',border:'none',outline:'none',fontSize:26,fontWeight:500,color:'var(--text)',background:'none',fontFamily:'var(--font)',marginBottom:8,padding:0}}
         placeholder="Untitled"/>
-      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:24,fontSize:12,color:'var(--text-muted)'}}>
-        <span>{entry.date||new Date().toISOString().slice(0,10)}</span>
-        {(entry.tags||[]).map(t=><span key={t} style={{background:'#EEEDFE',color:'#3C3489',padding:'2px 8px',borderRadius:20,fontSize:11,fontWeight:500,cursor:'pointer'}} onClick={()=>updateEntryField('tags',(entry.tags||[]).filter(x=>x!==t))}>{t} x</span>)}
-        <span onClick={()=>{const t=prompt('Tag:');if(t&&t.trim())updateEntryField('tags',[...(entry.tags||[]),t.trim()]);}} style={{cursor:'pointer',padding:'2px 6px',border:'0.5px solid var(--border)',borderRadius:4,fontSize:11}}>+ tag</span>
+      <div style={{marginBottom:24,fontSize:11,color:'var(--text-muted)'}}>
+        {entry.date||new Date().toISOString().slice(0,10)}
       </div>
       {(entry.blocks||[]).map(block=>(
         <BlockRow key={block.id} block={block}
