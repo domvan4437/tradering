@@ -947,8 +947,8 @@ export default function ToolsLayout({tab, setTab, userInfo}){
             </span>
           ))}
           <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8, position:'relative' }}>
-            {/* Page picker — always visible */}
-            <div style={{position:'relative'}} data-jdrop="true">
+            {/* Page picker — Journal tab only */}
+            {tab==='Journal'&&<div style={{position:'relative'}} data-jdrop="true">
               <button data-jdrop="true" onClick={()=>setShowJDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
                 <i className="ti ti-notebook" style={{fontSize:14,color:'#534AB7'}}/>{activeJId?(jTree.items||[]).find(i=>i.id===activeJId)?.name||'Journal':'Journal'}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
               </button>
@@ -960,7 +960,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
                 <div style={{borderTop:'0.5px solid var(--border)',margin:'4px 0'}}/>
                 <div onClick={()=>newJEntry(null)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-file-plus" style={{fontSize:12}}/>New page</div>
               </div>}
-            </div>
+            </div>}
             {/* Book selector — always visible */}
             <div style={{position:'relative'}}>
               <button onClick={()=>setShowBookDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
