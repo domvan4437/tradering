@@ -386,6 +386,18 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
     updateEntryField('blocks',[...(entry.blocks||[]),nb]);
     setTimeout(()=>document.getElementById('blk_'+nb.id)?.focus(),50);
   }
+  function addSubpage(){
+    const childId='je_'+Date.now();
+    const childItem={id:childId,type:'entry',name:'Untitled',parentId:activeJId,order:Date.now()};
+    const childEntry={blocks:[],tags:[],date:new Date().toISOString().slice(0,10)};
+    const spBlock={id:'b_'+Date.now(),type:'subpage',content:'',pageId:childId};
+    const newTree={...jTree,
+      items:[...(jTree.items||[]),childItem],
+      entries:{...(jTree.entries||{}),[childId]:childEntry,[activeJId]:{...(entry||{}),...(jTree.entries[activeJId]||{}),blocks:[...(entry.blocks||[]),spBlock]}}
+    };
+    saveJTree(newTree);
+    setTimeout(()=>navigateJTo(childId),50);
+  }
 
   if(!entry)return(
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'80px 0',color:'var(--text-muted)',fontSize:13}}>
@@ -437,11 +449,18 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
         />
       ))}
       {(entry.blocks||[]).length===0&&(
-        <div onClick={addBlock} style={{padding:'2px 0 0 24px',color:'var(--text-muted)',fontSize:14,cursor:'text',lineHeight:1.65,minHeight:120}}
+        <div onClick={addBlock} style={{padding:'2px 0 0 24px',color:'var(--text-muted)',fontSize:14,cursor:'text',lineHeight:1.65,minHeight:80}}
           onMouseEnter={e=>e.currentTarget.style.color='var(--text-secondary)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
           Start writing...
         </div>
       )}
+      <div style={{marginTop:32,paddingTop:16,borderTop:'0.5px solid var(--border)'}}>
+        <button onClick={addSubpage} style={{display:'flex',alignItems:'center',gap:7,padding:'7px 12px',border:'0.5px solid var(--border)',borderRadius:7,background:'var(--surface2)',cursor:'pointer',fontFamily:'var(--font)',fontSize:12,color:'var(--text-muted)',fontWeight:400}}
+          onMouseEnter={e=>{e.currentTarget.style.background='#EEEDFE';e.currentTarget.style.color='#534AB7';}}
+          onMouseLeave={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text-muted)';}}>
+          <i className="ti ti-file-plus" style={{fontSize:13}}/>Add sub-page
+        </button>
+      </div>
     </div>
   );
 }
