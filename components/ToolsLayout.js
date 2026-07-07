@@ -818,22 +818,23 @@ const JOURNAL_SUBTABS = [
   { key:'import',    label:'Import data',  icon:'ti-file-import'      },
 ]
 
+function sanitizeTree(t){
+  const items=(t.items||[]).filter(i=>i&&i.id&&i.type);
+  const entries={...(t.entries||{})};
+  Object.keys(entries).forEach(id=>{
+    if(entries[id]){
+      entries[id]={...entries[id],blocks:(entries[id].blocks||[]).filter(b=>b&&b.id).map(b=>({...b,content:typeof b.content==='string'?b.content:''}))}
+    }
+  });
+  return {items,entries};
+}
+
 export default function ToolsLayout({tab, setTab, userInfo}){
   const [journalTab, setJournalTab] = useState('dashboard');
-  const [jTree,setJTree]=useState(()=>load(JOURNAL_TREE_KEY,{items:[],entries:{}}));
+  const [jTree,setJTree]=useState(()=>sanitizeTree(load(JOURNAL_TREE_KEY,{items:[],entries:{}})));
   const [activeJId,setActiveJId]=useState(()=>{const t=load(JOURNAL_TREE_KEY,{items:[],entries:{}});const saved=load(JOURNAL_ACTIVE_KEY,null);if(saved&&(t.items||[]).find(i=>i.id===saved&&i.type==='entry'))return saved;return (t.items||[]).find(i=>i.type==='entry')?.id||null;});
   const [jNavHistory,setJNavHistory]=useState([]);
   const [showJDrop,setShowJDrop]=useState(false);
-  function sanitizeTree(t){
-    const items=(t.items||[]).filter(i=>i&&i.id&&i.type);
-    const entries={...(t.entries||{})};
-    Object.keys(entries).forEach(id=>{
-      if(entries[id]){
-        entries[id]={...entries[id],blocks:(entries[id].blocks||[]).filter(b=>b&&b.id).map(b=>({...b,content:typeof b.content==='string'?b.content:''}))}
-      }
-    });
-    return {items,entries};
-  }
   function saveJTree(t){const s=sanitizeTree(t);setJTree(s);save(JOURNAL_TREE_KEY,s);}
   React.useEffect(()=>{function h(e){if(showJDrop&&!e.target.closest('[data-jdrop]'))setShowJDrop(false);}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[showJDrop]);
   React.useEffect(()=>{setShowJDrop(false);setShowBookDrop(false);},[tab]);
