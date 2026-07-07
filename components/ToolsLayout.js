@@ -253,7 +253,7 @@ function JournalPageItem({item,tree,activeJId,onNavigate,onRename,onDelete,depth
   </div>);
 }
 
-function DotMenu({onAddSubpage,onDelete,onClose,blockTypes,onChangeType,showTypes}){
+function DotMenu({onAddSubpage,onDelete,onClose,blockTypes,onChangeType,showTypes,deleteLabel}){
   const ref=React.useRef();
   React.useEffect(()=>{function h(e){if(ref.current&&!ref.current.contains(e.target))onClose();}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
   const menuItem=(icon,label,action,danger)=>(
@@ -264,19 +264,19 @@ function DotMenu({onAddSubpage,onDelete,onClose,blockTypes,onChangeType,showType
   );
   return(
     <div ref={ref} style={{position:'absolute',left:20,top:0,zIndex:300,background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:8,padding:4,boxShadow:'0 4px 16px rgba(0,0,0,0.13)',minWidth:170}}>
-      {menuItem('ti-file-plus','Add sub-page',onAddSubpage)}
+      {onAddSubpage&&menuItem('ti-file-plus','Add sub-page',onAddSubpage)}
       {showTypes&&<><div style={{height:'0.5px',background:'var(--border)',margin:'3px 0'}}/>
       {blockTypes.map(bt=><div key={bt.type} onClick={()=>onChangeType(bt.type)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text)'}}
         onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
         <i className={'ti '+bt.icon} style={{fontSize:13,color:'var(--text-muted)',flexShrink:0}}/>{bt.label}
       </div>)}</>}
       <div style={{height:'0.5px',background:'var(--border)',margin:'3px 0'}}/>
-      {menuItem('ti-trash','Delete block',onDelete,true)}
+      {onDelete&&menuItem('ti-trash',deleteLabel||'Delete block',onDelete,true)}
     </div>
   );
 }
 
-function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChangeType,onNavigate,childPageName,onAddSubpage}){
+function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChangeType,onNavigate,childPageName,onAddSubpage,onDeletePage}){
   const [hov,setHov]=useState(false);
   const [dotMenu,setDotMenu]=useState(false);
   const BLOCK_TYPES=[
@@ -300,11 +300,15 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
     e.target.style.height=e.target.scrollHeight+'px';
   }
   if(block.type==='subpage')return(
-    <div onClick={()=>onNavigate&&onNavigate(block.pageId)} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',margin:'3px 0',borderRadius:8,border:'0.5px solid var(--border)',cursor:'pointer',background:'var(--surface2)'}}
-      onMouseEnter={e=>e.currentTarget.style.background='#EEEDFE'} onMouseLeave={e=>e.currentTarget.style.background='var(--surface2)'}>
-      <i className="ti ti-file-text" style={{fontSize:14,color:'#534AB7',flexShrink:0}}/>
-      <span style={{flex:1,fontSize:13,fontWeight:500,color:'var(--text)'}}>{childPageName||'Untitled'}</span>
-      <i className="ti ti-chevron-right" style={{fontSize:11,color:'var(--text-muted)'}}/>
+    <div style={{position:'relative',margin:'3px 0'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>{setHov(false);setDotMenu(false);}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:8,border:'0.5px solid var(--border)',cursor:'pointer',background:hov?'#EEEDFE':'var(--surface2)'}}
+        onClick={()=>onNavigate&&onNavigate(block.pageId)}>
+        <span onClick={e=>{e.stopPropagation();setDotMenu(p=>!p);}} style={{fontSize:10,color:'var(--text-muted)',cursor:'pointer',userSelect:'none',padding:'1px 3px',borderRadius:3,opacity:hov?1:0,flexShrink:0}}>⠿</span>
+        {dotMenu&&<DotMenu onAddSubpage={null} onDelete={()=>{setDotMenu(false);onDeletePage&&onDeletePage();}} onClose={()=>setDotMenu(false)} blockTypes={[]} onChangeType={()=>{}} showTypes={false} deleteLabel="Delete page"/>}
+        <i className="ti ti-file-text" style={{fontSize:14,color:'#534AB7',flexShrink:0}}/>
+        <span style={{flex:1,fontSize:13,fontWeight:500,color:'var(--text)'}}>{childPageName||'Untitled'}</span>
+        <i className="ti ti-chevron-right" style={{fontSize:11,color:'var(--text-muted)'}}/>
+      </div>
     </div>
   );
   if(block.type==='divider')return(
@@ -411,6 +415,20 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
     updateEntryField('blocks',[...(entry.blocks||[]),nb]);
     setTimeout(()=>document.getElementById('blk_'+nb.id)?.focus(),50);
   }
+  function deleteSubpageFull(blockId,pageId){
+    // remove the subpage block from current entry
+    const blocks=(entry.blocks||[]).filter(b=>b.id!==blockId);
+    // delete the child page and all its descendants from jTree
+    function getDesc(pid){const kids=(jTree.items||[]).filter(i=>i.parentId===pid);return kids.flatMap(k=>[k.id,...getDesc(k.id)]);}
+    const toDelete=[pageId,...getDesc(pageId)];
+    const newEntries={...(jTree.entries||{})};
+    toDelete.forEach(d=>delete newEntries[d]);
+    const newTree={
+      items:(jTree.items||[]).filter(i=>!toDelete.includes(i.id)),
+      entries:{...newEntries,[activeJId]:{...(jTree.entries[activeJId]||{}),blocks}}
+    };
+    saveJTree(newTree);
+  }
   function addSubpageAfter(blockId){
     const childId='je_'+Date.now();
     const childItem={id:childId,type:'entry',name:'Untitled',parentId:activeJId,order:Date.now()};
@@ -474,6 +492,7 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
           onNavigate={navigateJTo}
           childPageName={(jTree.items||[]).find(i=>i.id===block.pageId)?.name||'Untitled'}
           onAddSubpage={()=>addSubpageAfter(block.id)}
+          onDeletePage={()=>deleteSubpageFull(block.id,block.pageId)}
         />
       ))}
       {(entry.blocks||[]).length===0&&(
