@@ -62,6 +62,30 @@ function Dashboard({trades,journals}){
   const dayWins=dayTrades.filter(t=>pnlNum(t.pnl)>0).length;
   const dayWr=dayTrades.length>0?Math.round((dayWins/dayTrades.length)*100):null;
 
+  // ── Time slot state ──
+  const TIME_SLOTS_KEY=STORAGE_KEY+'_tslots';
+  const defaultTimeSlots=[
+    {id:'ts1',label:'Pre-market',start:'09:00',end:'09:30'},
+    {id:'ts2',label:'Open (9:30–10)',start:'09:30',end:'10:00'},
+    {id:'ts3',label:'Morning (10–11)',start:'10:00',end:'11:00'},
+    {id:'ts4',label:'Midday (11–1)',start:'11:00',end:'13:00'},
+    {id:'ts5',label:'Afternoon (1–3)',start:'13:00',end:'15:00'},
+    {id:'ts6',label:'Close (3–4)',start:'15:00',end:'16:00'},
+  ];
+  const [timeSlots,setTimeSlots]=useState(()=>load(TIME_SLOTS_KEY,defaultTimeSlots));
+  const [editSlots,setEditSlots]=useState(false);
+  function saveSlots(s){setTimeSlots(s);save(TIME_SLOTS_KEY,s);}
+  function tmToMins(t){const[h,m]=(t||'').split(':').map(Number);return isNaN(h)?null:h*60+(m||0);}
+  const hasTimes=trades.some(t=>t.time);
+  const todStats=timeSlots.map(slot=>{
+    const s=tmToMins(slot.start),e=tmToMins(slot.end);
+    const matching=trades.filter(t=>{const tm=tmToMins(t.time);return tm!==null&&tm>=s&&tm<e;});
+    const w=matching.filter(t=>pnlNum(t.pnl)>0).length;
+    const pnl=matching.reduce((a,t)=>a+pnlNum(t.pnl),0);
+    return {...slot,count:matching.length,wins:w,wr:matching.length>0?Math.round(w/matching.length*100):null,pnl};
+  });
+  const avgMae=trades.filter(t=>t.mae).length>0?(trades.filter(t=>t.mae).reduce((s,t)=>s+pnlNum(t.mae),0)/trades.filter(t=>t.mae).length):null;
+  const avgMfe=trades.filter(t=>t.mfe).length>0?(trades.filter(t=>t.mfe).reduce((s,t)=>s+pnlNum(t.mfe),0)/trades.filter(t=>t.mfe).length):null;
   // ── Analytics computations ──
   const dailySorted=Object.entries(byDate).sort((a,b)=>a[0].localeCompare(b[0]));
   const last60=dailySorted.slice(-60);
@@ -73,8 +97,8 @@ function Dashboard({trades,journals}){
   trades.forEach(t=>{if(!t.date)return;const d=new Date(t.date+'T00:00:00').getDay();byDow[d].t++;if(pnlNum(t.pnl)>0)byDow[d].w++;byDow[d].pnl+=pnlNum(t.pnl);});
   const dowNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const dowData=[1,2,3,4,5].map(d=>({name:dowNames[d],wr:byDow[d].t>0?Math.round((byDow[d].w/byDow[d].t)*100):null,trades:byDow[d].t,pnl:byDow[d].pnl}));
-  const rBuckets=[{label:'-2R+',min:-999,max:-1.5,c:0},{label:'-1R',min:-1.5,max:-0.75,c:0},{label:'-0.5R',min:-0.75,max:0,c:0},{label:'0',min:0,max:0.25,c:0},{label:'1R',min:0.25,max:1.5,c:0},{label:'2R',min:1.5,max:2.5,c:0},{label:'3R',min:2.5,max:3.5,c:0},{label:'4R+',min:3.5,max:999,c:0}];
-  trades.forEach(t=>{const r=parseFloat(t.r)||0;rBuckets.forEach(b=>{if(r>=b.min&&r<b.max)b.c++;});});
+  const rBuckets=[{label:'-2R+',min:-999,max:-1.5,c:0},{label:'-1R',min:-1.5,max:-0.75,c:0},{label:'-0.5R',min:-0.75,max:0,c:0},{label:'0',min:0,max:0.5,c:0},{label:'1R',min:0.5,max:1.5,c:0},{label:'2R',min:1.5,max:2.5,c:0},{label:'3R',min:2.5,max:4.0,c:0},{label:'4R+',min:4.0,max:999,c:0}];
+  trades.forEach(t=>{const r=parseFloat(t.r)||0;const last=rBuckets[rBuckets.length-1];rBuckets.forEach((b,bi)=>{if(bi===rBuckets.length-1){if(r>=b.min)b.c++;}else{if(r>=b.min&&r<b.max)b.c++;}});});
   const rMax=Math.max(...rBuckets.map(b=>b.c),1);
   const bySetupD={},byEmotionD={};
   trades.forEach(t=>{
@@ -134,10 +158,10 @@ function Dashboard({trades,journals}){
           <SH>Equity curve</SH>
           <div style={{position:'relative',height:100,marginBottom:6}}>
             <div style={{position:'absolute',left:0,right:0,top:'50%',height:'0.5px',background:'var(--border)',zIndex:1}}/>
-            {last60.map(([date,val],i)=>{const hPct=Math.abs(val)/maxAbsDaily*48;const barW=`calc(${100/last60.length}% - 1px)`;return val>=0?(
-              <div key={date} style={{position:'absolute',left:`${(i/last60.length)*100}%`,width:barW,bottom:'50%',height:hPct+'%',minHeight:val>0?1:0,background:'#16a34a',borderRadius:'2px 2px 0 0',opacity:.82}}/>
+            {last60.map(([date,val],i)=>{const hPct=Math.abs(val)/maxAbsDaily*48;const slots=Math.max(last60.length,30);const barW=`calc(${100/slots}% - 1px)`;const leftPct=((slots-last60.length+i)/slots)*100;return val>=0?(
+              <div key={date} style={{position:'absolute',left:`${leftPct}%`,width:barW,bottom:'50%',height:hPct+'%',minHeight:val>0?1:0,background:'#16a34a',borderRadius:'2px 2px 0 0',opacity:.82}}/>
             ):(
-              <div key={date} style={{position:'absolute',left:`${(i/last60.length)*100}%`,width:barW,top:'50%',height:hPct+'%',minHeight:1,background:'#dc2626',borderRadius:'0 0 2px 2px',opacity:.78}}/>
+              <div key={date} style={{position:'absolute',left:`${leftPct}%`,width:barW,top:'50%',height:hPct+'%',minHeight:1,background:'#dc2626',borderRadius:'0 0 2px 2px',opacity:.78}}/>
             );})}
           </div>
           <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'var(--text-muted)'}}><span>{last60[0]?.[0]||''}</span><span>{last60[last60.length-1]?.[0]||''}</span></div>
@@ -164,12 +188,42 @@ function Dashboard({trades,journals}){
       {/* ── 2. Win rate by time of day + Day of week ── */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
         <Card>
-          <SH>Win rate by time of day</SH>
-          <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:10}}>Log trade entry times to unlock this view.</div>
-          {[{label:'9:30–10am',note:'Pre-market open'},{label:'10–11am',note:'Morning session'},{label:'11am–12pm',note:'Mid-morning'},{label:'12–1pm',note:'Lunch hours'},{label:'1–3pm',note:'Afternoon'},{label:'3–4pm',note:'Close'}].map(s=>(
-            <div key={s.label} style={{marginBottom:7}}><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}><span style={{color:'var(--text-muted)'}}>{s.label}</span><span style={{color:'var(--text-muted)',fontWeight:500}}>—</span></div><div style={{height:4,background:'var(--border)',borderRadius:2}}/></div>
-          ))}
-          <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6,fontStyle:'italic'}}>Coming once trade times are tracked</div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <SH style={{margin:0}}>Win rate by time of day</SH>
+            <button onClick={()=>setEditSlots(p=>!p)} style={{fontSize:10,color:editSlots?PURPLE:'var(--text-muted)',background:'none',border:'0.5px solid var(--border)',borderRadius:4,cursor:'pointer',padding:'2px 7px',fontFamily:'var(--font)'}}>{editSlots?'Done':'Edit slots'}</button>
+          </div>
+          {!hasTimes&&<div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8,padding:'6px 10px',background:'var(--surface2)',borderRadius:5}}>Log entry times on trades to see live data</div>}
+          {editSlots?(
+            <div>
+              {timeSlots.map((slot,si)=>(
+                <div key={slot.id} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                  <input value={slot.label} onChange={e=>{const s=[...timeSlots];s[si]={...s[si],label:e.target.value};saveSlots(s);}}
+                    style={{flex:1,fontSize:11,padding:'4px 6px',border:'0.5px solid var(--border)',borderRadius:4,background:'var(--surface2)',color:'var(--text)',fontFamily:'var(--font)',outline:'none'}}/>
+                  <input type="time" value={slot.start} onChange={e=>{const s=[...timeSlots];s[si]={...s[si],start:e.target.value};saveSlots(s);}}
+                    style={{fontSize:10,padding:'3px 4px',border:'0.5px solid var(--border)',borderRadius:4,background:'var(--surface2)',color:'var(--text)',fontFamily:'var(--font)',outline:'none'}}/>
+                  <span style={{fontSize:10,color:'var(--text-muted)'}}>–</span>
+                  <input type="time" value={slot.end} onChange={e=>{const s=[...timeSlots];s[si]={...s[si],end:e.target.value};saveSlots(s);}}
+                    style={{fontSize:10,padding:'3px 4px',border:'0.5px solid var(--border)',borderRadius:4,background:'var(--surface2)',color:'var(--text)',fontFamily:'var(--font)',outline:'none'}}/>
+                  <button onClick={()=>saveSlots(timeSlots.filter((_,j)=>j!==si))} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,lineHeight:1,padding:'0 2px'}}>×</button>
+                </div>
+              ))}
+              <button onClick={()=>saveSlots([...timeSlots,{id:'ts'+Date.now(),label:'New slot',start:'09:00',end:'10:00'}])}
+                style={{fontSize:11,color:PURPLE,background:'none',border:'0.5px dashed '+PURPLE,borderRadius:4,cursor:'pointer',padding:'4px 10px',fontFamily:'var(--font)',width:'100%',marginTop:2}}>+ Add slot</button>
+            </div>
+          ):(
+            todStats.map(slot=>{const col=slot.wr===null?'var(--border)':slot.wr>=60?'#16a34a':slot.wr<50?'#dc2626':'#b45309';return(
+              <div key={slot.id} style={{marginBottom:8}}>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
+                  <span style={{color:'var(--text-muted)'}}>{slot.label}{slot.count>0?` (${slot.count})`:''}</span>
+                  <div style={{display:'flex',gap:8}}>
+                    {slot.count>0&&<span style={{fontSize:10,color:slot.pnl>0?'#16a34a':slot.pnl<0?'#dc2626':'var(--text-muted)'}}>{slot.pnl>0?'+':''}${slot.pnl.toFixed(0)}</span>}
+                    <span style={{fontWeight:500,color:col}}>{slot.wr!==null?slot.wr+'%':'—'}</span>
+                  </div>
+                </div>
+                <div style={{height:4,background:'var(--border)',borderRadius:2,overflow:'hidden'}}><div style={{width:`${slot.wr||0}%`,height:'100%',background:col,borderRadius:2}}/></div>
+              </div>
+            );})
+          )}
         </Card>
         <Card>
           <SH>Performance by day of week</SH>
@@ -190,9 +244,10 @@ function Dashboard({trades,journals}){
         <Card>
           <SH>MAE / MFE breakdown</SH>
           <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:12}}>How far trades moved against / for you before closing</div>
+          {!trades.some(t=>t.mae)&&<div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8,padding:'6px 10px',background:'var(--surface2)',borderRadius:5}}>Log MAE/MFE on trades to see real excursion data</div>}
           {[
-            {dot:'#dc2626',label:'Avg max adverse excursion',value:avgLossPnl>0?`-$${avgLossPnl.toFixed(0)}`:'—',col:'#dc2626'},
-            {dot:'#16a34a',label:'Avg max favorable excursion',value:avgWinPnl>0?`+$${avgWinPnl.toFixed(0)}`:'—',col:'#16a34a'},
+            {dot:'#dc2626',label:'Avg max adverse excursion',value:avgMae!==null?`$${avgMae.toFixed(0)}`:`-$${avgLossPnl.toFixed(0)} (avg loss)`,col:'#dc2626'},
+            {dot:'#16a34a',label:'Avg max favorable excursion',value:avgMfe!==null?`+$${avgMfe.toFixed(0)}`:`+$${avgWinPnl.toFixed(0)} (avg win)`,col:'#16a34a'},
             {dot:'#534AB7',label:'Win / loss ratio',value:avgLossPnl>0?(avgWinPnl/avgLossPnl).toFixed(2)+'x':'—',col:'#534AB7'},
             {dot:'#b45309',label:'Profit factor',value:profitFactor,col:parseFloat(profitFactor)>=1?'#16a34a':'#dc2626'},
           ].map(r=>(
@@ -243,10 +298,10 @@ function Dashboard({trades,journals}){
           <SH>Monthly P&L</SH>
           <div style={{position:'relative',height:100,marginBottom:6}}>
             <div style={{position:'absolute',left:0,right:0,top:'50%',height:'0.5px',background:'var(--border)',zIndex:1}}/>
-            {monthList.map(([m,val],i)=>{const hPct=Math.abs(val)/maxAbsMonth*48;const barW=`calc(${100/monthList.length}% - 4px)`;return val>=0?(
-              <div key={m} style={{position:'absolute',left:`${(i/monthList.length)*100}%`,width:barW,bottom:'50%',height:hPct+'%',minHeight:val!==0?1:0,background:'#16a34a',borderRadius:'2px 2px 0 0',opacity:.82}}/>
+            {monthList.map(([m,val],i)=>{const hPct=Math.abs(val)/maxAbsMonth*48;const mslots=Math.max(monthList.length,8);const barW=`calc(${100/mslots}% - 4px)`;const mleft=((mslots-monthList.length+i)/mslots)*100;return val>=0?(
+              <div key={m} style={{position:'absolute',left:`${mleft}%`,width:barW,bottom:'50%',height:hPct+'%',minHeight:val!==0?1:0,background:'#16a34a',borderRadius:'2px 2px 0 0',opacity:.82}}/>
             ):(
-              <div key={m} style={{position:'absolute',left:`${(i/monthList.length)*100}%`,width:barW,top:'50%',height:hPct+'%',minHeight:1,background:'#dc2626',borderRadius:'0 0 2px 2px',opacity:.78}}/>
+              <div key={m} style={{position:'absolute',left:`${mleft}%`,width:barW,top:'50%',height:hPct+'%',minHeight:1,background:'#dc2626',borderRadius:'0 0 2px 2px',opacity:.78}}/>
             );})}
           </div>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:10,fontSize:9,color:'var(--text-muted)'}}>{monthList.map(([m])=><span key={m}>{m.slice(5)}</span>)}</div>
@@ -307,7 +362,7 @@ function Dashboard({trades,journals}){
 }
 
 function TradeLog({trades,setTrades,tradesKey}){
-  const empty={date:'',asset:'',direction:'Long',entry:'',exit:'',pnl:'',r:'',size:'',setup:'',emotion:'',rules:'',notes:''};
+  const empty={date:'',asset:'',direction:'Long',entry:'',exit:'',pnl:'',r:'',size:'',time:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:''};
   const[form,setForm]=useState(empty);const[adding,setAdding]=useState(false);const[expanded,setExpanded]=useState(null);
   const[showBroker,setShowBroker]=useState(false);
   const fileRef=useRef(null);
@@ -330,7 +385,7 @@ function TradeLog({trades,setTrades,tradesKey}){
         const c=rows[i].split(',').map(x=>x.trim().replace(/^["']|["']$/g,''));
         if(!c[di]&&!c[ai])continue;
         const dir=(c[si]||'').toLowerCase();
-        imported.push({date:(c[di]||'').slice(0,10),asset:c[ai]||'',direction:dir.includes('sell')||dir.includes('short')?'Short':'Long',entry:c[eni]||'',exit:c[exi]||'',pnl:c[pi]||'',r:'',size:c[szi]||'',setup:'',emotion:'',rules:'',notes:c[ni]||''});
+        imported.push({date:(c[di]||'').slice(0,10),asset:c[ai]||'',direction:dir.includes('sell')||dir.includes('short')?'Short':'Long',entry:c[eni]||'',exit:c[exi]||'',pnl:c[pi]||'',r:'',size:c[szi]||'',time:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:c[ni]||''});
       }
       if(imported.length>0){const u=[...imported,...trades];setTrades(u);save(tradesKey,u);}
       alert(imported.length>0?`Imported ${imported.length} trades.`:'No valid rows found — check your column headers (date, symbol, side, pnl, etc.)');
@@ -368,7 +423,10 @@ function TradeLog({trades,setTrades,tradesKey}){
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>R-multiple</div><Inp value={form.r} onChange={e=>setForm(f=>({...f,r:e.target.value}))} placeholder="+1.8R"/></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Size</div><Inp value={form.size} onChange={e=>setForm(f=>({...f,size:e.target.value}))} placeholder="2 lots"/></div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:10}}>
+        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Entry time</div><Inp type="time" value={form.time} onChange={e=>setForm(f=>({...f,time:e.target.value}))}/></div>
+        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>MAE ($)</div><Inp value={form.mae} onChange={e=>setForm(f=>({...f,mae:e.target.value}))} placeholder="-120"/></div>
+        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>MFE ($)</div><Inp value={form.mfe} onChange={e=>setForm(f=>({...f,mfe:e.target.value}))} placeholder="+340"/></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Emotion</div><Sel value={form.emotion} onChange={e=>setForm(f=>({...f,emotion:e.target.value}))}><option value="">Select</option>{EMOTIONS.map(e=><option key={e}>{e}</option>)}</Sel></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Rules followed</div><Inp value={form.rules} onChange={e=>setForm(f=>({...f,rules:e.target.value}))} placeholder="4/4"/></div>
       </div>
@@ -377,22 +435,25 @@ function TradeLog({trades,setTrades,tradesKey}){
     </Card>}
     {trades.length===0?<Card style={{textAlign:'center',padding:'40px 20px'}}><div style={{fontSize:14,fontWeight:500,marginBottom:6}}>No trades logged yet</div><BtnP onClick={()=>setAdding(true)}>+ Add your first trade</BtnP></Card>:
     <Card style={{padding:0,overflow:'hidden'}}><table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
-      <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Setup','Emotion','Rules',''].map((h,i)=><th key={h+i} style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:i>2&&i<9?'center':'left',textTransform:'uppercase',letterSpacing:'0.04em',borderBottom:'0.5px solid var(--border)',width:h===''?28:h==='Date'?80:h==='Setup'||h==='Emotion'?100:undefined}}>{h}</th>)}</tr></thead>
+      <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Time','MAE','MFE','Setup','Emotion','Rules',''].map((h,i)=><th key={h+i} style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:'left',textTransform:'uppercase',letterSpacing:'0.04em',borderBottom:'0.5px solid var(--border)',width:h===''?28:h==='Date'?90:h==='Setup'||h==='Emotion'?90:h==='Time'||h==='MAE'||h==='MFE'?60:undefined}}>{h}</th>)}</tr></thead>
       <tbody>{trades.map((t,i)=><React.Fragment key={i}>
         <tr onClick={()=>setExpanded(expanded===i?null:i)} style={{cursor:'pointer',background:expanded===i?'rgba(75,68,200,0.04)':'transparent',borderBottom:'0.5px solid var(--border)'}}>
           <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)'}}>{fmtDateWithDay(t.date)}</td>
           <td style={{fontSize:12,padding:'7px 8px',fontWeight:500}}>{t.asset}</td>
           <td style={{fontSize:11,padding:'7px 8px'}}><span style={{fontSize:10,fontWeight:500,padding:'2px 5px',borderRadius:3,background:t.direction==='Long'?'rgba(22,163,74,0.1)':'rgba(220,38,38,0.08)',color:t.direction==='Long'?'#15803d':'#991b1b'}}>{t.direction}</span></td>
-          <td style={{fontSize:11,padding:'7px 8px',textAlign:'center'}}>{t.entry}</td>
-          <td style={{fontSize:11,padding:'7px 8px',textAlign:'center'}}>{t.exit}</td>
-          <td style={{fontSize:11,padding:'7px 8px',textAlign:'center',fontWeight:500,color:pnlColor(t.r)}}>{t.r}</td>
-          <td style={{fontSize:12,padding:'7px 8px',textAlign:'center',fontWeight:500,color:pnlColor(t.pnl)}}>{t.pnl}</td>
+          <td style={{fontSize:11,padding:'7px 8px'}}>{t.entry}</td>
+          <td style={{fontSize:11,padding:'7px 8px'}}>{t.exit}</td>
+          <td style={{fontSize:11,padding:'7px 8px',fontWeight:500,color:pnlColor(t.r)}}>{t.r}</td>
+          <td style={{fontSize:12,padding:'7px 8px',fontWeight:500,color:pnlColor(t.pnl)}}>{t.pnl}</td>
+          <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)'}}>{t.time||'—'}</td>
+          <td style={{fontSize:11,padding:'7px 8px',color:t.mae?'#dc2626':'var(--text-muted)'}}>{t.mae||'—'}</td>
+          <td style={{fontSize:11,padding:'7px 8px',color:t.mfe?'#16a34a':'var(--text-muted)'}}>{t.mfe||'—'}</td>
           <td style={{fontSize:10,padding:'7px 8px'}}><span style={{background:'var(--surface2)',padding:'2px 5px',borderRadius:3}}>{t.setup}</span></td>
           <td style={{fontSize:10,padding:'7px 8px'}}>{t.emotion&&<span style={{padding:'2px 6px',borderRadius:10,background:EMOTION_BG[t.emotion]||'var(--surface2)',color:EMOTION_COLOR[t.emotion]||'var(--text-muted)',fontSize:9}}>{t.emotion}</span>}</td>
-          <td style={{fontSize:11,padding:'7px 8px',textAlign:'center',fontWeight:500,color:t.rules==='4/4'?'var(--green)':t.rules?.startsWith('2')?'var(--red)':'var(--text)'}}>{t.rules}</td>
+          <td style={{fontSize:11,padding:'7px 8px',fontWeight:500,color:t.rules==='4/4'?'var(--green)':t.rules?.startsWith('2')?'var(--red)':'var(--text)'}}>{t.rules}</td>
           <td style={{padding:'7px 4px',textAlign:'center'}}><button onClick={e=>{e.stopPropagation();removeTrade(i)}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14}}>×</button></td>
         </tr>
-        {expanded===i&&<tr><td colSpan={11} style={{padding:'10px 14px',background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)',borderLeft:`2px solid ${PURPLE}`}}>{t.notes&&<div style={{fontSize:11,color:'var(--text-muted)',padding:'8px 10px',background:'var(--surface2)',borderRadius:5,lineHeight:1.5}}>{t.notes}</div>}</td></tr>}
+        {expanded===i&&<tr><td colSpan={14} style={{padding:'10px 14px',background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)',borderLeft:`2px solid ${PURPLE}`}}>{t.notes&&<div style={{fontSize:11,color:'var(--text-muted)',padding:'8px 10px',background:'var(--surface2)',borderRadius:5,lineHeight:1.5}}>{t.notes}</div>}</td></tr>}
       </React.Fragment>)}</tbody>
     </table></Card>}
   </div>)
