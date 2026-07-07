@@ -369,7 +369,7 @@ function Dashboard({trades,journals}){
 }
 
 function TradeLog({trades,setTrades,tradesKey}){
-  const empty={date:'',asset:'',direction:'Long',entry:'',exit:'',pnl:'',r:'',size:'',time:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:''};
+  const empty={date:'',asset:'',direction:'Long',entry:'',exit:'',pnl:'',r:'',size:'',time:'',exitTime:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:''};
   const[form,setForm]=useState(empty);const[adding,setAdding]=useState(false);const[expanded,setExpanded]=useState(null);
   const[showBroker,setShowBroker]=useState(false);
   const fileRef=useRef(null);
@@ -392,7 +392,7 @@ function TradeLog({trades,setTrades,tradesKey}){
         const c=rows[i].split(',').map(x=>x.trim().replace(/^["']|["']$/g,''));
         if(!c[di]&&!c[ai])continue;
         const dir=(c[si]||'').toLowerCase();
-        imported.push({date:(c[di]||'').slice(0,10),asset:c[ai]||'',direction:dir.includes('sell')||dir.includes('short')?'Short':'Long',entry:c[eni]||'',exit:c[exi]||'',pnl:c[pi]||'',r:'',size:c[szi]||'',time:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:c[ni]||''});
+        imported.push({date:(c[di]||'').slice(0,10),asset:c[ai]||'',direction:dir.includes('sell')||dir.includes('short')?'Short':'Long',entry:c[eni]||'',exit:c[exi]||'',pnl:c[pi]||'',r:'',size:c[szi]||'',time:'',exitTime:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:c[ni]||''});
       }
       if(imported.length>0){const u=[...imported,...trades];setTrades(u);save(tradesKey,u);}
       alert(imported.length>0?`Imported ${imported.length} trades.`:'No valid rows found — check your column headers (date, symbol, side, pnl, etc.)');
@@ -431,7 +431,7 @@ function TradeLog({trades,setTrades,tradesKey}){
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Size</div><Inp value={form.size} onChange={e=>setForm(f=>({...f,size:e.target.value}))} placeholder="2 lots"/></div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:10}}>
-        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Entry time</div><Inp type="time" value={form.time} onChange={e=>setForm(f=>({...f,time:e.target.value}))}/></div>
+        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Time (entry – exit)</div><div style={{display:'flex',alignItems:'center',gap:4}}><Inp type="time" value={form.time} onChange={e=>setForm(f=>({...f,time:e.target.value}))} style={{flex:1}}/><span style={{fontSize:10,color:'var(--text-muted)',flexShrink:0}}>–</span><Inp type="time" value={form.exitTime||''} onChange={e=>setForm(f=>({...f,exitTime:e.target.value}))} style={{flex:1}}/></div></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>MAE ($)</div><Inp value={form.mae} onChange={e=>setForm(f=>({...f,mae:e.target.value}))} placeholder="-120"/></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>MFE ($)</div><Inp value={form.mfe} onChange={e=>setForm(f=>({...f,mfe:e.target.value}))} placeholder="+340"/></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Emotion</div><Sel value={form.emotion} onChange={e=>setForm(f=>({...f,emotion:e.target.value}))}><option value="">Select</option>{EMOTIONS.map(e=><option key={e}>{e}</option>)}</Sel></div>
@@ -442,7 +442,7 @@ function TradeLog({trades,setTrades,tradesKey}){
     </Card>}
     {trades.length===0?<Card style={{textAlign:'center',padding:'40px 20px'}}><div style={{fontSize:14,fontWeight:500,marginBottom:6}}>No trades logged yet</div><BtnP onClick={()=>setAdding(true)}>+ Add your first trade</BtnP></Card>:
     <Card style={{padding:0,overflow:'hidden'}}><table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
-      <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Time','MAE','MFE','Setup','Emotion','Rules',''].map((h,i)=><th key={h+i} style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:'left',textTransform:'uppercase',letterSpacing:'0.04em',borderBottom:'0.5px solid var(--border)',width:h===''?28:h==='Date'?90:h==='Setup'||h==='Emotion'?90:h==='Time'||h==='MAE'||h==='MFE'?60:undefined}}>{h}</th>)}</tr></thead>
+      <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Time','MAE','MFE','Setup','Emotion','Rules',''].map((h,i)=><th key={h+i} style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:'left',textTransform:'uppercase',letterSpacing:'0.04em',borderBottom:'0.5px solid var(--border)',width:h===''?28:h==='Date'?90:h==='Setup'||h==='Emotion'?90:h==='Time'?110:h==='MAE'||h==='MFE'?60:undefined}}>{h}</th>)}</tr></thead>
       <tbody>{trades.map((t,i)=><React.Fragment key={i}>
         <tr onClick={()=>setExpanded(expanded===i?null:i)} style={{cursor:'pointer',background:expanded===i?'rgba(75,68,200,0.04)':'transparent',borderBottom:'0.5px solid var(--border)'}}>
           <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)'}}>{fmtDateWithDay(t.date)}</td>
@@ -452,7 +452,7 @@ function TradeLog({trades,setTrades,tradesKey}){
           <td style={{fontSize:11,padding:'7px 8px'}}>{t.exit}</td>
           <td style={{fontSize:11,padding:'7px 8px',fontWeight:500,color:pnlColor(t.r)}}>{t.r}</td>
           <td style={{fontSize:12,padding:'7px 8px',fontWeight:500,color:pnlColor(t.pnl)}}>{t.pnl}</td>
-          <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)'}}>{t.time||'—'}</td>
+          <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)',whiteSpace:'nowrap'}}>{t.time?(t.exitTime?t.time+' – '+t.exitTime:t.time):'—'}</td>
           <td style={{fontSize:11,padding:'7px 8px',color:t.mae?'#dc2626':'var(--text-muted)'}}>{t.mae||'—'}</td>
           <td style={{fontSize:11,padding:'7px 8px',color:t.mfe?'#16a34a':'var(--text-muted)'}}>{t.mfe||'—'}</td>
           <td style={{fontSize:10,padding:'7px 8px'}}><span style={{background:'var(--surface2)',padding:'2px 5px',borderRadius:3}}>{t.setup}</span></td>
