@@ -135,7 +135,7 @@ function TradeLog({trades,setTrades,tradesKey}){
   const[showBroker,setShowBroker]=useState(false);
   const fileRef=useRef(null);
   function addTrade(){if(!form.asset||!form.date)return;const u=[form,...trades];setTrades(u);save(tradesKey,u);setForm(empty);setAdding(false)}
-  function removeTrade(i){const u=trades.filter((_,idx)=>idx!==i);setTrades(u);save(tradesKey,u)}
+  function removeTrade(i){if(!window.confirm('Delete this trade? This cannot be undone.'))return;const u=trades.filter((_,idx)=>idx!==i);setTrades(u);save(tradesKey,u)}
   function handleCSV(e){
     const file=e.target.files[0];if(!file)return;
     const reader=new FileReader();
