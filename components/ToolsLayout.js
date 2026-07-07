@@ -255,7 +255,7 @@ function JournalPageItem({item,tree,activeJId,onNavigate,onRename,onDelete,onNew
   </div>);
 }
 
-function DotMenu({onAddSubpage,onDelete,onClose,blockTypes,onChangeType,showTypes,deleteLabel}){
+function DotMenu({onAddSubpage,onDelete,onClose,blockTypes,onChangeType,showTypes,deleteLabel,onUploadFile}){
   const ref=React.useRef();
   React.useEffect(()=>{function h(e){if(ref.current&&!ref.current.contains(e.target))onClose();}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
   const menuItem=(icon,label,action,danger)=>(
@@ -267,6 +267,7 @@ function DotMenu({onAddSubpage,onDelete,onClose,blockTypes,onChangeType,showType
   return(
     <div ref={ref} style={{position:'absolute',left:20,top:0,zIndex:300,background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:8,padding:4,boxShadow:'0 4px 16px rgba(0,0,0,0.13)',minWidth:170}}>
       {onAddSubpage&&menuItem('ti-file-plus','Add sub-page',onAddSubpage)}
+      {onUploadFile&&menuItem('ti-upload','Upload file / image',onUploadFile)}
       {showTypes&&<><div style={{height:'0.5px',background:'var(--border)',margin:'3px 0'}}/>
       {blockTypes.map(bt=><div key={bt.type} onClick={()=>onChangeType(bt.type)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text)'}}
         onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
@@ -278,9 +279,20 @@ function DotMenu({onAddSubpage,onDelete,onClose,blockTypes,onChangeType,showType
   );
 }
 
-function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChangeType,onNavigate,childPageName,onAddSubpage,onDeletePage}){
+function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChangeType,onNavigate,childPageName,onAddSubpage,onDeletePage,onUploadFile}){
   const [hov,setHov]=useState(false);
   const [dotMenu,setDotMenu]=useState(false);
+  const fileInputRef=useRef(null);
+  function handleFileSelect(e){
+    const file=e.target.files[0];if(!file)return;
+    const isImage=file.type.startsWith('image/');
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      onUploadFile&&onUploadFile(ev.target.result,file.name,file.type,isImage?'image':'file');
+    };
+    reader.readAsDataURL(file);
+    e.target.value='';
+  }
   const BLOCK_TYPES=[
     {type:'text',label:'Text',icon:'ti-align-left'},
     {type:'h1',label:'Heading 1',icon:'ti-heading'},
@@ -313,10 +325,38 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
       </div>
     </div>
   );
+  if(block.type==='image')return(
+    <div style={{position:'relative',margin:'6px 0'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>{setHov(false);setDotMenu(false);}}>
+      <input ref={fileInputRef} type="file" accept="image/*,video/*,application/pdf,*" style={{display:'none'}} onChange={handleFileSelect}/>
+      <div style={{display:'flex',alignItems:'flex-start',gap:6}}>
+        <span onClick={e=>{e.stopPropagation();setDotMenu(p=>!p);}} style={{marginTop:4,fontSize:10,color:'var(--text-muted)',cursor:'pointer',userSelect:'none',opacity:hov?1:0,flexShrink:0,borderRadius:3,padding:'1px 2px'}}>⠿</span>
+        {dotMenu&&<DotMenu onDelete={()=>{setDotMenu(false);onDelete();}} onClose={()=>setDotMenu(false)} blockTypes={[]} onChangeType={()=>{}} showTypes={false} deleteLabel="Delete image"/>}
+        <div style={{flex:1}}>
+          <img src={block.content} alt={block.fileName||'image'} style={{maxWidth:'100%',borderRadius:8,display:'block',maxHeight:480,objectFit:'contain'}}/>
+          {block.fileName&&<div style={{fontSize:11,color:'var(--text-muted)',marginTop:3}}>{block.fileName}</div>}
+        </div>
+      </div>
+    </div>
+  );
+  if(block.type==='file')return(
+    <div style={{position:'relative',margin:'4px 0'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>{setHov(false);setDotMenu(false);}}>
+      <input ref={fileInputRef} type="file" accept="*" style={{display:'none'}} onChange={handleFileSelect}/>
+      <div style={{display:'flex',alignItems:'center',gap:6}}>
+        <span onClick={e=>{e.stopPropagation();setDotMenu(p=>!p);}} style={{fontSize:10,color:'var(--text-muted)',cursor:'pointer',userSelect:'none',opacity:hov?1:0,flexShrink:0,borderRadius:3,padding:'1px 2px'}}>⠿</span>
+        {dotMenu&&<DotMenu onDelete={()=>{setDotMenu(false);onDelete();}} onClose={()=>setDotMenu(false)} blockTypes={[]} onChangeType={()=>{}} showTypes={false} deleteLabel="Delete file"/>}
+        <a href={block.content} download={block.fileName||'file'} onClick={e=>e.stopPropagation()} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderRadius:8,border:'0.5px solid var(--border)',background:'var(--surface2)',textDecoration:'none',color:'var(--text)',flex:1}}>
+          <i className="ti ti-file-download" style={{fontSize:16,color:'#534AB7',flexShrink:0}}/>
+          <span style={{fontSize:13,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{block.fileName||'Download file'}</span>
+          <span style={{fontSize:11,color:'var(--text-muted)',marginLeft:'auto',flexShrink:0}}>{block.fileType||''}</span>
+        </a>
+      </div>
+    </div>
+  );
   if(block.type==='divider')return(
     <div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',position:'relative'}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>{setHov(false);setDotMenu(false);}}>
+      <input ref={fileInputRef} type="file" accept="image/*,video/*,application/pdf,*" style={{display:'none'}} onChange={handleFileSelect}/>
       <span onClick={e=>{e.stopPropagation();setDotMenu(p=>!p);}} style={{width:16,flexShrink:0,opacity:hov?1:0,fontSize:10,color:'var(--text-muted)',cursor:'pointer',userSelect:'none',borderRadius:3,padding:'1px 2px'}}>⠿</span>
-      {dotMenu&&<DotMenu onAddSubpage={()=>{setDotMenu(false);onAddSubpage&&onAddSubpage();}} onDelete={()=>{setDotMenu(false);onDelete();}} onClose={()=>setDotMenu(false)} blockTypes={BLOCK_TYPES} onChangeType={t=>{setDotMenu(false);onChangeType(t);}} showTypes={false}/>}
+      {dotMenu&&<DotMenu onAddSubpage={()=>{setDotMenu(false);onAddSubpage&&onAddSubpage();}} onUploadFile={()=>{setDotMenu(false);fileInputRef.current?.click();}} onDelete={()=>{setDotMenu(false);onDelete();}} onClose={()=>setDotMenu(false)} blockTypes={BLOCK_TYPES} onChangeType={t=>{setDotMenu(false);onChangeType(t);}} showTypes={false}/>}
       <div style={{flex:1,height:'0.5px',background:'var(--border)'}}/>
       {hov&&<button onClick={onDelete} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,padding:'0 2px'}}>x</button>}
     </div>
@@ -327,7 +367,8 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
   return(
     <div style={{display:'flex',alignItems:'flex-start',gap:8,padding:'1px 0',position:'relative',marginBottom:2}} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>{setHov(false);setDotMenu(false);}}>
       <span onClick={e=>{e.stopPropagation();setDotMenu(p=>!p);}} style={{width:16,flexShrink:0,marginTop:isH1?5:3,opacity:hov?1:0,fontSize:10,color:'var(--text-muted)',cursor:'pointer',userSelect:'none',borderRadius:3,padding:'1px 2px'}}>⠿</span>
-      {dotMenu&&<DotMenu onAddSubpage={()=>{setDotMenu(false);onAddSubpage&&onAddSubpage();}} onDelete={()=>{setDotMenu(false);onDelete();}} onClose={()=>setDotMenu(false)} blockTypes={BLOCK_TYPES} onChangeType={t=>{setDotMenu(false);onChangeType(t);}} showTypes={true}/>}
+      <input ref={fileInputRef} type="file" accept="image/*,video/*,application/pdf,*" style={{display:'none'}} onChange={handleFileSelect}/>
+      {dotMenu&&<DotMenu onAddSubpage={()=>{setDotMenu(false);onAddSubpage&&onAddSubpage();}} onUploadFile={()=>{setDotMenu(false);fileInputRef.current?.click();}} onDelete={()=>{setDotMenu(false);onDelete();}} onClose={()=>setDotMenu(false)} blockTypes={BLOCK_TYPES} onChangeType={t=>{setDotMenu(false);onChangeType(t);}} showTypes={true}/>}
       {isBullet&&<span style={{flexShrink:0,marginTop:4,fontSize:14,color:'var(--text-muted)',lineHeight:1}}>•</span>}
       {isCheck&&<div onClick={()=>onUpdate({checked:!block.checked})} style={{flexShrink:0,marginTop:4,width:14,height:14,borderRadius:3,border:'0.5px solid '+(block.checked?'#534AB7':'#AFA9EC'),background:block.checked?'#534AB7':'#EEEDFE',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
         {block.checked&&<i className="ti ti-check" style={{fontSize:9,color:'#fff'}}/>}
@@ -380,6 +421,14 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
     blocks.splice(idx+1,0,nb);
     updateEntryField('blocks',blocks);
     setTimeout(()=>document.getElementById('blk_'+nb.id)?.focus(),50);
+  }
+  function insertMediaBlock(afterBlockId,dataUrl,fileName,fileType,blockType){
+    if(!entry)return;
+    const nb={id:'b_'+Date.now(),type:blockType||'file',content:dataUrl,fileName,fileType,checked:false};
+    const blocks=[...(entry.blocks||[])];
+    const idx=blocks.findIndex(b=>b.id===afterBlockId);
+    blocks.splice(idx+1,0,nb);
+    updateEntryField('blocks',blocks);
   }
   function removeBlock(blockId){
     if(!entry)return;
@@ -495,6 +544,7 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
           childPageName={(jTree.items||[]).find(i=>i.id===block.pageId)?.name||'Untitled'}
           onAddSubpage={()=>addSubpageAfter(block.id)}
           onDeletePage={()=>deleteSubpageFull(block.id,block.pageId)}
+          onUploadFile={(dataUrl,fileName,fileType,blockType)=>insertMediaBlock(block.id,dataUrl,fileName,fileType,blockType)}
         />
       ))}
       {(entry.blocks||[]).length===0&&(
