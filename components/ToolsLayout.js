@@ -220,7 +220,7 @@ function TradeLog({trades,setTrades,tradesKey}){
   </div>)
 }
 
-function JournalPageItem({item,tree,activeJId,onNavigate,onRename,onDelete,depth=0}){
+function JournalPageItem({item,tree,activeJId,onNavigate,onRename,onDelete,onNewEntry,depth=0}){
   const [expanded,setExpanded]=useState(false);
   const [renaming,setRenaming]=useState(false);
   const [renameVal,setRenameVal]=useState('');
@@ -228,11 +228,12 @@ function JournalPageItem({item,tree,activeJId,onNavigate,onRename,onDelete,depth
   const children=(tree.items||[]).filter(i=>i.parentId===item.id).sort((a,b)=>a.order-b.order);
   const isActive=item.id===activeJId;
   function commitRename(){if(renameVal.trim())onRename(item.id,renameVal.trim());setRenaming(false);}
+  function handleNew(e){e.stopPropagation();setExpanded(true);onNewEntry&&onNewEntry(item.id);}
   return(<div>
     <div style={{display:'flex',alignItems:'center',gap:0,paddingLeft:depth*14,borderRadius:6,background:isActive?'#EEEDFE':'transparent'}}
       onMouseEnter={e=>{setHov(true);if(!isActive)e.currentTarget.style.background='var(--surface2)'}}
       onMouseLeave={e=>{setHov(false);if(!isActive)e.currentTarget.style.background=isActive?'#EEEDFE':'transparent'}}>
-      <div onClick={()=>setExpanded(p=>!p)} style={{width:18,height:28,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:children.length?'pointer':'default',color:'var(--text-muted)',fontSize:9}}>
+      <div onClick={()=>setExpanded(p=>!p)} style={{width:18,height:28,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer',color:'var(--text-muted)',fontSize:9}}>
         {children.length>0?(expanded?'▾':'▸'):''}
       </div>
       <i className="ti ti-file-text" style={{fontSize:12,color:isActive?'#534AB7':'var(--text-muted)',flexShrink:0,marginRight:6}}/>
@@ -245,11 +246,12 @@ function JournalPageItem({item,tree,activeJId,onNavigate,onRename,onDelete,depth
         <span onClick={()=>onNavigate(item.id)} style={{flex:1,fontSize:13,color:isActive?'#534AB7':'var(--text)',fontWeight:isActive?500:400,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',padding:'5px 0',cursor:'pointer'}}>{item.name}</span>
       )}
       {hov&&!renaming&&<div style={{display:'flex',gap:1,flexShrink:0,marginLeft:4}}>
+        <button onClick={handleNew} title="New sub-page" style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'2px 4px',borderRadius:3,fontSize:13,lineHeight:1,fontWeight:300}}>+</button>
         <button onClick={e=>{e.stopPropagation();setRenameVal(item.name);setRenaming(true);}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'2px 3px',borderRadius:3,fontSize:10,lineHeight:1}}><i className="ti ti-pencil" style={{fontSize:10}}/></button>
         <button onClick={e=>{e.stopPropagation();onDelete(item.id);}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'2px 3px',borderRadius:3,fontSize:11,lineHeight:1}}>x</button>
       </div>}
     </div>
-    {expanded&&children.map(child=><JournalPageItem key={child.id} item={child} tree={tree} activeJId={activeJId} onNavigate={onNavigate} onRename={onRename} onDelete={onDelete} depth={depth+1}/>)}
+    {expanded&&children.map(child=><JournalPageItem key={child.id} item={child} tree={tree} activeJId={activeJId} onNavigate={onNavigate} onRename={onRename} onDelete={onDelete} onNewEntry={onNewEntry} depth={depth+1}/>)}
   </div>);
 }
 
@@ -983,7 +985,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
               </button>
               {showJDrop&&<div data-jdrop="true" style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:220,zIndex:999,boxShadow:'0 4px 20px rgba(0,0,0,0.13)',maxHeight:360,overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
                 {(jTree.items||[]).filter(i=>!i.parentId).sort((a,b)=>a.order-b.order).map(item=>(
-                  <JournalPageItem key={item.id} item={item} tree={jTree} activeJId={activeJId} onNavigate={openJEntry} onRename={renameJItem} onDelete={deleteJItem} depth={0}/>
+                  <JournalPageItem key={item.id} item={item} tree={jTree} activeJId={activeJId} onNavigate={openJEntry} onRename={renameJItem} onDelete={deleteJItem} onNewEntry={newJEntry} depth={0}/>
                 ))}
                 {(jTree.items||[]).filter(i=>!i.parentId).length===0&&<div style={{padding:'8px 10px',fontSize:12,color:'var(--text-muted)'}}>No pages yet</div>}
                 <div style={{borderTop:'0.5px solid var(--border)',margin:'4px 0'}}/>
