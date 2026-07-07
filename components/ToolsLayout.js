@@ -28,7 +28,11 @@ function BtnP({children,onClick,style}){return <button onClick={onClick} style={
 function BtnS({children,onClick,style}){return <button onClick={onClick} style={{padding:'5px 10px',background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border2)',borderRadius:6,fontSize:11,cursor:'pointer',fontFamily:'var(--font)',...style}}>{children}</button>}
 function Inp({value,onChange,placeholder,style,type='text'}){return <input type={type} value={value} onChange={onChange} placeholder={placeholder} style={{width:'100%',padding:'7px 10px',border:'0.5px solid var(--border2)',borderRadius:6,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none',boxSizing:'border-box',...style}}/>}
 function Sel({value,onChange,children,style}){return <select value={value} onChange={onChange} style={{width:'100%',padding:'7px 10px',border:'0.5px solid var(--border2)',borderRadius:6,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none',...style}}>{children}</select>}
-function Textarea({value,onChange,placeholder,style}){return <textarea value={value} onChange={onChange} placeholder={placeholder} style={{width:'100%',padding:'8px 10px',border:'0.5px solid var(--border2)',borderRadius:6,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none',resize:'vertical',minHeight:72,boxSizing:'border-box',...style}}/>}
+function Textarea({value,onChange,placeholder,style}){
+  const ref=React.useRef(null);
+  React.useEffect(()=>{if(!ref.current)return;ref.current.style.height='auto';ref.current.style.height=Math.max(ref.current.scrollHeight,96)+'px';},[value]);
+  return <textarea ref={ref} value={value} onChange={onChange} placeholder={placeholder} style={{width:'100%',padding:'8px 10px',border:'0.5px solid var(--border2)',borderRadius:6,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none',resize:'none',minHeight:96,boxSizing:'border-box',overflow:'hidden',...style}}/>;
+}
 
 function getCalendarDays(year,month){const firstDay=new Date(year,month,1).getDay();const daysInMonth=new Date(year,month+1,0).getDate();const days=[];for(let i=0;i<firstDay;i++)days.push(null);for(let i=1;i<=daysInMonth;i++)days.push(i);return days}
 function toDateStr(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
@@ -144,7 +148,7 @@ function Dashboard({trades,journals}){
           <div style={{marginBottom:10}}><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:5}}>Discipline trend (last {discTrend.length} entries)</div>{discTrend.length===0?<div style={{fontSize:11,color:'var(--text-muted)'}}>No journal entries yet</div>:<div style={{display:'flex',alignItems:'flex-end',gap:3,height:28}}>{discTrend.map((v,i)=><div key={i} style={{flex:1,borderRadius:'2px 2px 0 0',background:v>=7?'rgba(22,163,74,0.4)':v>=5?'rgba(75,68,200,0.4)':'rgba(220,38,38,0.3)',height:`${(v/10)*100}%`}}/>)}</div>}</div>
           <div><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:4}}><span style={{color:'var(--text-muted)'}}>Journal consistency</span><span style={{fontWeight:500}}>{journaledDays}/{Math.max(tradingDays,1)} days</span></div><div style={{height:4,background:'var(--border)',borderRadius:2,overflow:'hidden'}}><div style={{width:`${tradingDays>0?(journaledDays/tradingDays)*100:0}%`,height:'100%',background:PURPLE,borderRadius:2}}/></div></div>
         </Card>
-        <Card><SH>Emotions this month</SH>{Object.keys(emotionCounts).length===0?<div style={{fontSize:11,color:'var(--text-muted)'}}>No emotion data yet</div>:<div style={{display:'flex',flexWrap:'wrap',gap:5}}>{Object.entries(emotionCounts).sort((a,b)=>b[1]-a[1]).map(([em,count])=><span key={em} style={{fontSize:10,fontWeight:500,padding:'2px 8px',borderRadius:10,background:EMOTION_BG[em]||'var(--surface2)',color:EMOTION_COLOR[em]||'var(--text-muted)',border:`0.5px solid ${EMOTION_COLOR[em]||'var(--border)'}33`}}>{em} \xd7 {count}</span>)}</div>}</Card>
+        
       </div>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'1fr 280px',gap:12}}>
@@ -971,7 +975,7 @@ function Playbook({trades}){
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,gridAutoRows:'1fr'}}>
             <Card style={{height:'100%',boxSizing:'border-box',display:'flex',flexDirection:'column'}}>
               <SH>Overview</SH>
-              <Textarea value={setup.overview||''} onChange={e=>updateSetup('overview',e.target.value)} placeholder="Describe this setup — what it is, why it works, when you look for it..." style={{flex:1,minHeight:48}}/>
+              <Textarea value={setup.overview||''} onChange={e=>updateSetup('overview',e.target.value)} placeholder="Describe this setup — what it is, why it works, when you look for it..." style={{flex:1}}/>
             </Card>
             <Card style={{height:'100%',boxSizing:'border-box'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
@@ -995,16 +999,51 @@ function Playbook({trades}){
               <Textarea value={setup.bestConditions||''} onChange={e=>updateSetup('bestConditions',e.target.value)} placeholder="When does this setup perform best? Seasonality, market regimes, instruments..." style={{flex:1,minHeight:48}}/>
             </Card>
           </div>
-          {(setup.customSections||[]).map((cs,i)=>(
-            <Card key={i} style={{minHeight:180,display:'flex',flexDirection:'column'}}>
+          {(setup.customSections||[]).map((cs,i)=>{
+            const imgInputRef=React.createRef();
+            function handleSectionImg(e){
+              const file=e.target.files&&e.target.files[0];if(!file)return;
+              const reader=new FileReader();
+              reader.onload=ev=>{
+                const imgs=[...(cs.images||[]),{id:'img_'+Date.now(),src:ev.target.result,name:file.name,width:100}];
+                updateSection(i,'images',imgs,setup);
+              };
+              reader.readAsDataURL(file);
+            }
+            return(
+            <Card key={i} style={{display:'flex',flexDirection:'column'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <input value={cs.title} onChange={e=>updateSection(i,'title',e.target.value,setup)}
-                  style={{fontWeight:600,fontSize:10,background:'none',border:'none',outline:'none',color:'var(--text-muted)',fontFamily:'var(--font)',letterSpacing:'0.06em',textTransform:'uppercase'}}/>
-                <button onClick={()=>removeSection(i,setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:12,padding:'1px 4px'}}>x</button>
+                  style={{fontWeight:600,fontSize:10,background:'none',border:'none',outline:'none',color:'var(--text-muted)',fontFamily:'var(--font)',letterSpacing:'0.06em',textTransform:'uppercase',flex:1}}/>
+                <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                  <button onClick={()=>imgInputRef.current&&imgInputRef.current.click()} title="Upload image"
+                    style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:13,padding:'1px 4px',lineHeight:1}}>
+                    <i className="ti ti-photo" style={{fontSize:13}}/>
+                  </button>
+                  <input ref={imgInputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleSectionImg}/>
+                  <button onClick={()=>removeSection(i,setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:12,padding:'1px 4px'}}>x</button>
+                </div>
               </div>
               <Textarea value={cs.content} onChange={e=>updateSection(i,'content',e.target.value,setup)} placeholder="Add your notes..."/>
-            </Card>
-          ))}
+              {(cs.images||[]).length>0&&(
+                <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:10}}>
+                  {(cs.images||[]).map((img,ii)=>(
+                    <div key={img.id} style={{position:'relative',width:(img.width||100)+'%'}}>
+                      <img src={img.src} alt={img.name} style={{width:'100%',borderRadius:5,display:'block'}}/>
+                      <div style={{position:'absolute',top:4,right:4,display:'flex',gap:3}}>
+                        {[25,50,75,100].map(w=>(
+                          <button key={w} onClick={()=>{const imgs=[...(cs.images||[])];imgs[ii]={...imgs[ii],width:w};updateSection(i,'images',imgs,setup);}}
+                            style={{fontSize:8,padding:'1px 4px',background:img.width===w?PURPLE:'rgba(0,0,0,0.55)',color:'#fff',border:'none',borderRadius:3,cursor:'pointer'}}>{w}%</button>
+                        ))}
+                        <button onClick={()=>{const imgs=(cs.images||[]).filter((_,j)=>j!==ii);updateSection(i,'images',imgs,setup);}}
+                          style={{fontSize:10,padding:'1px 4px',background:'rgba(220,38,38,0.8)',color:'#fff',border:'none',borderRadius:3,cursor:'pointer',lineHeight:1}}>x</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>);
+          })}
           <div onClick={()=>addSection(setup)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'10px',borderRadius:8,border:'0.5px dashed var(--border)',color:'var(--text-muted)',fontSize:12,cursor:'pointer'}}
             onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
             <i className="ti ti-layout-grid-add" style={{fontSize:14}}/>Add custom section
