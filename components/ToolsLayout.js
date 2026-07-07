@@ -883,8 +883,8 @@ const TOOLS_TABS = [
 
 const JOURNAL_SUBTABS = [
   { key:'dashboard', label:'Dashboard',    icon:'ti-layout-dashboard' },
+  { key:'daily',     label:'Journal',      icon:'ti-pencil'           },
   { key:'tradelog',  label:'Trade log',    icon:'ti-list-details'     },
-  { key:'daily',     label:'Journal',icon:'ti-pencil'           },
   { key:'reports',   label:'Reports',      icon:'ti-chart-bar'        },
   { key:'playbook',  label:'Playbook',     icon:'ti-book-2'           },
   { key:'import',    label:'Import data',  icon:'ti-file-import'      },
