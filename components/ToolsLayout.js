@@ -999,6 +999,7 @@ function Playbook({trades}){
               <Textarea value={setup.bestConditions||''} onChange={e=>updateSetup('bestConditions',e.target.value)} placeholder="When does this setup perform best? Seasonality, market regimes, instruments..." style={{flex:1,minHeight:48}}/>
             </Card>
           </div>
+          {(setup.customSections||[]).length>0&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           {(setup.customSections||[]).map((cs,i)=>{
             const imgInputRef=React.createRef();
             function handleSectionImg(e){
@@ -1043,7 +1044,7 @@ function Playbook({trades}){
                 </div>
               )}
             </Card>);
-          })}
+          })}</div>}
           <div onClick={()=>addSection(setup)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'10px',borderRadius:8,border:'0.5px dashed var(--border)',color:'var(--text-muted)',fontSize:12,cursor:'pointer'}}
             onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
             <i className="ti ti-layout-grid-add" style={{fontSize:14}}/>Add custom section
