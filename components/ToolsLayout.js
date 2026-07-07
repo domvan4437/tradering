@@ -127,72 +127,154 @@ function Dashboard({trades,journals}){
       <Card><SH>Recent trades</SH>{recentTrades.length===0?<div style={{fontSize:12,color:'var(--text-muted)',textAlign:'center',padding:'20px 0'}}>No trades yet</div>:<table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr>{['Date','Asset','Side','Setup','Emotion','P&L'].map(h=><th key={h} style={{fontSize:9,color:'var(--text-muted)',fontWeight:500,textTransform:'uppercase',letterSpacing:'0.04em',padding:'4px 6px',textAlign:h==='P&L'?'right':'left',borderBottom:'0.5px solid var(--border)'}}>{h}</th>)}</tr></thead><tbody>{recentTrades.map((t,i)=><tr key={i} style={{borderBottom:'0.5px solid var(--border)'}}><td style={{fontSize:11,padding:'6px 6px',color:'var(--text-muted)'}}>{fmtDateWithDay(t.date)}</td><td style={{fontSize:12,padding:'6px 6px',fontWeight:500}}>{t.asset}</td><td style={{fontSize:11,padding:'6px 6px'}}><span style={{fontSize:10,fontWeight:500,padding:'2px 5px',borderRadius:3,background:t.direction==='Long'?'rgba(22,163,74,0.1)':'rgba(220,38,38,0.08)',color:t.direction==='Long'?'#15803d':'#991b1b'}}>{t.direction}</span></td><td style={{fontSize:10,padding:'6px 6px'}}>{t.setup&&<span style={{background:'var(--surface2)',padding:'1px 5px',borderRadius:3}}>{t.setup}</span>}</td><td style={{fontSize:10,padding:'6px 6px'}}>{t.emotion&&<span style={{padding:'1px 6px',borderRadius:10,background:EMOTION_BG[t.emotion]||'var(--surface2)',color:EMOTION_COLOR[t.emotion]||'var(--text-muted)',fontSize:9}}>{t.emotion}</span>}</td><td style={{fontSize:12,padding:'6px 6px',fontWeight:500,color:pnlColor(t.pnl),textAlign:'right'}}>{t.pnl||'—'}</td></tr>)}</tbody></table>}</Card>
     </div>
     {trades.length>0&&<>
-      {/* ── Equity curve + Monthly P&L ── */}
+
+      {/* ── 1. Equity curve + Streak & consistency ── */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
         <Card>
-          <SH>Daily P&L — last {last60.length} trading days</SH>
-          <div style={{position:'relative',height:120,marginBottom:6}}>
+          <SH>Equity curve</SH>
+          <div style={{position:'relative',height:100,marginBottom:6}}>
             <div style={{position:'absolute',left:0,right:0,top:'50%',height:'0.5px',background:'var(--border)',zIndex:1}}/>
-            {last60.map(([date,val],i)=>{const hPct=Math.abs(val)/maxAbsDaily*48;const isPos=val>=0;const barW=`calc(${100/last60.length}% - 1px)`;return isPos?(
-              <div key={date} style={{position:'absolute',left:`${(i/last60.length)*100}%`,width:barW,bottom:'50%',height:hPct+'%',background:'#16a34a',borderRadius:'2px 2px 0 0',opacity:.82}}/>
+            {last60.map(([date,val],i)=>{const hPct=Math.abs(val)/maxAbsDaily*48;const barW=`calc(${100/last60.length}% - 1px)`;return val>=0?(
+              <div key={date} style={{position:'absolute',left:`${(i/last60.length)*100}%`,width:barW,bottom:'50%',height:hPct+'%',minHeight:val>0?1:0,background:'#16a34a',borderRadius:'2px 2px 0 0',opacity:.82}}/>
             ):(
-              <div key={date} style={{position:'absolute',left:`${(i/last60.length)*100}%`,width:barW,top:'50%',height:hPct+'%',background:'#dc2626',borderRadius:'0 0 2px 2px',opacity:.78}}/>
+              <div key={date} style={{position:'absolute',left:`${(i/last60.length)*100}%`,width:barW,top:'50%',height:hPct+'%',minHeight:1,background:'#dc2626',borderRadius:'0 0 2px 2px',opacity:.78}}/>
             );})}
           </div>
           <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'var(--text-muted)'}}><span>{last60[0]?.[0]||''}</span><span>{last60[last60.length-1]?.[0]||''}</span></div>
         </Card>
         <Card>
-          <SH>Monthly P&L</SH>
-          <div style={{position:'relative',height:120,marginBottom:6}}>
-            <div style={{position:'absolute',left:0,right:0,top:'50%',height:'0.5px',background:'var(--border)',zIndex:1}}/>
-            {monthList.map(([m,val],i)=>{const hPct=Math.abs(val)/maxAbsMonth*48;const isPos=val>=0;const barW=`calc(${100/monthList.length}% - 3px)`;return isPos?(
-              <div key={m} style={{position:'absolute',left:`${(i/monthList.length)*100}%`,width:barW,bottom:'50%',height:hPct+'%',background:'#16a34a',borderRadius:'2px 2px 0 0',opacity:.82}}/>
+          <SH>Streak & consistency</SH>
+          <div style={{display:'flex',gap:20,marginBottom:14}}>
+            <div><div style={{fontSize:20,fontWeight:500,color:streakType==='W'?'#16a34a':streakType==='L'?'#dc2626':'var(--text)'}}>{streak>0?streak:'—'}</div><div style={{fontSize:11,color:'var(--text-muted)'}}>{streakType==='W'?'Win streak':streakType==='L'?'Loss streak':'Streak'}</div></div>
+            <div><div style={{fontSize:20,fontWeight:500}}>{tradingDays}</div><div style={{fontSize:11,color:'var(--text-muted)'}}>Trading days</div></div>
+            <div><div style={{fontSize:20,fontWeight:500,color:parseFloat(profitFactor)>=1?'#16a34a':'#dc2626'}}>{profitFactor}</div><div style={{fontSize:11,color:'var(--text-muted)'}}>Profit factor</div></div>
+          </div>
+          <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>Daily P&L</div>
+          <div style={{display:'flex',alignItems:'flex-end',gap:2,height:36,position:'relative'}}>
+            <div style={{position:'absolute',left:0,right:0,top:'50%',height:'0.5px',background:'var(--border)'}}/>
+            {last60.slice(-20).map(([date,val],i)=>{const hPct=Math.abs(val)/maxAbsDaily*16;return val>=0?(
+              <div key={date} style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end',height:'100%'}}><div style={{height:'50%',display:'flex',alignItems:'flex-end'}}><div style={{width:'100%',height:hPct,background:'#16a34a',borderRadius:'2px 2px 0 0',opacity:.8}}/></div><div style={{height:'50%'}}/></div>
             ):(
-              <div key={m} style={{position:'absolute',left:`${(i/monthList.length)*100}%`,width:barW,top:'50%',height:hPct+'%',background:'#dc2626',borderRadius:'0 0 2px 2px',opacity:.78}}/>
+              <div key={date} style={{flex:1,display:'flex',flexDirection:'column',height:'100%'}}><div style={{height:'50%'}}/><div style={{height:'50%',display:'flex',alignItems:'flex-start'}}><div style={{width:'100%',height:hPct,background:'#dc2626',borderRadius:'0 0 2px 2px',opacity:.75}}/></div></div>
             );})}
           </div>
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'var(--text-muted)'}}>{monthList.map(([m])=><span key={m}>{m.slice(5)}</span>)}</div>
         </Card>
       </div>
 
-      {/* ── Day of week + R distribution ── */}
+      {/* ── 2. Win rate by time of day + Day of week ── */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
         <Card>
-          <SH>Win rate by day of week</SH>
-          {dowData.map(d=>{const wr=d.wr;const col=wr===null?'var(--text-muted)':wr>=60?'#16a34a':wr<50?'#dc2626':'#b45309';return(<div key={d.name} style={{marginBottom:8}}><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}><span style={{color:'var(--text-muted)'}}>{d.name}{d.trades>0?` (${d.trades}t)`:''}</span><div style={{display:'flex',gap:8,alignItems:'center'}}><span style={{fontSize:10,color:d.pnl>0?'#16a34a':d.pnl<0?'#dc2626':'var(--text-muted)',fontWeight:500}}>{d.pnl>0?'+':''}${d.trades>0?d.pnl.toFixed(0):'—'}</span><span style={{fontWeight:500,color:col,minWidth:30,textAlign:'right'}}>{wr!==null?wr+'%':'—'}</span></div></div><div style={{height:4,background:'var(--border)',borderRadius:2,overflow:'hidden'}}><div style={{width:`${wr||0}%`,height:'100%',background:col,borderRadius:2}}/></div></div>);})}
+          <SH>Win rate by time of day</SH>
+          <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:10}}>Log trade entry times to unlock this view.</div>
+          {[{label:'9:30–10am',note:'Pre-market open'},{label:'10–11am',note:'Morning session'},{label:'11am–12pm',note:'Mid-morning'},{label:'12–1pm',note:'Lunch hours'},{label:'1–3pm',note:'Afternoon'},{label:'3–4pm',note:'Close'}].map(s=>(
+            <div key={s.label} style={{marginBottom:7}}><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}><span style={{color:'var(--text-muted)'}}>{s.label}</span><span style={{color:'var(--text-muted)',fontWeight:500}}>—</span></div><div style={{height:4,background:'var(--border)',borderRadius:2}}/></div>
+          ))}
+          <div style={{fontSize:10,color:'var(--text-muted)',marginTop:6,fontStyle:'italic'}}>Coming once trade times are tracked</div>
+        </Card>
+        <Card>
+          <SH>Performance by day of week</SH>
+          {dowData.every(d=>d.trades===0)?<div style={{fontSize:11,color:'var(--text-muted)'}}>Log trades with dates to see day of week breakdown.</div>:
+          dowData.map(d=>{const wr=d.wr;const col=wr===null?'var(--border)':wr>=60?'#16a34a':wr<50?'#dc2626':'#b45309';return(<div key={d.name} style={{marginBottom:8}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
+              <span style={{color:'var(--text-muted)'}}>{d.name}{d.trades>0?` (${d.trades})`:''}</span>
+              <span style={{fontWeight:500,color:col}}>{wr!==null?wr+'%':'—'}</span>
+            </div>
+            <div style={{height:4,background:'var(--border)',borderRadius:2,overflow:'hidden'}}><div style={{width:`${wr||0}%`,height:'100%',background:col,borderRadius:2}}/></div>
+            {d.trades>0&&<div style={{fontSize:10,color:d.pnl>0?'#16a34a':d.pnl<0?'#dc2626':'var(--text-muted)',marginTop:1}}>{d.pnl>0?'+':''}${d.pnl.toFixed(0)}</div>}
+          </div>);})}
+        </Card>
+      </div>
+
+      {/* ── 3. MAE/MFE breakdown + R-multiple distribution ── */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        <Card>
+          <SH>MAE / MFE breakdown</SH>
+          <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:12}}>How far trades moved against / for you before closing</div>
+          {[
+            {dot:'#dc2626',label:'Avg max adverse excursion',value:avgLossPnl>0?`-$${avgLossPnl.toFixed(0)}`:'—',col:'#dc2626'},
+            {dot:'#16a34a',label:'Avg max favorable excursion',value:avgWinPnl>0?`+$${avgWinPnl.toFixed(0)}`:'—',col:'#16a34a'},
+            {dot:'#534AB7',label:'Win / loss ratio',value:avgLossPnl>0?(avgWinPnl/avgLossPnl).toFixed(2)+'x':'—',col:'#534AB7'},
+            {dot:'#b45309',label:'Profit factor',value:profitFactor,col:parseFloat(profitFactor)>=1?'#16a34a':'#dc2626'},
+          ].map(r=>(
+            <div key={r.label} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:'0.5px solid var(--border)'}}>
+              <div style={{width:7,height:7,borderRadius:'50%',background:r.dot,flexShrink:0}}/>
+              <div style={{flex:1,fontSize:12,color:'var(--text-muted)'}}>{r.label}</div>
+              <div style={{fontSize:13,fontWeight:500,color:r.col}}>{r.value}</div>
+            </div>
+          ))}
         </Card>
         <Card>
           <SH>R-multiple distribution</SH>
           <div style={{display:'flex',alignItems:'flex-end',gap:3,height:80,marginBottom:6}}>
-            {rBuckets.map(b=>{const hPct=b.c/rMax*100;const isPos=b.label.includes('R')&&!b.label.startsWith('-');const col=b.label.startsWith('-')?'#dc2626':b.label==='0'?'var(--text-muted)':'#16a34a';return(<div key={b.label} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2}}><div style={{width:'100%',background:col,borderRadius:'2px 2px 0 0',height:`${hPct}%`,opacity:.8,minHeight:b.c>0?2:0}}/></div>);})}
+            {rBuckets.map(b=>{const hPct=b.c/rMax*100;const col=b.label.startsWith('-')?'#dc2626':b.label==='0'?'#888':'#16a34a';return(
+              <div key={b.label} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center'}}>
+                <div style={{width:'100%',background:col,borderRadius:'2px 2px 0 0',height:`${hPct}%`,opacity:.82,minHeight:b.c>0?2:0}}/>
+              </div>
+            );})}
           </div>
-          <div style={{display:'flex',justify:'space-between',gap:3}}>{rBuckets.map(b=><div key={b.label} style={{flex:1,fontSize:8,color:'var(--text-muted)',textAlign:'center',overflow:'hidden'}}>{b.label}</div>)}</div>
-          <div style={{marginTop:8,display:'flex',gap:14,fontSize:11}}><span style={{color:'var(--text-muted)'}}>Avg win: <span style={{fontWeight:500,color:'#16a34a'}}>{winR.toFixed(1)}R</span></span><span style={{color:'var(--text-muted)'}}>Avg loss: <span style={{fontWeight:500,color:'#dc2626'}}>{lossR.toFixed(1)}R</span></span><span style={{color:'var(--text-muted)'}}>Avg: <span style={{fontWeight:500}}>{avgR.toFixed(1)}R</span></span></div>
+          <div style={{display:'flex',gap:0,marginBottom:10}}>{rBuckets.map(b=><div key={b.label} style={{flex:1,fontSize:8,color:'var(--text-muted)',textAlign:'center'}}>{b.label}</div>)}</div>
+          <div style={{display:'flex',gap:14,fontSize:11,flexWrap:'wrap'}}>
+            <span style={{color:'var(--text-muted)'}}>Avg win: <span style={{fontWeight:500,color:'#16a34a'}}>{winR.toFixed(1)}R</span></span>
+            <span style={{color:'var(--text-muted)'}}>Avg loss: <span style={{fontWeight:500,color:'#dc2626'}}>{lossR.toFixed(1)}R</span></span>
+            <span style={{color:'var(--text-muted)'}}>Overall: <span style={{fontWeight:500}}>{avgR.toFixed(1)}R</span></span>
+          </div>
         </Card>
       </div>
 
-      {/* ── Setup table + Emotion win rate ── */}
+      {/* ── 4. Setup performance + Monthly P&L ── */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
         <Card>
           <SH>Setup performance</SH>
           {setupRows.length===0?<div style={{fontSize:11,color:'var(--text-muted)'}}>Tag your trades with setups to see this.</div>:<>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 40px 40px 70px',gap:0,fontSize:10,color:'var(--text-muted)',marginBottom:5,paddingBottom:4,borderBottom:'0.5px solid var(--border)'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 44px 44px 72px',fontSize:10,color:'var(--text-muted)',marginBottom:5,paddingBottom:4,borderBottom:'0.5px solid var(--border)'}}>
               <span>Setup</span><span style={{textAlign:'center'}}>Trades</span><span style={{textAlign:'center'}}>WR</span><span style={{textAlign:'right'}}>Net P&L</span>
             </div>
-            {setupRows.map(([name,d])=>{const wr=Math.round((d.w/d.t)*100);const col=wr>=60?'#16a34a':wr<50?'#dc2626':'#b45309';return(<div key={name} style={{display:'grid',gridTemplateColumns:'1fr 40px 40px 70px',gap:0,fontSize:12,padding:'5px 0',borderBottom:'0.5px solid var(--border)'}}><span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</span><span style={{textAlign:'center',color:'var(--text-muted)',fontSize:11}}>{d.t}</span><span style={{textAlign:'center',fontWeight:500,color:col}}>{wr}%</span><span style={{textAlign:'right',fontWeight:500,color:d.pnl>0?'#16a34a':d.pnl<0?'#dc2626':'var(--text)'}}>{d.pnl>0?'+':''}${d.pnl.toFixed(0)}</span></div>);})}
+            {setupRows.map(([name,d])=>{const wr=Math.round((d.w/d.t)*100);const col=wr>=60?'#16a34a':wr<50?'#dc2626':'#b45309';return(
+              <div key={name} style={{display:'grid',gridTemplateColumns:'1fr 44px 44px 72px',fontSize:12,padding:'6px 0',borderBottom:'0.5px solid var(--border)'}}>
+                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</span>
+                <span style={{textAlign:'center',color:'var(--text-muted)',fontSize:11}}>{d.t}</span>
+                <span style={{textAlign:'center',fontWeight:500,color:col}}>{wr}%</span>
+                <span style={{textAlign:'right',fontWeight:500,color:d.pnl>0?'#16a34a':d.pnl<0?'#dc2626':'var(--text)'}}>{d.pnl>0?'+':''}${d.pnl.toFixed(0)}</span>
+              </div>
+            );})}
           </>}
         </Card>
         <Card>
-          <SH>Emotion vs. win rate</SH>
-          {emotionRows.length===0?<div style={{fontSize:11,color:'var(--text-muted)'}}>Tag your trades with emotions to see this.</div>:
-          emotionRows.map(([em,d])=>{const wr=Math.round((d.w/d.t)*100);const col=wr>=60?'#16a34a':wr<50?'#dc2626':'#b45309';return(<div key={em} style={{marginBottom:8}}><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}><span style={{padding:'1px 7px',borderRadius:10,background:EMOTION_BG[em]||'var(--surface2)',color:EMOTION_COLOR[em]||'var(--text-muted)',fontSize:10}}>{em}</span><span style={{fontWeight:500,color:col}}>{wr}%  <span style={{fontSize:10,color:'var(--text-muted)',fontWeight:400}}>({d.t}t)</span></span></div><div style={{height:4,background:'var(--border)',borderRadius:2,overflow:'hidden'}}><div style={{width:`${wr}%`,height:'100%',background:col,borderRadius:2}}/></div></div>);})}
+          <SH>Monthly P&L</SH>
+          <div style={{position:'relative',height:100,marginBottom:6}}>
+            <div style={{position:'absolute',left:0,right:0,top:'50%',height:'0.5px',background:'var(--border)',zIndex:1}}/>
+            {monthList.map(([m,val],i)=>{const hPct=Math.abs(val)/maxAbsMonth*48;const barW=`calc(${100/monthList.length}% - 4px)`;return val>=0?(
+              <div key={m} style={{position:'absolute',left:`${(i/monthList.length)*100}%`,width:barW,bottom:'50%',height:hPct+'%',minHeight:val!==0?1:0,background:'#16a34a',borderRadius:'2px 2px 0 0',opacity:.82}}/>
+            ):(
+              <div key={m} style={{position:'absolute',left:`${(i/monthList.length)*100}%`,width:barW,top:'50%',height:hPct+'%',minHeight:1,background:'#dc2626',borderRadius:'0 0 2px 2px',opacity:.78}}/>
+            );})}
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:10,fontSize:9,color:'var(--text-muted)'}}>{monthList.map(([m])=><span key={m}>{m.slice(5)}</span>)}</div>
+          {(()=>{const best=monthList.reduce((a,b)=>b[1]>a[1]?b:a,monthList[0]);const worst=monthList.reduce((a,b)=>b[1]<a[1]?b:a,monthList[0]);return(
+            <div style={{display:'flex',gap:16}}>
+              <div><div style={{fontSize:16,fontWeight:500,color:'#16a34a'}}>{best?`+$${best[1].toFixed(0)}`:'—'}</div><div style={{fontSize:10,color:'var(--text-muted)'}}>Best month {best?`(${best[0].slice(5)})`:'—'}</div></div>
+              <div><div style={{fontSize:16,fontWeight:500,color:'#dc2626'}}>{worst&&worst[1]<0?`-$${Math.abs(worst[1]).toFixed(0)}`:'—'}</div><div style={{fontSize:10,color:'var(--text-muted)'}}>Worst month {worst&&worst[1]<0?`(${worst[0].slice(5)})`:'—'}</div></div>
+            </div>
+          );})()}
         </Card>
       </div>
 
-      {/* ── P&L stats row ── */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
-        {[{label:'Profit factor',value:profitFactor,color:parseFloat(profitFactor)>1?'#16a34a':parseFloat(profitFactor)<1?'#dc2626':'var(--text)'},{label:'Avg win',value:avgWinPnl>0?`+$${avgWinPnl.toFixed(0)}`:'—',color:'#16a34a'},{label:'Avg loss',value:avgLossPnl>0?`-$${avgLossPnl.toFixed(0)}`:'—',color:'#dc2626'},{label:'Win/loss ratio',value:avgLossPnl>0?(avgWinPnl/avgLossPnl).toFixed(2):'—',color:'var(--text)'}].map(s=><Card2 key={s.label} style={{textAlign:'center'}}><div style={{fontSize:18,fontWeight:500,color:s.color,marginBottom:3}}>{s.value}</div><div style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.04em'}}>{s.label}</div></Card2>)}
-      </div>
+      {/* ── 5. Emotion vs P&L ── */}
+      <Card>
+        <SH>Emotion vs. P&L</SH>
+        {emotionRows.length===0?<div style={{fontSize:11,color:'var(--text-muted)'}}>Tag your trades with emotions to see this.</div>:
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {emotionRows.map(([em,d])=>{const wr=Math.round((d.w/d.t)*100);const col=wr>=60?'#16a34a':wr<50?'#dc2626':'#b45309';return(
+            <div key={em} style={{display:'flex',alignItems:'center',gap:12}}>
+              <span style={{width:80,flexShrink:0,fontSize:11,padding:'2px 8px',borderRadius:10,background:EMOTION_BG[em]||'var(--surface2)',color:EMOTION_COLOR[em]||'var(--text-muted)',textAlign:'center'}}>{em}</span>
+              <div style={{flex:1,height:5,background:'var(--border)',borderRadius:3,overflow:'hidden'}}><div style={{width:`${wr}%`,height:'100%',background:col,borderRadius:3}}/></div>
+              <span style={{fontWeight:500,color:col,width:36,textAlign:'right',fontSize:12}}>{wr}%</span>
+              <span style={{fontSize:11,color:'var(--text-muted)',width:28,textAlign:'right'}}>{d.t}t</span>
+            </div>
+          );})}
+        </div>}
+      </Card>
+
     </>}
     {dayModal&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999}} onClick={()=>setDayModal(null)}>
       <div style={{background:'var(--surface)',borderRadius:16,padding:24,width:540,maxHeight:'82vh',overflowY:'auto',boxShadow:'0 16px 48px rgba(0,0,0,0.25)'}} onClick={e=>e.stopPropagation()}>
