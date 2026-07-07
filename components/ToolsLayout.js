@@ -260,17 +260,20 @@ function Dashboard({trades,journals}){
         </Card>
         <Card>
           <SH>R-multiple distribution</SH>
-          <div style={{display:'flex',alignItems:'flex-end',gap:3,height:80,marginBottom:6}}>
-            {rBuckets.map(b=>{const hPct=b.c/rMax*100;const col=b.label.startsWith('-')?'#dc2626':b.label==='0'?'#888':'#16a34a';return(
-              <div key={b.label} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center'}}>
-                <div style={{width:'100%',background:col,borderRadius:'2px 2px 0 0',height:`${hPct}%`,opacity:.82,minHeight:b.c>0?2:0}}/>
+          <div style={{display:'flex',alignItems:'flex-end',gap:4,height:120,marginBottom:0,padding:'0 2px'}}>
+            {rBuckets.map(b=>{const hPct=Math.max(b.c/rMax*100,b.c>0?8:0);const isNeg=b.label.startsWith('-');const isZero=b.label==='0R';const col=isNeg?'#ef4444':isZero?'#94a3b8':'#22c55e';const bgCol=isNeg?'rgba(239,68,68,0.08)':isZero?'rgba(148,163,184,0.08)':'rgba(34,197,94,0.08)';return(
+              <div key={b.label} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',height:'100%',gap:4}}>
+                {b.c>0&&<span style={{fontSize:9,fontWeight:600,color:col,lineHeight:1}}>{b.c}</span>}
+                <div style={{width:'100%',position:'relative',borderRadius:4,overflow:'hidden',height:`${hPct}%`,minHeight:b.c>0?12:0,background:bgCol}}>
+                  <div style={{position:'absolute',bottom:0,left:0,right:0,height:'100%',background:col,borderRadius:4,opacity:.85}}/>
+                </div>
+                <span style={{fontSize:9,color:b.c>0?'var(--text)':'var(--text-muted)',textAlign:'center',lineHeight:1,fontWeight:b.c>0?500:400}}>{b.label}</span>
               </div>
             );})}
           </div>
-          <div style={{display:'flex',gap:0,marginBottom:10}}>{rBuckets.map(b=><div key={b.label} style={{flex:1,fontSize:8,color:'var(--text-muted)',textAlign:'center'}}>{b.label}</div>)}</div>
-          <div style={{display:'flex',gap:14,fontSize:11,flexWrap:'wrap'}}>
-            <span style={{color:'var(--text-muted)'}}>Avg win: <span style={{fontWeight:500,color:'#16a34a'}}>{winR.toFixed(1)}R</span></span>
-            <span style={{color:'var(--text-muted)'}}>Avg loss: <span style={{fontWeight:500,color:'#dc2626'}}>{lossR.toFixed(1)}R</span></span>
+          <div style={{display:'flex',gap:14,fontSize:11,flexWrap:'wrap',marginTop:10}}>
+            <span style={{color:'var(--text-muted)'}}>Avg win: <span style={{fontWeight:500,color:'#22c55e'}}>{winR.toFixed(1)}R</span></span>
+            <span style={{color:'var(--text-muted)'}}>Avg loss: <span style={{fontWeight:500,color:'#ef4444'}}>{lossR.toFixed(1)}R</span></span>
             <span style={{color:'var(--text-muted)'}}>Overall: <span style={{fontWeight:500}}>{avgR.toFixed(1)}R</span></span>
           </div>
         </Card>
