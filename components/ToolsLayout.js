@@ -30,7 +30,7 @@ function Inp({value,onChange,placeholder,style,type='text'}){return <input type=
 function Sel({value,onChange,children,style}){return <select value={value} onChange={onChange} style={{width:'100%',padding:'7px 10px',border:'0.5px solid var(--border2)',borderRadius:6,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none',...style}}>{children}</select>}
 function Textarea({value,onChange,placeholder,style}){
   const ref=React.useRef(null);
-  React.useEffect(()=>{if(!ref.current)return;ref.current.style.height='auto';ref.current.style.height=Math.max(ref.current.scrollHeight,96)+'px';},[value]);
+  React.useEffect(()=>{if(!ref.current)return;ref.current.style.height='auto';ref.current.style.height=Math.max(ref.current.scrollHeight,parseInt(style?.minHeight||72))+"px";},[value]);
   return <textarea ref={ref} value={value} onChange={onChange} placeholder={placeholder} style={{width:'100%',padding:'8px 10px',border:'0.5px solid var(--border2)',borderRadius:6,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none',resize:'none',minHeight:96,boxSizing:'border-box',overflow:'hidden',...style}}/>;
 }
 
@@ -1024,7 +1024,7 @@ function Playbook({trades}){
                   <button onClick={()=>removeSection(i,setup)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:12,padding:'1px 4px'}}>x</button>
                 </div>
               </div>
-              <Textarea value={cs.content} onChange={e=>updateSection(i,'content',e.target.value,setup)} placeholder="Add your notes..."/>
+              <Textarea value={cs.content} onChange={e=>updateSection(i,'content',e.target.value,setup)} placeholder="Add your notes..." style={{minHeight:60}}/>
               {(cs.images||[]).length>0&&(
                 <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:10}}>
                   {(cs.images||[]).map((img,ii)=>(
