@@ -1307,15 +1307,27 @@ function H2HTab({ currentUserId, onOpenProfile }) {
         </>
       )}
 
-      {inner === 'mymatches' && (
-        loading ? (
+      {inner === 'mymatches' && (() => {
+        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+        const active = (data.myMatches || []).filter(m => !m.endDate || new Date(m.endDate).getTime() > cutoff);
+        const recentlyEnded = (data.myMatches || []).filter(m => m.endDate && new Date(m.endDate).getTime() <= cutoff);
+        return loading ? (
           <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
-        ) : (data.myMatches || []).length === 0 ? (
+        ) : active.length === 0 && recentlyEnded.length === 0 ? (
           <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />
         ) : (
-          (data.myMatches || []).map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)
-        )
-      )}
+          <>
+            {active.length === 0 && <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />}
+            {active.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
+            {recentlyEnded.length > 0 && (
+              <>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '14px 0 6px' }}>Recently ended</div>
+                {recentlyEnded.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
+              </>
+            )}
+          </>
+        );
+      })()}
 
       {inner === 'invites' && (
         loading ? (
@@ -1924,19 +1936,35 @@ function GroupTab({ currentUserId, onOpenProfile }) {
         </>
       )}
 
-      {inner === 'mycontests' && (
-        loading ? (
+      {inner === 'mycontests' && (() => {
+        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+        const active = (data.myContests || []).filter(c => !c.endDate || new Date(c.endDate).getTime() > cutoff);
+        const recentlyEnded = (data.myContests || []).filter(c => c.endDate && new Date(c.endDate).getTime() <= cutoff);
+        return loading ? (
           <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
-        ) : (data.myContests || []).length === 0 ? (
+        ) : active.length === 0 && recentlyEnded.length === 0 ? (
           <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />
         ) : (
-          (data.myContests || []).map(c => (
-            <div key={c.id} onClick={() => c.joined && setSelectedContest(c)} style={{ cursor: c.joined ? 'pointer' : 'default' }}>
-              <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} />
-            </div>
-          ))
-        )
-      )}
+          <>
+            {active.length === 0 && <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />}
+            {active.map(c => (
+              <div key={c.id} onClick={() => c.joined && setSelectedContest(c)} style={{ cursor: c.joined ? 'pointer' : 'default' }}>
+                <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} />
+              </div>
+            ))}
+            {recentlyEnded.length > 0 && (
+              <>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '14px 0 6px' }}>Recently ended — moving to history soon</div>
+                {recentlyEnded.map(c => (
+                  <div key={c.id} style={{ opacity: 0.55, pointerEvents: 'none' }}>
+                    <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} />
+                  </div>
+                ))}
+              </>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }
