@@ -97,8 +97,8 @@ function Dashboard({trades,journals}){
   trades.forEach(t=>{if(!t.date)return;const d=new Date(t.date+'T00:00:00').getDay();byDow[d].t++;if(pnlNum(t.pnl)>0)byDow[d].w++;byDow[d].pnl+=pnlNum(t.pnl);});
   const dowNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const dowData=[1,2,3,4,5].map(d=>({name:dowNames[d],wr:byDow[d].t>0?Math.round((byDow[d].w/byDow[d].t)*100):null,trades:byDow[d].t,pnl:byDow[d].pnl}));
-  const rBuckets=[{label:'-2R+',min:-999,max:-1.5,c:0},{label:'-1R',min:-1.5,max:-0.75,c:0},{label:'-0.5R',min:-0.75,max:0,c:0},{label:'0',min:0,max:0.5,c:0},{label:'1R',min:0.5,max:1.5,c:0},{label:'2R',min:1.5,max:2.5,c:0},{label:'3R',min:2.5,max:4.0,c:0},{label:'4R+',min:4.0,max:999,c:0}];
-  trades.forEach(t=>{const r=parseFloat(t.r)||0;const last=rBuckets[rBuckets.length-1];rBuckets.forEach((b,bi)=>{if(bi===rBuckets.length-1){if(r>=b.min)b.c++;}else{if(r>=b.min&&r<b.max)b.c++;}});});
+  const rBuckets=[{label:'<-1R',min:-999,max:-1,c:0},{label:'-1R',min:-1,max:0,c:0},{label:'0R',min:0,max:1,c:0},{label:'1R',min:1,max:2,c:0},{label:'2R',min:2,max:3,c:0},{label:'3R',min:3,max:4,c:0},{label:'4R+',min:4,max:999,c:0}];
+  trades.forEach(t=>{const r=parseFloat(t.r);if(isNaN(r))return;rBuckets.forEach((b,bi)=>{if(bi===rBuckets.length-1){if(r>=b.min)b.c++;}else{if(r>=b.min&&r<b.max)b.c++;}});});
   const rMax=Math.max(...rBuckets.map(b=>b.c),1);
   const bySetupD={},byEmotionD={};
   trades.forEach(t=>{
