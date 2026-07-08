@@ -372,6 +372,7 @@ function TradeLog({trades,setTrades,tradesKey}){
   const empty={date:'',asset:'',direction:'Long',entry:'',exit:'',pnl:'',r:'',size:'',time:'',exitTime:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:''};
   const[form,setForm]=useState(empty);const[adding,setAdding]=useState(false);const[expanded,setExpanded]=useState(null);
   const[showBroker,setShowBroker]=useState(false);
+  const userSetups=load(STORAGE_KEY+'_setups2',[]);
   const fileRef=useRef(null);
   function addTrade(){if(!form.asset||!form.date)return;const u=[form,...trades];setTrades(u);save(tradesKey,u);setForm(empty);setAdding(false)}
   function removeTrade(i){if(!window.confirm('Delete this trade? This cannot be undone.'))return;const u=trades.filter((_,idx)=>idx!==i);setTrades(u);save(tradesKey,u)}
@@ -421,7 +422,7 @@ function TradeLog({trades,setTrades,tradesKey}){
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Date</div><Inp type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Asset</div><Sel value={form.asset} onChange={e=>setForm(f=>({...f,asset:e.target.value}))}><option value="">Select</option>{ASSETS.map(a=><option key={a}>{a}</option>)}</Sel></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Direction</div><Sel value={form.direction} onChange={e=>setForm(f=>({...f,direction:e.target.value}))}><option>Long</option><option>Short</option></Sel></div>
-        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Setup</div><Sel value={form.setup} onChange={e=>setForm(f=>({...f,setup:e.target.value}))}><option value="">None</option>{SETUPS.map(s=><option key={s}>{s}</option>)}</Sel></div>
+        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Setup</div><Sel value={form.setup} onChange={e=>setForm(f=>({...f,setup:e.target.value}))}><option value="">None</option>{userSetups.length===0?<option disabled style={{color:'var(--text-muted)'}}>— create setups in Playbook —</option>:userSetups.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</Sel></div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:10}}>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Entry</div><Inp value={form.entry} onChange={e=>setForm(f=>({...f,entry:e.target.value}))} placeholder="0.00"/></div>
@@ -1078,11 +1079,7 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
   const PACT_KEY='tr_port_activity_v3';
   const PSNAP_KEY='tr_port_snapshots_v3';
 
-  const DEF_ACCOUNTS=[
-    {id:'swing',label:'Swing (IBKR)',cash:0},
-    {id:'daytrading',label:'Day trading (Tastytrade)',cash:0},
-    {id:'longterm',label:'Long-term (Schwab)',cash:0},
-  ];
+  const DEF_ACCOUNTS=[];
 
   const [accounts,setAccounts]=useState(()=>load(PACC_KEY,DEF_ACCOUNTS));
   const [activeAccount,setActiveAccount]=useState('all');
@@ -1094,8 +1091,8 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
   const [showAddActivity,setShowAddActivity]=useState(false);
   const [showAddAccount,setShowAddAccount]=useState(false);
   const [showAddSnap,setShowAddSnap]=useState(false);
-  const [posForm,setPosForm]=useState({accountId:'swing',symbol:'',qty:'',avgCost:'',currentPrice:'',sector:'Technology'});
-  const [actForm,setActForm]=useState({type:'BUY',symbol:'',detail:'',accountId:'swing',pnl:''});
+  const [posForm,setPosForm]=useState({accountId:'',symbol:'',qty:'',avgCost:'',currentPrice:'',sector:'Technology'});
+  const [actForm,setActForm]=useState({type:'BUY',symbol:'',detail:'',accountId:'',pnl:''});
   const [accLabel,setAccLabel]=useState('');
   const [accCash,setAccCash]=useState('');
   const [snapVal,setSnapVal]=useState('');
@@ -1208,6 +1205,8 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
     if(!accLabel.trim())return;
     const na={id:'acc_'+Date.now(),label:accLabel.trim(),cash:parseFloat(accCash)||0};
     const upd=[...accounts,na];setAccounts(upd);save(PACC_KEY,upd);
+    setPosForm(f=>({...f,accountId:f.accountId||na.id}));
+    setActForm(f=>({...f,accountId:f.accountId||na.id}));
     setAccLabel('');setAccCash('');setShowAddAccount(false);
   }
   function updateAccountCash(id,val){
