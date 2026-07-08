@@ -1073,123 +1073,327 @@ function donutPath(cx,cy,outerR,innerR,startA,endA){
 }
 
 function Portfolio({holdings,setHoldings,holdingsKey}){
-  const [allocView,setAllocView]=useState('sector');
-  const [showAdd,setShowAdd]=useState(false);
-  const [form,setForm]=useState({symbol:'',name:'',shares:'',avgCost:'',currentPrice:'',sector:'Technology'});
-  const fNum=(n)=>parseFloat(n)||0;
-  const totalValue=holdings.reduce((s,h)=>s+fNum(h.shares)*fNum(h.currentPrice),0);
-  const totalCost=holdings.reduce((s,h)=>s+fNum(h.shares)*fNum(h.avgCost),0);
-  const unrealizedPnl=totalValue-totalCost;
-  const pctReturn=totalCost>0?((unrealizedPnl/totalCost)*100):0;
-  function addHolding(){
-    if(!form.symbol.trim()||!form.shares||!form.avgCost)return;
-    const h={id:Date.now(),...form,shares:fNum(form.shares),avgCost:fNum(form.avgCost),currentPrice:fNum(form.currentPrice)||fNum(form.avgCost)};
-    const updated=[...holdings,h];
-    setHoldings(updated);save(holdingsKey,updated);
-    setForm({symbol:'',name:'',shares:'',avgCost:'',currentPrice:'',sector:'Technology'});setShowAdd(false);
+  const PACC_KEY='tr_port_accounts_v3';
+  const PPOS_KEY='tr_port_positions_v3';
+  const PACT_KEY='tr_port_activity_v3';
+
+  const DEF_ACCOUNTS=[
+    {id:'swing',label:'Swing (IBKR)'},
+    {id:'daytrading',label:'Day trading (Tastytrade)'},
+    {id:'longterm',label:'Long-term (Schwab)'},
+  ];
+  const DEF_POSITIONS=[
+    {id:1,accountId:'swing',symbol:'NVDA',qty:50,avgCost:487.20,currentPrice:612.45,sector:'Technology'},
+    {id:2,accountId:'swing',symbol:'AAPL',qty:100,avgCost:172.30,currentPrice:185.10,sector:'Technology'},
+    {id:3,accountId:'daytrading',symbol:'TSLA',qty:30,avgCost:245.00,currentPrice:198.75,sector:'Technology'},
+    {id:4,accountId:'longterm',symbol:'SPY',qty:20,avgCost:520.10,currentPrice:538.90,sector:'Financials'},
+    {id:5,accountId:'swing',symbol:'BTC',qty:0.5,avgCost:58200,currentPrice:61400,sector:'Crypto'},
+  ];
+  const DEF_ACTIVITY=[
+    {id:1,type:'BUY',symbol:'NVDA',detail:'20 sh @ $602.10',accountLabel:'Swing (IBKR)',date:'Jul 6 \xb7 2:14 PM',pnl:-12042},
+    {id:2,type:'SELL',symbol:'TSLA',detail:'10 sh @ $199.40',accountLabel:'Day trading',date:'Jul 6 \xb7 11:02 AM',pnl:1994},
+    {id:3,type:'DAY TRADE',symbol:'SPY',detail:'opened & closed same session',accountLabel:'Tastytrade',date:'Jul 5 \xb7 3:45 PM',pnl:180},
+    {id:4,type:'BUY',symbol:'BTC',detail:'0.1 @ $61,200',accountLabel:'Long-term (Schwab)',date:'Jul 5 \xb7 9:30 AM',pnl:-6120},
+    {id:5,type:'SELL',symbol:'AAPL',detail:'25 sh @ $184.50',accountLabel:'Swing (IBKR)',date:'Jul 3 \xb7 1:20 PM',pnl:4612},
+    {id:6,type:'DIVIDEND',symbol:'AAPL',detail:'quarterly payout',accountLabel:'Long-term (Schwab)',date:'Jul 1 \xb7 8:00 AM',pnl:42},
+    {id:7,type:'BUY',symbol:'NVDA',detail:'30 sh @ $478.90',accountLabel:'Swing (IBKR)',date:'Jun 28 \xb7 10:05 AM',pnl:-14367},
+  ];
+
+  const EQUITY_PTS=[
+    {label:'Jan',v:67500},{label:'',v:68200},{label:'',v:67800},{label:'',v:69100},
+    {label:'Mar',v:70500},{label:'',v:71200},{label:'',v:72800},{label:'',v:74100},
+    {label:'May',v:77500},{label:'',v:79200},{label:'',v:80100},{label:'',v:81500},
+    {label:'Jul',v:82900},{label:'',v:84230},
+  ];
+
+  const [accounts,setAccounts]=useState(()=>load(PACC_KEY,DEF_ACCOUNTS));
+  const [activeAccount,setActiveAccount]=useState('all');
+  const [positions,setPositions]=useState(()=>load(PPOS_KEY,DEF_POSITIONS));
+  const [activity,setActivity]=useState(()=>load(PACT_KEY,DEF_ACTIVITY));
+  const [timeRange,setTimeRange]=useState('1M');
+  const [showAddPos,setShowAddPos]=useState(false);
+  const [showAddActivity,setShowAddActivity]=useState(false);
+  const [showAddAccount,setShowAddAccount]=useState(false);
+  const [posForm,setPosForm]=useState({accountId:'swing',symbol:'',qty:'',avgCost:'',currentPrice:'',sector:'Technology'});
+  const [actForm,setActForm]=useState({type:'BUY',symbol:'',detail:'',accountLabel:'Swing (IBKR)',date:'',pnl:''});
+  const [accLabel,setAccLabel]=useState('');
+  const [editPosId,setEditPosId]=useState(null);
+  const [editPosForm,setEditPosForm]=useState({});
+
+  const fp=activeAccount==='all'?positions:positions.filter(p=>p.accountId===activeAccount);
+  const posPnl=p=>p.qty*p.currentPrice-p.qty*p.avgCost;
+  const totalPosValue=fp.reduce((s,p)=>s+p.qty*p.currentPrice,0);
+  const totalCost=fp.reduce((s,p)=>s+p.qty*p.avgCost,0);
+  const unrealizedPnl=totalPosValue-totalCost;
+  const pctReturn=totalCost>0?(unrealizedPnl/totalCost*100):0;
+  const CASH=15170;
+  const totalValue=totalPosValue+CASH;
+
+  const secMap={};
+  fp.forEach(p=>{const s=p.sector||'Other';secMap[s]=(secMap[s]||0)+p.qty*p.currentPrice;});
+  secMap['Cash']=CASH;
+  const allocColors={'Technology':'#1a1a1a','Financials':'#555555','Crypto':'#999999','Cash':'#dddddd','Other':'#777777'};
+  const allocData=Object.entries(secMap).sort((a,b)=>b[1]-a[1]);
+  const allocTotal=allocData.reduce((s,[,v])=>s+v,0);
+  let dAngle=-90;
+  const dSegs=allocData.map(([lbl,val])=>{
+    const sweep=allocTotal>0?(val/allocTotal)*360:0;
+    const path=sweep>1?donutPath(100,100,76,50,dAngle,dAngle+sweep-0.5):'';
+    dAngle+=sweep;
+    return{label:lbl,value:val,path,color:allocColors[lbl]||'#aaa'};
+  });
+
+  const EW=560,EH=160,EL=44,ER=8,ET=8,EB=28;
+  const EIW=EW-EL-ER,EIH=EH-ET-EB;
+  const eMin=56000,eMax=90000;
+  const ex=i=>(EL+(i/(EQUITY_PTS.length-1))*EIW);
+  const ey=v=>(ET+EIH-((v-eMin)/(eMax-eMin))*EIH);
+  const ePts=EQUITY_PTS.map((e,i)=>({x:ex(i),y:ey(e.v)}));
+  let linePath=`M${ePts[0].x},${ePts[0].y}`;
+  for(let i=1;i<ePts.length;i++){const cpx=(ePts[i-1].x+ePts[i].x)/2;linePath+=` C${cpx},${ePts[i-1].y} ${cpx},${ePts[i].y} ${ePts[i].x},${ePts[i].y}`;}
+  const areaPath=linePath+` L${ePts[ePts.length-1].x},${ET+EIH} L${ePts[0].x},${ET+EIH}Z`;
+  const yTicks=[60000,68000,76000,84000];
+  const xLabels=EQUITY_PTS.map((e,i)=>e.label?{label:e.label,x:ex(i)}:null).filter(Boolean);
+
+  function addPosition(){
+    if(!posForm.symbol.trim()||!posForm.qty||!posForm.avgCost)return;
+    const np={id:Date.now(),...posForm,qty:parseFloat(posForm.qty),avgCost:parseFloat(posForm.avgCost),currentPrice:parseFloat(posForm.currentPrice)||parseFloat(posForm.avgCost)};
+    const upd=[...positions,np];setPositions(upd);save(PPOS_KEY,upd);
+    setPosForm(f=>({...f,symbol:'',qty:'',avgCost:'',currentPrice:''}));setShowAddPos(false);
   }
-  function removeHolding(id){const updated=holdings.filter(h=>h.id!==id);setHoldings(updated);save(holdingsKey,updated);}
-  let donutData=[];
-  if(allocView==='sector'){
-    const sectorMap={};
-    holdings.forEach(h=>{const sec=h.sector||'Other';const v=fNum(h.shares)*fNum(h.currentPrice);sectorMap[sec]=(sectorMap[sec]||0)+v;});
-    Object.entries(sectorMap).forEach(([sec,v])=>donutData.push({label:sec,value:v,color:SECTOR_COLORS[sec]||'#888780'}));
-  } else {
-    holdings.forEach((h,i)=>{const v=fNum(h.shares)*fNum(h.currentPrice);if(v>0)donutData.push({label:h.symbol||h.name,value:v,color:ASSET_COLORS[i%ASSET_COLORS.length]});});
+  function removePosition(id){const upd=positions.filter(p=>p.id!==id);setPositions(upd);save(PPOS_KEY,upd);}
+  function saveEditPos(){
+    const upd=positions.map(p=>p.id===editPosId?{...p,qty:parseFloat(editPosForm.qty)||p.qty,avgCost:parseFloat(editPosForm.avgCost)||p.avgCost,currentPrice:parseFloat(editPosForm.currentPrice)||p.currentPrice}:p);
+    setPositions(upd);save(PPOS_KEY,upd);setEditPosId(null);setEditPosForm({});
   }
-  donutData.sort((a,b)=>b.value-a.value);
-  const donutTotal=donutData.reduce((s,d)=>s+d.value,0);
-  let startAngle=-90;
-  const segments=donutData.map(d=>{const sweep=donutTotal>0?(d.value/donutTotal)*360:0;const seg={...d,path:sweep>0?donutPath(60,60,50,30,startAngle,startAngle+sweep-0.5):''}; startAngle+=sweep;return seg;});
+  function addActivity(){
+    if(!actForm.symbol.trim())return;
+    const na={id:Date.now(),...actForm,pnl:parseFloat(actForm.pnl)||0};
+    const upd=[na,...activity];setActivity(upd);save(PACT_KEY,upd);
+    setActForm(f=>({...f,symbol:'',detail:'',date:'',pnl:''}));setShowAddActivity(false);
+  }
+  function removeActivity(id){const upd=activity.filter(a=>a.id!==id);setActivity(upd);save(PACT_KEY,upd);}
+  function addAccount(){
+    if(!accLabel.trim())return;
+    const na={id:'acc_'+Date.now(),label:accLabel.trim()};
+    const upd=[...accounts,na];setAccounts(upd);save(PACC_KEY,upd);
+    setAccLabel('');setShowAddAccount(false);
+  }
+
+  const fv=v=>'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const fp2=v=>'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const inpS={padding:'6px 10px',border:'0.5px solid var(--border)',borderRadius:6,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'};
+  const cardS={background:'var(--surface)',borderRadius:12,border:'0.5px solid var(--border)'};
+  const lblS={fontSize:10,fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em'};
+
   return (
-    <div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:16}}>
-        <Card><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>Total value</div><div style={{fontSize:22,fontWeight:500}}>${totalValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></Card>
-        <Card><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>Unrealized P&amp;L</div><div style={{fontSize:22,fontWeight:500,color:unrealizedPnl>=0?'var(--green)':'var(--red)'}}>{unrealizedPnl>=0?'+':''}{unrealizedPnl.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div style={{fontSize:11,color:unrealizedPnl>=0?'var(--green)':'var(--red)'}}>{pctReturn>=0?'+':''}{pctReturn.toFixed(2)}% total return</div></Card>
-        <Card><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>Positions</div><div style={{fontSize:22,fontWeight:500}}>{holdings.length}</div><div style={{fontSize:11,color:'var(--text-muted)'}}>{holdings.length===0?'No positions yet':'Across '+(new Set(holdings.map(h=>h.sector)).size)+' sectors'}</div></Card>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'1.6fr 1fr',gap:14,alignItems:'start'}}>
-        <Card style={{padding:'12px 14px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-            <SH style={{marginBottom:0}}>Holdings</SH>
-            <BtnP onClick={()=>setShowAdd(p=>!p)} style={{padding:'4px 10px',fontSize:11}}>+ Add position</BtnP>
-          </div>
-          {showAdd&&(
-            <div style={{background:'var(--surface2)',borderRadius:8,padding:10,marginBottom:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-              <Inp value={form.symbol} onChange={e=>setForm(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="Symbol (AAPL)"/>
-              <Inp value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Name (optional)"/>
-              <Inp value={form.shares} onChange={e=>setForm(p=>({...p,shares:e.target.value}))} placeholder="Shares" type="number"/>
-              <Inp value={form.avgCost} onChange={e=>setForm(p=>({...p,avgCost:e.target.value}))} placeholder="Avg cost $" type="number"/>
-              <Inp value={form.currentPrice} onChange={e=>setForm(p=>({...p,currentPrice:e.target.value}))} placeholder="Current price $" type="number"/>
-              <Sel value={form.sector} onChange={e=>setForm(p=>({...p,sector:e.target.value}))}>{Object.keys(SECTOR_COLORS).map(s=><option key={s}>{s}</option>)}</Sel>
-              <div style={{gridColumn:'1/-1',display:'flex',gap:6,justifyContent:'flex-end'}}><BtnS onClick={()=>setShowAdd(false)}>Cancel</BtnS><BtnP onClick={addHolding}>Add</BtnP></div>
-            </div>
-          )}
-          {holdings.length===0?(
-            <div style={{textAlign:'center',padding:'32px 0',color:'var(--text-muted)',fontSize:13}}>No positions yet — add your first holding above.</div>
-          ):(
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-              <thead><tr style={{borderBottom:'0.5px solid var(--border)'}}>
-                {['Symbol','Shares','Avg cost','Price','Value','Gain',''].map((h,i)=><th key={i} style={{textAlign:i>0?'right':'left',padding:'4px 6px',fontWeight:400,color:'var(--text-muted)',fontSize:11,width:i===6?24:undefined}}>{h}</th>)}
-              </tr></thead>
-              <tbody>{holdings.map(h=>{
-                const val=fNum(h.shares)*fNum(h.currentPrice);
-                const cost=fNum(h.shares)*fNum(h.avgCost);
-                const gain=val-cost;const gainPct=cost>0?(gain/cost*100):0;
-                return(<tr key={h.id} style={{borderBottom:'0.5px solid var(--border)'}}>
-                  <td style={{padding:'6px 6px',fontWeight:500}}>{h.symbol}</td>
-                  <td style={{textAlign:'right',padding:'6px 6px',color:'var(--text-muted)'}}>{h.shares}</td>
-                  <td style={{textAlign:'right',padding:'6px 6px',color:'var(--text-muted)'}}>${fNum(h.avgCost).toFixed(2)}</td>
-                  <td style={{textAlign:'right',padding:'6px 6px'}}>${fNum(h.currentPrice).toFixed(2)}</td>
-                  <td style={{textAlign:'right',padding:'6px 6px',fontWeight:500}}>${val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-                  <td style={{textAlign:'right',padding:'6px 6px',color:gain>=0?'var(--green)':'var(--red)',whiteSpace:'nowrap'}}>{gain>=0?'+':''}{gain.toFixed(0)} <span style={{opacity:0.7}}>({gainPct>=0?'+':''}{gainPct.toFixed(1)}%)</span></td>
-                  <td><button onClick={()=>removeHolding(h.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:13,padding:'2px 4px',lineHeight:1}}>x</button></td>
-                </tr>);
-              })}</tbody>
-            </table>
-          )}
-        </Card>
-        <div>
-          <Card style={{marginBottom:12}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-              <SH style={{marginBottom:0}}>Allocation</SH>
-              <div style={{display:'flex',gap:4}}>
-                {['sector','asset'].map(v=>(
-                  <button key={v} onClick={()=>setAllocView(v)} style={{padding:'3px 9px',borderRadius:5,border:'0.5px solid var(--border)',background:allocView===v?'#EEEDFE':'transparent',color:allocView===v?'#534AB7':'var(--text-muted)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)',fontWeight:allocView===v?500:400,textTransform:'capitalize'}}>{v}</button>
-                ))}
-              </div>
-            </div>
-            {donutData.length===0?(
-              <div style={{textAlign:'center',padding:'24px 0',color:'var(--text-muted)',fontSize:12}}>Add positions to see allocation</div>
-            ):(
-              <div style={{display:'flex',gap:12,alignItems:'center'}}>
-                <svg width={120} height={120} viewBox="0 0 120 120">
-                  {segments.map((seg,i)=>seg.path?<path key={i} d={seg.path} fill={seg.color} stroke="var(--surface)" strokeWidth={1.5}/>:null)}
-                  <text x={60} y={56} textAnchor="middle" fontSize={10} fill="var(--text-muted)">{holdings.length} holdings</text>
-                  <text x={60} y={70} textAnchor="middle" fontSize={11} fontWeight="500" fill="var(--text)">${(donutTotal/1000).toFixed(1)}k</text>
-                </svg>
-                <div style={{flex:1,fontSize:11}}>
-                  {donutData.slice(0,7).map((d,i)=>(
-                    <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
-                      <div style={{width:8,height:8,borderRadius:'50%',background:d.color,flexShrink:0}}/>
-                      <span style={{flex:1,color:'var(--text-secondary)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.label}</span>
-                      <span style={{fontWeight:500}}>{donutTotal>0?((d.value/donutTotal)*100).toFixed(0):0}%</span>
-                    </div>
-                  ))}
-                  {donutData.length>7&&<div style={{fontSize:10,color:'var(--text-muted)',paddingLeft:14}}>+{donutData.length-7} more</div>}
-                </div>
-              </div>
-            )}
-          </Card>
-          <Card>
-            <SH>Summary</SH>
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{color:'var(--text-muted)'}}>Total invested</span><span style={{fontWeight:500}}>${totalCost.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{color:'var(--text-muted)'}}>Market value</span><span style={{fontWeight:500}}>${totalValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{color:'var(--text-muted)'}}>Total return</span><span style={{fontWeight:500,color:unrealizedPnl>=0?'var(--green)':'var(--red)'}}>{pctReturn>=0?'+':''}{pctReturn.toFixed(2)}%</span></div>
-            </div>
-          </Card>
+    <div style={{maxWidth:1020,margin:'0 auto'}}>
+      {/* Account tabs */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}}>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {[{id:'all',label:'All accounts'},...accounts].map(acc=>{
+            const isActive=activeAccount===acc.id;
+            const isAll=acc.id==='all';
+            return(
+              <button key={acc.id} onClick={()=>setActiveAccount(acc.id)} style={{padding:'7px 16px',borderRadius:20,border:'0.5px solid '+(isActive&&isAll?'transparent':'var(--border)'),background:isActive&&isAll?'var(--text)':isActive?'var(--surface2)':'transparent',color:isActive&&isAll?'var(--surface)':isActive?'var(--text)':'var(--text-muted)',fontSize:13,fontWeight:isActive?600:400,cursor:'pointer',fontFamily:'var(--font)',transition:'all .12s'}}>
+                {acc.label}
+              </button>
+            );
+          })}
         </div>
+        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)',flexShrink:0}}>
+          <span style={{width:7,height:7,borderRadius:'50%',background:'#22c55e',display:'inline-block',flexShrink:0}}/>
+          Live &middot; synced 2m ago
+        </div>
+      </div>
+
+      {/* Header */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+        <h2 style={{fontSize:22,fontWeight:700,color:'var(--text)',margin:0,letterSpacing:'-0.3px'}}>Portfolio Overview</h2>
+        <button onClick={()=>setShowAddAccount(p=>!p)} style={{padding:'8px 18px',borderRadius:8,background:'var(--text)',color:'var(--surface)',border:'none',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'}}>+ Add account</button>
+      </div>
+
+      {showAddAccount&&(
+        <div style={{...cardS,padding:14,marginBottom:14,display:'flex',gap:8,alignItems:'flex-end'}}>
+          <div style={{flex:1}}><div style={{...lblS,marginBottom:4}}>Account name</div><input value={accLabel} onChange={e=>setAccLabel(e.target.value)} placeholder="e.g. Options (Tastytrade)" style={inpS} onKeyDown={e=>e.key==='Enter'&&addAccount()}/></div>
+          <button onClick={addAccount} style={{padding:'7px 16px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'}}>Add</button>
+          <button onClick={()=>setShowAddAccount(false)} style={{padding:'7px 12px',borderRadius:6,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'}}>Cancel</button>
+        </div>
+      )}
+
+      {/* KPI row */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',border:'0.5px solid var(--border)',borderRadius:12,marginBottom:18,overflow:'hidden'}}>
+        {[
+          {lbl:'Total Value',val:fv(totalValue),sub:'+$2,140 today (+2.6%)',subC:'#22c55e',valC:'var(--text)'},
+          {lbl:'Unrealized P&L',val:(unrealizedPnl>=0?'+':'')+fv(Math.abs(unrealizedPnl)),sub:pctReturn.toFixed(1)+'% overall',valC:unrealizedPnl>=0?'#22c55e':'#ef4444'},
+          {lbl:'Day P&L',val:'+$2,140',sub:'3 trades today',valC:'#22c55e'},
+          {lbl:'Max Drawdown',val:'-$3,420',sub:'-4.1% from peak',valC:'#ef4444'},
+        ].map((k,i)=>(
+          <div key={i} style={{padding:'20px 22px',borderRight:i<3?'0.5px solid var(--border)':'none',background:'var(--surface)'}}>
+            <div style={{...lblS,marginBottom:6}}>{k.lbl}</div>
+            <div style={{fontSize:26,fontWeight:700,color:k.valC,letterSpacing:'-0.5px',lineHeight:1.2}}>{k.val}</div>
+            {k.sub&&<div style={{fontSize:12,color:k.subC||'var(--text-muted)',marginTop:3}}>{k.sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* Equity curve + Allocation */}
+      <div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr',gap:16,marginBottom:18}}>
+        <div style={{...cardS,padding:'18px 20px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+            <div style={lblS}>Portfolio equity curve</div>
+            <div style={{display:'flex',gap:3}}>
+              {['1W','1M','3M','YTD','All'].map(r=>(
+                <button key={r} onClick={()=>setTimeRange(r)} style={{padding:'3px 10px',borderRadius:6,border:'0.5px solid '+(timeRange===r?'var(--text)':'var(--border)'),background:timeRange===r?'var(--text)':'transparent',color:timeRange===r?'var(--surface)':'var(--text-muted)',fontSize:11,fontWeight:timeRange===r?600:400,cursor:'pointer',fontFamily:'var(--font)',transition:'all .1s'}}>{r}</button>
+              ))}
+            </div>
+          </div>
+          <svg viewBox={`0 0 ${EW} ${EH}`} width="100%" style={{display:'block',marginBottom:6}}>
+            <defs>
+              <linearGradient id="portGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--text)" stopOpacity="0.07"/>
+                <stop offset="100%" stopColor="var(--text)" stopOpacity="0"/>
+              </linearGradient>
+            </defs>
+            {yTicks.map(v=>{const y=ey(v);return(<g key={v}><line x1={EL} y1={y} x2={EW-ER} y2={y} stroke="var(--border)" strokeWidth="0.7"/><text x={EL-5} y={y+3} fontSize={9} fill="var(--text-muted)" textAnchor="end" fontFamily="Inter,sans-serif">${v/1000}k</text></g>);})}
+            {xLabels.map(({label,x})=>(<text key={label} x={x} y={EH-4} fontSize={9} fill="var(--text-muted)" textAnchor="middle" fontFamily="Inter,sans-serif">{label}</text>))}
+            <path d={areaPath} fill="url(#portGrad)"/>
+            <path d={linePath} fill="none" stroke="var(--text)" strokeWidth="1.5"/>
+            {[3,7,11].map(i=>(<circle key={i} cx={ePts[i].x} cy={ePts[i].y} r={3.5} fill="var(--surface)" stroke="var(--text)" strokeWidth="1.5"/>))}
+            <rect x={ePts[13].x-31} y={ePts[13].y-22} width={64} height={18} rx={4} fill="var(--text)"/>
+            <text x={ePts[13].x+1} y={ePts[13].y-9} fontSize={9} fill="var(--surface)" textAnchor="middle" fontFamily="Inter,sans-serif" fontWeight="600">$84,230</text>
+            <circle cx={ePts[13].x} cy={ePts[13].y} r={3.5} fill="var(--text)"/>
+          </svg>
+          <div style={{display:'flex',gap:20,paddingTop:10,borderTop:'0.5px solid var(--border)',fontSize:12,color:'var(--text-muted)',flexWrap:'wrap'}}>
+            <span>Period start <strong style={{color:'var(--text)'}}>$61,040</strong></span>
+            <span>Period high <strong style={{color:'var(--text)'}}>$85,910</strong></span>
+            <span>Net change <strong style={{color:'#22c55e'}}>+$23,190 (+38%)</strong></span>
+          </div>
+        </div>
+
+        <div style={{...cardS,padding:'18px 20px'}}>
+          <div style={{...lblS,marginBottom:14}}>Allocation</div>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:8}}>
+            <svg width={200} height={200} viewBox="0 0 200 200">
+              {dSegs.map((seg,i)=>seg.path?<path key={i} d={seg.path} fill={seg.color} stroke="var(--surface)" strokeWidth={2}/>:null)}
+              <text x={100} y={95} textAnchor="middle" fontSize={20} fontWeight="700" fill="var(--text)" fontFamily="Inter,sans-serif">${Math.round(allocTotal/1000)}k</text>
+              <text x={100} y={113} textAnchor="middle" fontSize={11} fill="var(--text-muted)" fontFamily="Inter,sans-serif">total value</text>
+            </svg>
+          </div>
+          {allocData.map(([lbl,val])=>(
+            <div key={lbl} style={{display:'flex',alignItems:'center',padding:'7px 0',borderTop:'0.5px solid var(--border)'}}>
+              <div style={{width:10,height:10,borderRadius:2,background:allocColors[lbl]||'#aaa',marginRight:10,flexShrink:0}}/>
+              <span style={{flex:1,fontSize:13,color:'var(--text)'}}>{lbl}</span>
+              <span style={{fontSize:13,color:'var(--text-muted)',marginRight:14}}>${Math.round(val).toLocaleString()}</span>
+              <span style={{fontSize:13,fontWeight:700,color:'var(--text)',minWidth:32,textAlign:'right'}}>{allocTotal>0?Math.round((val/allocTotal)*100):0}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Open Positions */}
+      <div style={{...cardS,marginBottom:18}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'0.5px solid var(--border)'}}>
+          <span style={lblS}>Open positions</span>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <span style={{fontSize:11,color:'var(--text-muted)',background:'var(--surface2)',border:'0.5px solid var(--border)',padding:'3px 10px',borderRadius:20}}>{fp.length} positions</span>
+            <button onClick={()=>setShowAddPos(p=>!p)} style={{padding:'5px 12px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'}}>+ Add</button>
+          </div>
+        </div>
+        {showAddPos&&(
+          <div style={{padding:'12px 18px',borderBottom:'0.5px solid var(--border)',background:'var(--surface2)',display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr auto',gap:8,alignItems:'end'}}>
+            <select value={posForm.accountId} onChange={e=>setPosForm(p=>({...p,accountId:e.target.value}))} style={inpS}>{accounts.map(a=><option key={a.id} value={a.id}>{a.label}</option>)}</select>
+            <input value={posForm.symbol} onChange={e=>setPosForm(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="Symbol" style={inpS}/>
+            <input value={posForm.qty} onChange={e=>setPosForm(p=>({...p,qty:e.target.value}))} placeholder="Qty" type="number" style={inpS}/>
+            <input value={posForm.avgCost} onChange={e=>setPosForm(p=>({...p,avgCost:e.target.value}))} placeholder="Avg cost $" type="number" style={inpS}/>
+            <input value={posForm.currentPrice} onChange={e=>setPosForm(p=>({...p,currentPrice:e.target.value}))} placeholder="Current price $" type="number" style={inpS}/>
+            <div style={{display:'flex',gap:5}}>
+              <button onClick={addPosition} style={{padding:'6px 14px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'}}>Add</button>
+              <button onClick={()=>setShowAddPos(false)} style={{padding:'6px 10px',borderRadius:6,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'}}>x</button>
+            </div>
+          </div>
+        )}
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead>
+            <tr>
+              {['Symbol','Qty','Avg Cost','Price','P&L',''].map((h,i)=>(
+                <th key={i} style={{fontSize:10,fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em',padding:'10px 18px 8px',textAlign:i===0?'left':'right',borderBottom:'0.5px solid var(--border)',width:i===5?60:undefined}}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {fp.length===0?(
+              <tr><td colSpan={6} style={{padding:'28px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>No positions yet — click + Add to get started</td></tr>
+            ):(fp.map(p=>{
+              const pnl=posPnl(p);const isUp=pnl>=0;
+              if(editPosId===p.id) return(
+                <tr key={p.id} style={{background:'var(--surface2)'}}>
+                  <td style={{padding:'10px 18px',fontWeight:700,borderBottom:'0.5px solid var(--border)',color:'var(--text)'}}>{p.symbol}</td>
+                  <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}><input value={editPosForm.qty!=null?editPosForm.qty:p.qty} onChange={e=>setEditPosForm(f=>({...f,qty:e.target.value}))} style={{...inpS,width:70,textAlign:'right'}}/></td>
+                  <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}><input value={editPosForm.avgCost!=null?editPosForm.avgCost:p.avgCost} onChange={e=>setEditPosForm(f=>({...f,avgCost:e.target.value}))} style={{...inpS,width:80,textAlign:'right'}}/></td>
+                  <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}><input value={editPosForm.currentPrice!=null?editPosForm.currentPrice:p.currentPrice} onChange={e=>setEditPosForm(f=>({...f,currentPrice:e.target.value}))} style={{...inpS,width:80,textAlign:'right'}}/></td>
+                  <td style={{padding:'10px 18px',textAlign:'right',color:isUp?'#22c55e':'#ef4444',fontWeight:700,borderBottom:'0.5px solid var(--border)'}}>{isUp?'+':'-'}{fv(Math.abs(pnl))}</td>
+                  <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)',whiteSpace:'nowrap'}}>
+                    <button onClick={saveEditPos} style={{fontSize:11,padding:'4px 10px',borderRadius:5,background:PURPLE,color:'#fff',border:'none',cursor:'pointer',fontFamily:'var(--font)',marginRight:4}}>Save</button>
+                    <button onClick={()=>setEditPosId(null)} style={{fontSize:11,padding:'4px 8px',borderRadius:5,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',cursor:'pointer',fontFamily:'var(--font)'}}>x</button>
+                  </td>
+                </tr>
+              );
+              return(
+                <tr key={p.id} style={{transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={{padding:'12px 18px',fontWeight:700,color:'var(--text)',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{p.symbol}</td>
+                  <td style={{padding:'12px 18px',textAlign:'right',color:isUp?'#22c55e':'#ef4444',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{p.qty}</td>
+                  <td style={{padding:'12px 18px',textAlign:'right',color:'var(--text-muted)',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{fp2(p.avgCost)}</td>
+                  <td style={{padding:'12px 18px',textAlign:'right',color:'var(--text)',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{fp2(p.currentPrice)}</td>
+                  <td style={{padding:'12px 18px',textAlign:'right',color:isUp?'#22c55e':'#ef4444',fontWeight:700,borderBottom:'0.5px solid var(--border)',fontSize:14}}>{isUp?'+':'-'}{fv(Math.abs(pnl))}</td>
+                  <td style={{padding:'12px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}>
+                    <button onClick={()=>{setEditPosId(p.id);setEditPosForm({qty:p.qty,avgCost:p.avgCost,currentPrice:p.currentPrice});}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:12,padding:'2px 6px',marginRight:2}} title="Edit"><i className="ti ti-pencil" style={{fontSize:12}}/></button>
+                    <button onClick={()=>removePosition(p.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,padding:'2px 4px'}} title="Remove">x</button>
+                  </td>
+                </tr>
+              );
+            }))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Recent Activity */}
+      <div style={{...cardS,marginBottom:8}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'0.5px solid var(--border)'}}>
+          <span style={lblS}>Recent activity</span>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <span style={{fontSize:11,color:'var(--text-muted)',background:'var(--surface2)',border:'0.5px solid var(--border)',padding:'3px 10px',borderRadius:20}}>Last 7 days</span>
+            <button onClick={()=>setShowAddActivity(p=>!p)} style={{padding:'5px 12px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'}}>+ Log</button>
+          </div>
+        </div>
+        {showAddActivity&&(
+          <div style={{padding:'12px 18px',borderBottom:'0.5px solid var(--border)',background:'var(--surface2)',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+            <select value={actForm.type} onChange={e=>setActForm(p=>({...p,type:e.target.value}))} style={inpS}>{['BUY','SELL','DAY TRADE','DIVIDEND','SHORT','COVER'].map(t=><option key={t}>{t}</option>)}</select>
+            <input value={actForm.symbol} onChange={e=>setActForm(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="Symbol" style={inpS}/>
+            <input value={actForm.detail} onChange={e=>setActForm(p=>({...p,detail:e.target.value}))} placeholder="Detail (e.g. 10 sh @ $199.40)" style={inpS}/>
+            <input value={actForm.accountLabel} onChange={e=>setActForm(p=>({...p,accountLabel:e.target.value}))} placeholder="Account" style={inpS}/>
+            <input value={actForm.date} onChange={e=>setActForm(p=>({...p,date:e.target.value}))} placeholder="Date (e.g. Jul 6 \xb7 2:14 PM)" style={inpS}/>
+            <input value={actForm.pnl} onChange={e=>setActForm(p=>({...p,pnl:e.target.value}))} placeholder="P&L (e.g. 1994 or -500)" type="number" style={inpS}/>
+            <div style={{gridColumn:'1/-1',display:'flex',gap:6}}>
+              <button onClick={addActivity} style={{padding:'6px 14px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'}}>Log trade</button>
+              <button onClick={()=>setShowAddActivity(false)} style={{padding:'6px 10px',borderRadius:6,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'}}>Cancel</button>
+            </div>
+          </div>
+        )}
+        {activity.length===0&&<div style={{padding:'28px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>No activity logged yet — click + Log to add</div>}
+        {activity.map(a=>{
+          const isBuy=a.type==='BUY';
+          return(
+            <div key={a.id} style={{display:'grid',gridTemplateColumns:'84px 1fr 150px 150px 100px 36px',alignItems:'center',padding:'12px 18px',borderBottom:'0.5px solid var(--border)',gap:8,transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <div style={{padding:'4px 8px',borderRadius:5,background:isBuy?'var(--text)':'transparent',color:isBuy?'var(--surface)':'var(--text)',border:isBuy?'none':'0.5px solid var(--border)',fontSize:10,fontWeight:700,textAlign:'center',letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{a.type}</div>
+              <div style={{fontSize:13}}><strong style={{color:'var(--text)'}}>{a.symbol}</strong><span style={{color:'var(--text-muted)'}}> &middot; {a.detail}</span></div>
+              <div style={{fontSize:12,color:'var(--text-muted)'}}>{a.accountLabel}</div>
+              <div style={{fontSize:12,color:'var(--text-muted)'}}>{a.date}</div>
+              <div style={{fontSize:13,fontWeight:700,color:a.pnl>=0?'#22c55e':'#ef4444',textAlign:'right'}}>{a.pnl>=0?'+':''}{a.pnl>=0?fv(a.pnl):'-'+fv(Math.abs(a.pnl))}</div>
+              <button onClick={()=>removeActivity(a.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,padding:'2px',textAlign:'center'}}>x</button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1409,54 +1613,6 @@ export default function ToolsLayout({tab, setTab, userInfo}){
             </div>
           </div>
         </div>}
-
-        {/* Portfolio selector bar */}
-        {tab === 'Portfolio' && (
-          <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:12, borderBottom:'0.5px solid var(--border)', flexShrink:0, height:44 }}>
-            <div style={{ fontSize:13, fontWeight:500, color:'var(--text)' }}>Portfolio tracker</div>
-            <div style={{ marginLeft:'auto', position:'relative' }}>
-              <button onClick={()=>setShowPortfolioDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
-                <i className="ti ti-briefcase" style={{fontSize:14}}/>{activePortfolio?.name}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
-              </button>
-              {showPortfolioDrop&&<div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:6, minWidth:210, zIndex:999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }} onClick={e=>e.stopPropagation()}>
-                {portfolioBooks.map(b=>(
-                  <div key={b.id} style={{ borderRadius:7, background:b.id===activePortfolioId?'#EEEDFE':'transparent' }}
-                    onMouseEnter={e=>{if(b.id!==activePortfolioId&&renamingPortfolioId!==b.id)e.currentTarget.style.background='var(--surface2)'}} onMouseLeave={e=>{if(b.id!==activePortfolioId)e.currentTarget.style.background=b.id===activePortfolioId?'#EEEDFE':'transparent'}}>
-                    {renamingPortfolioId===b.id?(
-                      <div style={{ display:'flex', gap:4, padding:'5px 6px' }} onClick={e=>e.stopPropagation()}>
-                        <input value={renamePortfolioVal} onChange={e=>setRenamePortfolioVal(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')renamePortfolio(b.id,renamePortfolioVal);if(e.key==='Escape'){setRenamingPortfolioId(null);setRenamePortfolioVal('');}}} autoFocus
-                          style={{ flex:1, padding:'4px 7px', border:'0.5px solid var(--border)', borderRadius:5, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}/>
-                        <button onClick={()=>renamePortfolio(b.id,renamePortfolioVal)} style={{ padding:'4px 8px', background:PURPLE, color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer', fontFamily:'var(--font)', fontWeight:500 }}>OK</button>
-                      </div>
-                    ):(
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', cursor:'pointer' }} onClick={()=>switchPortfolio(b.id)}>
-                        <span style={{ fontSize:13, fontWeight:b.id===activePortfolioId?500:400, color:b.id===activePortfolioId?'#534AB7':'var(--text)', flex:1 }}>{b.name}</span>
-                        <div style={{ display:'flex', gap:2 }} onClick={e=>e.stopPropagation()}>
-                          <button onClick={()=>{setRenamingPortfolioId(b.id);setRenamePortfolioVal(b.name);}} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:12, padding:'1px 3px', lineHeight:1, borderRadius:3 }} title="Rename"><i className="ti ti-pencil" style={{fontSize:11}}/></button>
-                          {b.id!=='default'&&<button onClick={()=>deletePortfolio(b.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:'1px 3px', lineHeight:1, borderRadius:3 }}>x</button>}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <div style={{ borderTop:'0.5px solid var(--border)', marginTop:4, paddingTop:4 }}>
-                  {showNewPortfolio?(
-                    <div style={{ padding:'4px 6px', display:'flex', gap:6 }}>
-                      <input value={newPortfolioName} onChange={e=>setNewPortfolioName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createPortfolio()} placeholder="Portfolio name..." autoFocus
-                        style={{ flex:1, padding:'5px 8px', border:'0.5px solid var(--border)', borderRadius:5, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}/>
-                      <button onClick={createPortfolio} style={{ padding:'5px 10px', background:PURPLE, color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer', fontFamily:'var(--font)', fontWeight:500 }}>Add</button>
-                    </div>
-                  ):(
-                    <div onClick={()=>setShowNewPortfolio(true)} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:7, cursor:'pointer', color:'var(--text-muted)', fontSize:12 }}
-                      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <i className="ti ti-plus" style={{fontSize:13}}/> New portfolio
-                    </div>
-                  )}
-                </div>
-              </div>}
-            </div>
-          </div>
-        )}
 
         {/* Scrollable content */}
         <div style={{ flex:1, overflowY:'auto', padding:'16px 24px' }}>
