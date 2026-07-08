@@ -746,19 +746,53 @@ function OverviewTab({ user }) {
 }
 
 function AnalyticsCommunityTab() {
-  const followerData = [30, 44, 38, 55, 62, 72, 100]
-  const reachData = [20, 35, 48, 42, 60, 55, 88]
+  const [data, setData]       = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
+
+  React.useEffect(() => {
+    fetch('/api/social/analytics')
+      .then(r => r.json())
+      .then(d => { if (d.error) throw new Error(d.error); setData(d) })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--text-muted)', fontSize: 13 }}>
+      Loading analytics…
+    </div>
+  )
+  if (error) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: '#dc2626', fontSize: 13 }}>
+      Failed to load analytics: {error}
+    </div>
+  )
+
+  const {
+    followersTotal = 0, followersThisWeek = 0, netNewThisMonth = 0,
+    followerGrowth = [0,0,0,0,0,0,0],
+    posts30dCount = 0, avgLikes = 0, avgReposts = 0, avgComments = 0, engageRate = null,
+    topPosts = [],
+    activeGroups = 0, totalGroupMembers = 0, newGroupMembersMonth = 0, groupPosts7d = 0, activeGroupMembers = 0,
+    audienceInterests = [],
+  } = data || {}
+
+  const growthChart = followerGrowth.every(v => v === 0) ? followerGrowth.map(() => 1) : followerGrowth
+  const engageDisplay = engageRate !== null ? engageRate + '%' : '—'
+  const topPostMax = topPosts.length ? Math.max(...topPosts.map(p => p.engagement), 1) : 1
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Top 6 stats */}
+      {/* Top 6 KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 8 }}>
         {[
-          { label: 'Followers',     value: '—', sub: '+0 this week' },
-          { label: 'Profile views', value: '—', sub: '+0 this week' },
-          { label: 'Posts (30d)',   value: '0',  sub: '0 avg views' },
-          { label: 'Engage rate',   value: '—',  sub: 'likes + comments', color: PURPLE },
-          { label: 'Group members', value: '0',  sub: '+0 this week' },
-          { label: '30d retention', value: '—',  sub: 'group members', color: '#16a34a' },
+          { label: 'Followers',     value: followersTotal.toLocaleString(), sub: '+' + followersThisWeek + ' this week' },
+          { label: 'Posts (30d)',   value: posts30dCount, sub: avgLikes + ' avg likes' },
+          { label: 'Avg likes',     value: avgLikes, sub: 'per post' },
+          { label: 'Engage rate',   value: engageDisplay, sub: 'likes + comments', color: PURPLE },
+          { label: 'Group members', value: totalGroupMembers.toLocaleString(), sub: '+' + newGroupMembersMonth + ' this month' },
+          { label: 'Active groups', value: activeGroups, sub: groupPosts7d + ' posts (7d)', color: '#16a34a' },
         ].map(s => (
           <Card2 key={s.label} style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 18, fontWeight: 500, color: s.color || 'var(--text)', marginBottom: 2 }}>{s.value}</div>
@@ -772,34 +806,45 @@ function AnalyticsCommunityTab() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
         <Card>
           <SH>Follower growth</SH>
-          <MiniBar data={followerData} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 4, marginBottom: 8 }}><span>6 weeks ago</span><span>Now</span></div>
-          <div style={{ fontSize: 11 }}>Net new this month: <strong style={{ color: '#16a34a' }}>+0</strong></div>
-        </Card>
-        <Card>
-          <SH>Post reach (top posts)</SH>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>No posts yet. Start posting to see your reach data here.</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {['Post 1', 'Post 2', 'Post 3'].map((p, i) => (
-              <div key={p}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 2 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{p}</span>
-                  <span style={{ fontWeight: 500 }}>— views</span>
-                </div>
-                <div style={{ height: 4, background: 'var(--border)', borderRadius: 2 }} />
-              </div>
-            ))}
+          <MiniBar data={growthChart} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 4, marginBottom: 8 }}>
+            <span>6 weeks ago</span><span>Now</span>
           </div>
+          <div style={{ fontSize: 11 }}>Net new this month: <strong style={{ color: '#16a34a' }}>+{netNewThisMonth}</strong></div>
+          <div style={{ fontSize: 11, marginTop: 4 }}>Total followers: <strong>{followersTotal.toLocaleString()}</strong></div>
         </Card>
+
+        <Card>
+          <SH>Top posts (30d) by engagement</SH>
+          {topPosts.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No posts in last 30 days. Start posting to see reach data.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {topPosts.map((p, i) => (
+                <div key={i}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
+                    <span style={{ color: 'var(--text-muted)', maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.preview || '(image / poll)'}</span>
+                    <span style={{ fontWeight: 500 }}>{p.engagement} eng.</span>
+                  </div>
+                  <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ width: Math.round((p.engagement / topPostMax) * 100) + '%', height: '100%', background: PURPLE, borderRadius: 2 }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{p.likes} likes · {p.comments} comments</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
         <Card>
           <SH>Engagement breakdown</SH>
           {[
-            { label: 'Avg views / post',    value: '—' },
-            { label: 'Avg likes / post',    value: '—' },
-            { label: 'Avg comments / post', value: '—' },
-            { label: 'Avg saves / post',    value: '—', color: PURPLE },
-            { label: 'Profile clicks',      value: '—' },
-            { label: 'Save rate',           value: '—', color: PURPLE },
+            { label: 'Avg likes / post',    value: avgLikes },
+            { label: 'Avg comments / post', value: avgComments },
+            { label: 'Avg reposts / post',  value: avgReposts, color: PURPLE },
+            { label: 'Engage rate',         value: engageDisplay, color: engageRate !== null ? PURPLE : undefined },
+            { label: 'Posts this month',    value: posts30dCount },
+            { label: 'Total followers',     value: followersTotal.toLocaleString() },
           ].map((r, i, a) => (
             <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none', fontSize: 11 }}>
               <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
@@ -813,34 +858,34 @@ function AnalyticsCommunityTab() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Card>
           <SH>Audience interests</SH>
-          {[
-            { label: 'Commodities', pct: 0, color: '#633806' },
-            { label: 'Forex',       pct: 0, color: '#085041' },
-            { label: 'Crypto',      pct: 0, color: '#3C3489' },
-            { label: 'Stocks',      pct: 0, color: '#791F1F' },
-            { label: 'Futures',     pct: 0, color: '#444441' },
-          ].map(r => (
+          {audienceInterests.every(r => r.pct === 0) && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+              Grow your followers to see audience data. Interests reflect your followers’ trading styles.
+            </div>
+          )}
+          {audienceInterests.map(r => (
             <div key={r.label} style={{ marginBottom: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 2 }}>
                 <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
                 <span style={{ fontWeight: 500 }}>{r.pct}%</span>
               </div>
               <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ width: `${r.pct}%`, height: '100%', background: r.color, borderRadius: 2 }} />
+                <div style={{ width: r.pct + '%', height: '100%', background: r.color, borderRadius: 2 }} />
               </div>
             </div>
           ))}
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>Based on your followers' activity on TradeZar</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>Based on your followers’ trading styles on TradeZar</div>
         </Card>
+
         <Card>
           <SH>Group & community stats</SH>
           {[
-            { label: 'Active groups',           value: '0' },
-            { label: 'Total group members',     value: '0' },
-            { label: 'Active members (7d)',     value: '0' },
-            { label: 'Posts in groups (7d)',    value: '0' },
-            { label: '30-day retention',        value: '—', color: '#16a34a' },
-            { label: 'New members this month',  value: '+0', color: '#16a34a' },
+            { label: 'Groups you own',       value: activeGroups },
+            { label: 'Total group members',  value: totalGroupMembers.toLocaleString() },
+            { label: 'Active members (7d)',  value: activeGroupMembers },
+            { label: 'Posts in groups (7d)', value: groupPosts7d },
+            { label: 'New members (month)',  value: '+' + newGroupMembersMonth, color: '#16a34a' },
+            { label: 'Followers this week',  value: '+' + followersThisWeek, color: '#16a34a' },
           ].map((r, i, a) => (
             <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none', fontSize: 11 }}>
               <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
