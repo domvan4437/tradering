@@ -89,28 +89,51 @@ export async function GET() {
         }).then(r => r.length)
       : 0
 
-    // ── Audience interests: followers' tradingStyle ─────────────────
+    // ── Audience interests: followers' primaryAssets ────────────────
+    // primaryAssets is a comma-separated string like "Gold, EUR/USD, Bitcoin, Stocks"
     const followerProfiles = await prisma.userFollow.findMany({
       where: { followingId: uid },
-      select: { follower: { select: { tradingStyle: true } } },
+      select: { follower: { select: { primaryAssets: true } } },
       take: 500,
     })
-    const styleMap = {}
+
+    // Map each asset token to a category bucket
+    const ASSET_BUCKETS = {
+      Commodities: ['Gold','Silver','Crude Oil','Natural Gas','Wheat','Corn','Soybeans','Oil','Commodity','Commodities'],
+      Forex:       ['EUR/USD','GBP/USD','AUD/USD','USD/JPY','USD/CAD','NZD/USD','EUR/GBP','Forex','FX','Currency'],
+      Crypto:      ['Bitcoin','Ethereum','BTC','ETH','Crypto','Solana','XRP','Litecoin','USDT','Altcoin'],
+      Stocks:      ['Stocks','Stock','Equities','S&P','SPY','QQQ','Equity','Shares'],
+      Futures:     ['ES Futures','NQ Futures','Futures','MES','MNQ','YM','RTY','CL','GC','SI'],
+    }
+    const bucketCounts = { Commodities: 0, Forex: 0, Crypto: 0, Stocks: 0, Futures: 0 }
+    let totalAssetMentions = 0
+
     followerProfiles.forEach(f => {
-      const s = f.follower?.tradingStyle
-      if (s) styleMap[s] = (styleMap[s] || 0) + 1
+      const assets = f.follower?.primaryAssets
+      if (!assets) return
+      // primaryAssets can be string (comma-separated) or array
+      const list = Array.isArray(assets) ? assets : assets.split(',').map(s => s.trim()).filter(Boolean)
+      list.forEach(asset => {
+        for (const [bucket, keywords] of Object.entries(ASSET_BUCKETS)) {
+          if (keywords.some(k => asset.toLowerCase().includes(k.toLowerCase()))) {
+            bucketCounts[bucket]++
+            totalAssetMentions++
+            break
+          }
+        }
+      })
     })
-    const profilesWithStyle = Object.values(styleMap).reduce((a, b) => a + b, 0) || 1
-    const INTEREST_KEYS = [
-      { label: 'Stocks',      key: 'Stocks',      color: '#791F1F' },
-      { label: 'Forex',       key: 'Forex',        color: '#085041' },
+
+    const denominator = totalAssetMentions || 1
+    const audienceInterests = [
+      { label: 'Commodities', key: 'Commodities', color: '#633806' },
+      { label: 'Forex',       key: 'Forex',       color: '#085041' },
       { label: 'Crypto',      key: 'Crypto',       color: '#3C3489' },
+      { label: 'Stocks',      key: 'Stocks',       color: '#791F1F' },
       { label: 'Futures',     key: 'Futures',      color: '#444441' },
-      { label: 'Commodities', key: 'Commodities',  color: '#633806' },
-    ]
-    const audienceInterests = INTEREST_KEYS.map(({ label, key, color }) => ({
+    ].map(({ label, key, color }) => ({
       label,
-      pct: Math.round(((styleMap[key] || 0) / profilesWithStyle) * 100),
+      pct: Math.round((bucketCounts[key] / denominator) * 100),
       color,
     }))
 

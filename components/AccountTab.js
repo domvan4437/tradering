@@ -935,15 +935,67 @@ function BrokerTab() {
 
 // ─── MONETIZATION ─────────────────────────────────────────────────────────────
 function MonetizationTab() {
+  const [data, setData]         = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(null)
+  const [connecting, setConn]   = useState(false)
+
+  function load() {
+    setLoading(true)
+    fetch('/api/monetization/dashboard')
+      .then(r => r.json())
+      .then(d => { if (d.error) throw new Error(d.error); setData(d) })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }
+  React.useEffect(() => { load() }, [])
+
+  async function handleConnectStripe() {
+    setConn(true)
+    try {
+      const r = await fetch('/api/monetization/connect', { method: 'POST' })
+      const d = await r.json()
+      if (d.error) throw new Error(d.error)
+      window.open(d.url, '_blank')
+      // Poll after user returns
+      setTimeout(() => { load() }, 3000)
+    } catch (e) {
+      alert('Could not start Stripe Connect: ' + e.message)
+    } finally {
+      setConn(false)
+    }
+  }
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--text-muted)', fontSize: 13 }}>
+      Loading monetization data…
+    </div>
+  )
+  if (error) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: '#dc2626', fontSize: 13 }}>
+      {error}
+    </div>
+  )
+
+  const { earnings = {}, subscribers = {}, products = [], recentPayouts = [],
+          stripeConnectId, stripeConnectStatus, plan } = data || {}
+
+  const fmt = v => '$' + (v || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const isTrader = plan === 'trader'
+  const connectActive = stripeConnectStatus === 'active'
+  const connectPending = stripeConnectId && !connectActive
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+      {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8 }}>
         {[
-          { label: 'This month',      value: '$0' },
-          { label: 'Last month',      value: '$0' },
-          { label: 'All time',        value: '$0' },
-          { label: 'Paid subscribers',value: '0' },
-          { label: 'Pending payout',  value: '$0', color: '#dc2626' },
+          { label: 'This month',       value: fmt(earnings.thisMonth) },
+          { label: 'Last month',       value: fmt(earnings.lastMonth) },
+          { label: 'All time',         value: fmt(earnings.allTime) },
+          { label: 'Paid subscribers', value: String(subscribers.active || 0) },
+          { label: 'Pending payout',   value: fmt(earnings.pendingPayout), color: earnings.pendingPayout > 0 ? '#16a34a' : undefined },
         ].map(s => (
           <Card2 key={s.label} style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 20, fontWeight: 500, color: s.color || 'var(--text)', marginBottom: 3 }}>{s.value}</div>
@@ -953,61 +1005,139 @@ function MonetizationTab() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+        {/* Payout method */}
         <Card>
           <SH>Payout method</SH>
-          <div style={{ padding: '8px 10px', borderRadius: 6, border: '0.5px solid #dc2626', background: 'rgba(220,38,38,0.05)', fontSize: 11, color: '#dc2626', marginBottom: 10 }}>
-            No payout method connected. Set one up to receive earnings.
-          </div>
+          {connectActive ? (
+            <div style={{ padding: '8px 10px', borderRadius: 6, border: '0.5px solid #16a34a', background: 'rgba(22,163,74,0.05)', fontSize: 11, color: '#15803d', marginBottom: 10 }}>
+              <i className="ti ti-circle-check" style={{ marginRight: 6 }} />
+              Stripe Connect active — payouts enabled
+            </div>
+          ) : connectPending ? (
+            <div style={{ padding: '8px 10px', borderRadius: 6, border: '0.5px solid #d97706', background: 'rgba(217,119,6,0.05)', fontSize: 11, color: '#92400e', marginBottom: 10 }}>
+              <i className="ti ti-clock" style={{ marginRight: 6 }} />
+              Stripe setup in progress. Complete onboarding to enable payouts.
+            </div>
+          ) : (
+            <div style={{ padding: '8px 10px', borderRadius: 6, border: '0.5px solid #dc2626', background: 'rgba(220,38,38,0.05)', fontSize: 11, color: '#dc2626', marginBottom: 10 }}>
+              No payout method connected. Connect Stripe to receive earnings.
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <BtnP style={{ width: '100%' }}>Connect Stripe</BtnP>
-            <BtnS style={{ width: '100%' }}>Connect bank account</BtnS>
+            {!connectActive && (
+              <BtnP onClick={handleConnectStripe} style={{ width: '100%' }} disabled={connecting}>
+                {connecting ? 'Opening Stripe…' : connectPending ? 'Continue Stripe setup' : 'Connect Stripe'}
+              </BtnP>
+            )}
+            {connectActive && (
+              <BtnS onClick={handleConnectStripe} style={{ width: '100%' }}>
+                Manage Stripe account
+              </BtnS>
+            )}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 10, lineHeight: 1.5 }}>
+            Payouts processed via Stripe Connect. 5% platform fee applies. Minimum $25 to trigger payout.
           </div>
         </Card>
+
+        {/* Available monetization */}
         <Card>
           <SH>Available monetization</SH>
           {[
-            { label: 'Paid groups',          status: 'Available', available: true },
-            { label: 'Paid courses',          status: 'Available', available: true },
-            { label: 'Tips / donations',      status: 'Available', available: true },
-            { label: 'Signal subscriptions',  status: 'Available', available: true },
-            { label: 'Revenue share (content)',status: 'Pro only', available: false },
+            { label: 'Paid groups',           available: true,     note: 'Any plan' },
+            { label: 'Signal subscriptions',  available: true,     note: 'Any plan' },
+            { label: 'Tips / donations',      available: true,     note: 'Any plan' },
+            { label: 'Paid courses',          available: isTrader, note: isTrader ? 'Trader plan' : 'Trader plan required' },
+            { label: 'Revenue share (content)',available: isTrader, note: isTrader ? 'Trader plan' : 'Trader plan required' },
           ].map((r, i, a) => (
             <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none', fontSize: 12 }}>
               <span>{r.label}</span>
-              <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 7px', borderRadius: 3, background: r.available ? 'rgba(22,163,74,0.1)' : 'rgba(180,83,9,0.1)', color: r.available ? '#15803d' : '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{r.status}</span>
+              <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 7px', borderRadius: 3, background: r.available ? 'rgba(22,163,74,0.1)' : 'rgba(180,83,9,0.1)', color: r.available ? '#15803d' : '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{r.note}</span>
             </div>
           ))}
         </Card>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+        {/* Paid products */}
         <Card>
           <SH>Your paid products</SH>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>No paid products yet. Create a paid group, course, or signal service to start earning.</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <BtnP style={{ fontSize: 10 }}>+ Paid group</BtnP>
-            <BtnS style={{ fontSize: 10 }}>+ Paid course</BtnS>
-            <BtnS style={{ fontSize: 10 }}>+ Signals</BtnS>
-          </div>
+          {products.length === 0 ? (
+            <>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+                No paid products yet. Create a paid group to start earning.
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <BtnP style={{ fontSize: 10 }}>+ Paid group</BtnP>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {products.map(p => (
+                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '0.5px solid var(--border)', fontSize: 11 }}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{p.name}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{p.activeSubscribers} subscribers · ${p.monthlyPrice}/mo</div>
+                  </div>
+                  <span style={{ fontWeight: 500, color: '#16a34a' }}>{fmt(p.mrr)}/mo</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 11, borderTop: '0.5px solid var(--border)', marginTop: 2 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Monthly recurring</span>
+                <span style={{ fontWeight: 600, color: '#16a34a' }}>{fmt(earnings.mrr)}</span>
+              </div>
+            </div>
+          )}
         </Card>
+
+        {/* Subscriber management */}
         <Card>
           <SH>Subscriber management</SH>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>No paid subscribers yet. Manage cancellations, refunds, and messages here once you do.</div>
+          {subscribers.active === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>
+              No paid subscribers yet. Create a paid group to start building an audience.
+            </div>
+          ) : null}
           {[
-            { label: 'Active subscribers',    value: '0' },
-            { label: 'Cancelled this month',  value: '0' },
+            { label: 'Active subscribers',   value: String(subscribers.active || 0) },
+            { label: 'Cancelled this month', value: String(subscribers.cancelledMonth || 0) },
+            { label: 'MRR',                  value: fmt(earnings.mrr), color: '#16a34a' },
+            { label: 'Platform fee (5%)',     value: fmt((earnings.mrr || 0) * 0.05), color: 'var(--text-muted)' },
+            { label: 'Net MRR',              value: fmt((earnings.mrr || 0) * 0.95), color: '#16a34a' },
           ].map((r, i, a) => (
             <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none', fontSize: 11 }}>
               <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
-              <span style={{ fontWeight: 500 }}>{r.value}</span>
+              <span style={{ fontWeight: 500, color: r.color || 'var(--text)' }}>{r.value}</span>
             </div>
           ))}
         </Card>
       </div>
 
+      {/* Payout history */}
       <Card>
         <SH>Payout history</SH>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No payouts yet. Earnings are paid out on the 1st of each month once you've connected a payout method and reached the $25 minimum threshold.</div>
+        {recentPayouts.length === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            No payouts yet. Earnings are paid on the 1st of each month once you have connected Stripe and reached the $25 minimum.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {recentPayouts.map((p, i) => (
+              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < recentPayouts.length - 1 ? '0.5px solid var(--border)' : 'none', fontSize: 11 }}>
+                <div>
+                  <div style={{ fontWeight: 500 }}>{p.description || p.type}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{new Date(p.createdAt).toLocaleDateString()}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 600, color: '#16a34a' }}>{fmt(p.amount)}</span>
+                  <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, background: p.paidOut ? 'rgba(22,163,74,0.1)' : 'rgba(180,83,9,0.1)', color: p.paidOut ? '#15803d' : '#92400e', fontWeight: 600, textTransform: 'uppercase' }}>{p.paidOut ? 'Paid' : 'Pending'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
     </div>
