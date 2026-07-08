@@ -1,9 +1,6 @@
 'use client'
 import { UserAvatarContext } from './UserAvatarContext'
-import MarketOverview from './MarketOverview'
 import FeedTab from './FeedTab'
-import { MarketsLanding, CommunityLanding, ToolsLanding, NewsLanding } from './SectionLanding'
-import CryptoTab from './CryptoTab'
 import ProfileTab from './ProfileTab'
 import AccountTab from './AccountTab'
 import GlobalLeaderboard from './GlobalLeaderboard'
@@ -13,15 +10,12 @@ import { useTheme } from './ThemeProvider'
 import React, { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import MarketsSection from './MarketsSection'
 import AIAssistant from './AIAssistant'
 import { NotesTab, WeeklyReviewTab, PnLCalendar, ThemeSettings } from './RichTools'
-import ChartWorkspace from './ChartWorkspace'
 import HomePage from './HomePage'
 import NavBar from './NavBar'
 // import TickerStrip from './TickerStrip'
 import { UpgradeModal } from './UpgradeModal'
-import { ForexOverviewTab, ForexCOTTab, ForexKeyLevelsTab } from './ForexSection'
 import AICoachTab from './AICoachTab'
 import { JournalLanding } from './JournalLanding'
 import TradeRingJournal from './TradeRingJournal'
@@ -35,7 +29,6 @@ import TradePlanTab from './TradePlanTab'
 import BacktestTab from './BacktestTab'
 import ScreenerBuilder from './ScreenerBuilder'
 import StrategyBacktestTab from './StrategyBacktestTab'
-import NewsTab from './NewsTab'
 import SocialTab from './SocialTab'
 import GroupsTab from './GroupsTab'
 import TabTooltip from './TabTooltip'
@@ -50,9 +43,6 @@ import FloatingAICoach from './FloatingAICoach'
 import CompetitionBanner from './CompetitionBanner'
 import BrokerIntegrationTab from './BrokerIntegrationTab'
 import CreatorDashboard from './CreatorDashboard'
-import { StocksOverviewTab, StocksSectorsTab, StocksEarningsTab, StocksKeyLevelsTab } from './StocksSection'
-import CommoditiesOverviewTab from './CommoditiesOverviewTab'
-import FuturesOverviewTabNew from './FuturesOverviewTab'
 
 const STAGES = [
   { id: 'seasonal', label: 'Stage 1', title: 'Seasonal Tendency',
@@ -88,8 +78,6 @@ const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil'
 const SECTION_TABS = {
   community:   ['Feed','Groups','Messages'],
   compete:     ['Home','H2H','Group Contests','Leaderboard','History'],
-  markets:     ['Commodities','Futures','Forex','Stocks','Crypto','News'],
-  charts:      ['Workspace'],
   tools2:      ['Journal','COT Alerts','Screener'],
   journal:     ['Journal'],
   account:     ['Overview'],
@@ -338,112 +326,6 @@ function FuturesOverviewTab() {
   );
 }
 
-// ── Markets Layout — must be defined before App()
-function MarketsLayout({ tab, setTab, plan, onUpgrade, currentUserId }) {
-  const [subTab, setSubTab] = React.useState('');
-  const showLanding = !tab || tab === 'Markets';
-
-  React.useEffect(() => {
-    if (tab && tab !== 'Markets') {
-      setSubTab('Overview');
-    } else { setSubTab(''); }
-  }, [tab]);
-
-  const section = (tab || 'commodities').toLowerCase();
-
-  const SUB_TABS = {
-    commodities: ['Overview'],
-    forex:       ['Overview'],
-    stocks:      ['Overview','Sectors','Earnings','Key Levels'],
-    crypto:      ['Overview'],
-    futures:     ['Overview'],
-    charts:      ['Workspace'],
-  };
-  const subTabs = SUB_TABS[section] || [];
-  if (showLanding) {
-    return <MarketOverview onSelect={(key, sym) => {
-        if (key === 'charts') { setSection('charts'); setTab(''); return; }
-        const t = key.charAt(0).toUpperCase() + key.slice(1);
-        setTab(t);
-        setSubTab(key === 'commodities' ? 'Screener' : 'Overview');
-      }} />;
-  }
-
-  // Show market overview when no subTab selected
-  if (!subTab && section !== 'charts') {
-    return <MarketOverview onSelect={(key, sym) => {
-        if (key === 'charts') { setSection('charts'); setTab(''); return; }
-        const t = key.charAt(0).toUpperCase() + key.slice(1);
-        setTab(t);
-        setSubTab(key === 'commodities' ? 'Screener' : 'Overview');
-      }} />;
-  }
-
-
-
-
-
-
-
-  return (
-    <div>
-      {subTabs.length > 1 && section !== 'stocks' && (
-        <div style={{ display:'flex', borderBottom:'1px solid var(--border)', padding:'0 24px', background:'var(--surface)', position:'sticky', top:46, zIndex:50, overflowX:'auto' }}>
-          {subTabs.map(t => (
-            <button key={t} onClick={() => setSubTab(t)} style={{
-              background:'transparent',
-              color: subTab===t ? 'var(--accent)' : 'var(--text-muted)',
-              border:'none',
-              borderBottom: subTab===t ? '2px solid var(--accent)' : '2px solid transparent',
-              padding:'0 14px', height:38,
-              fontSize:12, fontWeight: subTab===t ? 600 : 400,
-              cursor:'pointer', fontFamily:'var(--font)',
-              whiteSpace:'nowrap', flexShrink:0,
-              transition:'all 0.15s', marginBottom:-1,
-            }}>{t}</button>
-          ))}
-        </div>
-      )}
-      <div style={{ padding:'20px 24px' }}>
-        {section === 'charts' && <ChartWorkspace />}
-        {section === 'crypto' && <div style={{ marginTop: 82 }}><CryptoTab /></div>}
-        {section === 'commodities' && <>
-          {subTab==='Overview'          && <div style={{ marginTop: 82 }}><CommoditiesOverviewTab /></div>}
-          {subTab==='Screener'          && <ScreenerBuilder user={null} />}
-          {subTab==='COT Index'         && <COTIndexTab />}
-          {subTab==='Seasonal'          && <SeasonalTab />}
-          {subTab==='Watchlist'         && <WatchlistTab plan={plan} onUpgrade={onUpgrade} />}
-          {subTab==='Positions'         && <PositionsTab />}
-          {subTab==='Journal'           && <JournalTab />}
-          {subTab==='Ideas'             && <IdeasTab />}
-          {subTab==='Economic Calendar' && <CalendarTab />}
-          {subTab==='Analytics'         && <AnalyticsTab />}
-          {subTab==='Alerts'            && <AlertsTab plan={plan} onUpgrade={onUpgrade} />}
-          {subTab==='Checklist'         && <ChecklistTab />}
-        </>}
-        {section === 'forex' && <>
-          {subTab==='Overview'          && <div style={{ marginTop: 82 }}><ForexOverviewTab /></div>}
-          {subTab==='COT Data'          && <ForexCOTTab />}
-          {subTab==='Key Levels'        && <ForexKeyLevelsTab />}
-          {subTab==='Economic Calendar' && <CalendarTab />}
-        </>}
-        {section === 'stocks' && <>
-          {subTab==='Overview'   && <div style={{ marginTop: 82 }}><StocksOverviewTab /></div>}
-          {subTab==='Sectors'    && <StocksSectorsTab />}
-          {subTab==='Earnings'   && <StocksEarningsTab />}
-          {subTab==='Key Levels' && <StocksKeyLevelsTab />}
-        </>}
-        {section === 'futures' && <>
-          {subTab==='Overview'      && <div style={{ marginTop: 82 }}><FuturesOverviewTabNew /></div>}
-          {subTab==='Financial COT' && <COTIndexTab />}
-          {subTab==='Yield Curve'   && <ComingSoonTab section="futures" tab="Yield Curve" />}
-          {subTab==='Key Levels'    && <ComingSoonTab section="futures" tab="Key Levels" />}
-        </>}
-      </div>
-    </div>
-  );
-}
-
 // ── Community Layout
 // CommunityLayout imported from ./CommunityLayout
 
@@ -453,7 +335,6 @@ export default function App() {
   const [userInfo, setUserInfo] = useState(null)
   const [showAccount, setShowAccount] = useState(false)
   const [hoveredSection, setHoveredSection] = useState(null)
-  const [marketSection, setMarketSection] = useState('commodities') // commodities|forex|stocks|crypto|charts
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [upgradeFeature, setUpgradeFeature] = useState(null)
   const handleUpgrade = (feature) => { setUpgradeFeature(feature||null); setShowUpgrade(true) }
@@ -488,7 +369,7 @@ export default function App() {
   const goToProfile = (slug) => { setViewingProfile(slug); }
   // Expose globally so child components can navigate to profiles
   if (typeof window !== 'undefined') window.__goToProfile = goToProfile;
-  const navItems = [['Community','community'],['Compete','compete'],['Markets','markets'],['Charts','charts'],['Tools','tools2'],['Account','account']]
+  const navItems = [['Community','community'],['Compete','compete'],['Tools','tools2'],['Account','account']]
 
   return (
     <UserAvatarContext.Provider value={userInfo?.image || null}>
@@ -679,20 +560,13 @@ export default function App() {
       )}
 
       {/* Main content — full width, no max-width cap on outer, padding on inner */}
-      <div style={{ padding: 0, paddingTop: (section==='community'||section==='compete'||section==='markets'||section==='tools2'||section==='account') ? 0 : 82, flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }} onClick={()=>setShowAccount(false)}>
-        {section==='markets' ? (
-          <div style={{height:'calc(100vh - 82px)', overflow:'hidden', display:'flex', flexDirection:'column'}}>
-            {tab==='News' && <div style={{padding:'20px 24px', overflowY:'auto', flex:1}}><NewsTab /></div>}
-            {tab!=='News' && <MarketsLayout tab={tab} setTab={setTab} plan={plan} onUpgrade={()=>handleUpgrade()} currentUserId={session?.user?.id} />}
-          </div>
-        ) : section==='community' ? (
+      <div style={{ padding: 0, paddingTop: (section==='community'||section==='compete'||section==='tools2'||section==='account') ? 0 : 82, flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }} onClick={()=>setShowAccount(false)}>
+        {section==='community' ? (
           <CommunityLayout externalTab={tab} currentUserId={session?.user?.id} />
         ) : section==='compete' ? (
           <CompeteLayout currentUserId={session?.user?.id} externalTab={tab} />
         ) : section==='creator' ? (
           <div style={{padding:'20px 24px'}}><CreatorStudioTab /></div>
-        ) : section==='charts' ? (
-          <div style={{padding:'20px 24px'}}><ChartWorkspace /></div>
         ) : section==='journal' ? (
           <div style={{padding:'20px 24px'}}>
             {!tab && <JournalLanding onSelect={t=>setTab(t)} />}
@@ -2564,4 +2438,4 @@ function ReferenceTab() {
     </div>
   )
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 

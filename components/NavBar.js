@@ -20,8 +20,6 @@ export default function NavBar({ activeSection, onSelect, user, hoveredSection, 
   const navItems = [
     ['Community', 'community'],
     ['Compete',   'compete'  ],
-    ['Markets',   'markets'  ],
-    ['Charts',    'charts'   ],
     ['Creator',   'creator'  ],
     ['Tools',     'tools2'   ],
     ['Journal',   'journal'  ],
