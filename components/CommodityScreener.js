@@ -369,7 +369,7 @@ export default function App() {
   const goToProfile = (slug) => { setViewingProfile(slug); }
   // Expose globally so child components can navigate to profiles
   if (typeof window !== 'undefined') window.__goToProfile = goToProfile;
-  const navItems = [['Community','community'],['Compete','compete'],['Tools','tools2'],['Account','account']]
+  const navItems = [['Community','community'],['Competitions','compete'],['Tools','tools2'],['Account','account']]
 
   return (
     <UserAvatarContext.Provider value={userInfo?.image || null}>

@@ -19,7 +19,7 @@ export default function NavBar({ activeSection, onSelect, user, hoveredSection, 
   // New nav order — Community first, no Home
   const navItems = [
     ['Community', 'community'],
-    ['Compete',   'compete'  ],
+    ['Competitions', 'compete'  ],
     ['Creator',   'creator'  ],
     ['Tools',     'tools2'   ],
     ['Journal',   'journal'  ],
