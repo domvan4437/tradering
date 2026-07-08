@@ -1076,63 +1076,55 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
   const PACC_KEY='tr_port_accounts_v3';
   const PPOS_KEY='tr_port_positions_v3';
   const PACT_KEY='tr_port_activity_v3';
+  const PSNAP_KEY='tr_port_snapshots_v3';
 
   const DEF_ACCOUNTS=[
-    {id:'swing',label:'Swing (IBKR)'},
-    {id:'daytrading',label:'Day trading (Tastytrade)'},
-    {id:'longterm',label:'Long-term (Schwab)'},
-  ];
-  const DEF_POSITIONS=[
-    {id:1,accountId:'swing',symbol:'NVDA',qty:50,avgCost:487.20,currentPrice:612.45,sector:'Technology'},
-    {id:2,accountId:'swing',symbol:'AAPL',qty:100,avgCost:172.30,currentPrice:185.10,sector:'Technology'},
-    {id:3,accountId:'daytrading',symbol:'TSLA',qty:30,avgCost:245.00,currentPrice:198.75,sector:'Technology'},
-    {id:4,accountId:'longterm',symbol:'SPY',qty:20,avgCost:520.10,currentPrice:538.90,sector:'Financials'},
-    {id:5,accountId:'swing',symbol:'BTC',qty:0.5,avgCost:58200,currentPrice:61400,sector:'Crypto'},
-  ];
-  const DEF_ACTIVITY=[
-    {id:1,type:'BUY',symbol:'NVDA',detail:'20 sh @ $602.10',accountLabel:'Swing (IBKR)',date:'Jul 6 \xb7 2:14 PM',pnl:-12042},
-    {id:2,type:'SELL',symbol:'TSLA',detail:'10 sh @ $199.40',accountLabel:'Day trading',date:'Jul 6 \xb7 11:02 AM',pnl:1994},
-    {id:3,type:'DAY TRADE',symbol:'SPY',detail:'opened & closed same session',accountLabel:'Tastytrade',date:'Jul 5 \xb7 3:45 PM',pnl:180},
-    {id:4,type:'BUY',symbol:'BTC',detail:'0.1 @ $61,200',accountLabel:'Long-term (Schwab)',date:'Jul 5 \xb7 9:30 AM',pnl:-6120},
-    {id:5,type:'SELL',symbol:'AAPL',detail:'25 sh @ $184.50',accountLabel:'Swing (IBKR)',date:'Jul 3 \xb7 1:20 PM',pnl:4612},
-    {id:6,type:'DIVIDEND',symbol:'AAPL',detail:'quarterly payout',accountLabel:'Long-term (Schwab)',date:'Jul 1 \xb7 8:00 AM',pnl:42},
-    {id:7,type:'BUY',symbol:'NVDA',detail:'30 sh @ $478.90',accountLabel:'Swing (IBKR)',date:'Jun 28 \xb7 10:05 AM',pnl:-14367},
-  ];
-
-  const EQUITY_PTS=[
-    {label:'Jan',v:67500},{label:'',v:68200},{label:'',v:67800},{label:'',v:69100},
-    {label:'Mar',v:70500},{label:'',v:71200},{label:'',v:72800},{label:'',v:74100},
-    {label:'May',v:77500},{label:'',v:79200},{label:'',v:80100},{label:'',v:81500},
-    {label:'Jul',v:82900},{label:'',v:84230},
+    {id:'swing',label:'Swing (IBKR)',cash:0},
+    {id:'daytrading',label:'Day trading (Tastytrade)',cash:0},
+    {id:'longterm',label:'Long-term (Schwab)',cash:0},
   ];
 
   const [accounts,setAccounts]=useState(()=>load(PACC_KEY,DEF_ACCOUNTS));
   const [activeAccount,setActiveAccount]=useState('all');
-  const [positions,setPositions]=useState(()=>load(PPOS_KEY,DEF_POSITIONS));
-  const [activity,setActivity]=useState(()=>load(PACT_KEY,DEF_ACTIVITY));
-  const [timeRange,setTimeRange]=useState('1M');
+  const [positions,setPositions]=useState(()=>load(PPOS_KEY,[]));
+  const [activity,setActivity]=useState(()=>load(PACT_KEY,[]));
+  const [snapshots,setSnapshots]=useState(()=>load(PSNAP_KEY,[]));
+  const [timeRange,setTimeRange]=useState('All');
   const [showAddPos,setShowAddPos]=useState(false);
   const [showAddActivity,setShowAddActivity]=useState(false);
   const [showAddAccount,setShowAddAccount]=useState(false);
+  const [showAddSnap,setShowAddSnap]=useState(false);
   const [posForm,setPosForm]=useState({accountId:'swing',symbol:'',qty:'',avgCost:'',currentPrice:'',sector:'Technology'});
-  const [actForm,setActForm]=useState({type:'BUY',symbol:'',detail:'',accountLabel:'Swing (IBKR)',date:'',pnl:''});
+  const [actForm,setActForm]=useState({type:'BUY',symbol:'',detail:'',accountId:'swing',pnl:''});
   const [accLabel,setAccLabel]=useState('');
+  const [accCash,setAccCash]=useState('');
+  const [snapVal,setSnapVal]=useState('');
+  const [snapDate,setSnapDate]=useState(()=>new Date().toISOString().split('T')[0]);
   const [editPosId,setEditPosId]=useState(null);
   const [editPosForm,setEditPosForm]=useState({});
+  const [editCashId,setEditCashId]=useState(null);
+  const [editCashVal,setEditCashVal]=useState('');
 
   const fp=activeAccount==='all'?positions:positions.filter(p=>p.accountId===activeAccount);
+  const fa=activeAccount==='all'?activity:activity.filter(a=>a.accountId===activeAccount);
   const posPnl=p=>p.qty*p.currentPrice-p.qty*p.avgCost;
   const totalPosValue=fp.reduce((s,p)=>s+p.qty*p.currentPrice,0);
   const totalCost=fp.reduce((s,p)=>s+p.qty*p.avgCost,0);
   const unrealizedPnl=totalPosValue-totalCost;
   const pctReturn=totalCost>0?(unrealizedPnl/totalCost*100):0;
-  const CASH=15170;
-  const totalValue=totalPosValue+CASH;
+  const filteredAccounts=activeAccount==='all'?accounts:accounts.filter(a=>a.id===activeAccount);
+  const totalCash=filteredAccounts.reduce((s,a)=>s+(parseFloat(a.cash)||0),0);
+  const totalValue=totalPosValue+totalCash;
+
+  const todayStr=new Date().toDateString();
+  const todayActs=fa.filter(a=>new Date(a.ts||0).toDateString()===todayStr);
+  const dayPnl=todayActs.reduce((s,a)=>s+(parseFloat(a.pnl)||0),0);
+  const todayCount=todayActs.length;
 
   const secMap={};
   fp.forEach(p=>{const s=p.sector||'Other';secMap[s]=(secMap[s]||0)+p.qty*p.currentPrice;});
-  secMap['Cash']=CASH;
-  const allocColors={'Technology':'#1a1a1a','Financials':'#555555','Crypto':'#999999','Cash':'#dddddd','Other':'#777777'};
+  if(totalCash>0)secMap['Cash']=totalCash;
+  const allocColors={'Technology':'#1a1a1a','Financials':'#555555','Crypto':'#999999','Cash':'#dddddd','Healthcare':'#444444','Energy':'#777777','Consumer':'#888888','Real Estate':'#bbbbbb','Other':'#aaaaaa'};
   const allocData=Object.entries(secMap).sort((a,b)=>b[1]-a[1]);
   const allocTotal=allocData.reduce((s,[,v])=>s+v,0);
   let dAngle=-90;
@@ -1143,17 +1135,55 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
     return{label:lbl,value:val,path,color:allocColors[lbl]||'#aaa'};
   });
 
-  const EW=560,EH=160,EL=44,ER=8,ET=8,EB=28;
+  const now2=Date.now();
+  const filteredSnaps=snapshots.filter(s=>{
+    if(timeRange==='All')return true;
+    if(timeRange==='YTD'){return new Date(s.date+'T12:00:00').getFullYear()===new Date().getFullYear();}
+    const days={'1W':7,'1M':30,'3M':90}[timeRange];
+    if(!days)return true;
+    return new Date(s.date+'T12:00:00').getTime()>=(now2-days*86400000);
+  }).sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  const EW=560,EH=160,EL=48,ER=8,ET=8,EB=28;
   const EIW=EW-EL-ER,EIH=EH-ET-EB;
-  const eMin=56000,eMax=90000;
-  const ex=i=>(EL+(i/(EQUITY_PTS.length-1))*EIW);
-  const ey=v=>(ET+EIH-((v-eMin)/(eMax-eMin))*EIH);
-  const ePts=EQUITY_PTS.map((e,i)=>({x:ex(i),y:ey(e.v)}));
-  let linePath=`M${ePts[0].x},${ePts[0].y}`;
-  for(let i=1;i<ePts.length;i++){const cpx=(ePts[i-1].x+ePts[i].x)/2;linePath+=` C${cpx},${ePts[i-1].y} ${cpx},${ePts[i].y} ${ePts[i].x},${ePts[i].y}`;}
-  const areaPath=linePath+` L${ePts[ePts.length-1].x},${ET+EIH} L${ePts[0].x},${ET+EIH}Z`;
-  const yTicks=[60000,68000,76000,84000];
-  const xLabels=EQUITY_PTS.map((e,i)=>e.label?{label:e.label,x:ex(i)}:null).filter(Boolean);
+  let linePath='',areaPath='',ePts=[],yTicks=[],xAxisLabels=[];
+  if(filteredSnaps.length>=2){
+    const vals=filteredSnaps.map(s=>s.value);
+    const eMin=Math.min(...vals)*0.98;
+    const eMax=Math.max(...vals)*1.02;
+    const ex2=i=>(EL+(i/(filteredSnaps.length-1))*EIW);
+    const ey2=v=>(ET+EIH-((v-eMin)/(eMax-eMin))*EIH);
+    ePts=filteredSnaps.map((s,i)=>({x:ex2(i),y:ey2(s.value),v:s.value,date:s.date}));
+    linePath='M'+ePts[0].x+','+ePts[0].y;
+    for(let i=1;i<ePts.length;i++){const cpx=(ePts[i-1].x+ePts[i].x)/2;linePath+=' C'+cpx+','+ePts[i-1].y+' '+cpx+','+ePts[i].y+' '+ePts[i].x+','+ePts[i].y;}
+    areaPath=linePath+' L'+ePts[ePts.length-1].x+','+(ET+EIH)+' L'+ePts[0].x+','+(ET+EIH)+'Z';
+    const rawRange=eMax-eMin||1;
+    const mag=Math.pow(10,Math.floor(Math.log10(rawRange/4)));
+    const niceStep=Math.ceil((rawRange/4)/mag)*mag;
+    const niceMin=Math.floor(eMin/niceStep)*niceStep;
+    for(let v=niceMin;v<=eMax*1.01;v+=niceStep){if(v>=eMin*0.97)yTicks.push({v,y:ey2(v)});}
+    if(yTicks.length>5)yTicks=yTicks.filter((_,i)=>i%Math.ceil(yTicks.length/4)===0);
+    const maxL=4,stepL=Math.max(1,Math.floor(filteredSnaps.length/maxL));
+    const idxSet=new Set([0,filteredSnaps.length-1]);
+    for(let i=stepL;i<filteredSnaps.length-1;i+=stepL)idxSet.add(i);
+    xAxisLabels=[...idxSet].sort((a,b)=>a-b).map(i=>{
+      const d=new Date(filteredSnaps[i].date+'T12:00:00');
+      return{label:d.toLocaleDateString('en-US',{month:'short',day:'numeric'}),x:ex2(i)};
+    });
+  }
+
+  let maxDD=null;
+  if(snapshots.length>=2){
+    const sorted=[...snapshots].sort((a,b)=>new Date(a.date)-new Date(b.date));
+    let peak=-Infinity,dd=0;
+    for(const s of sorted){if(s.value>peak)peak=s.value;const d=(s.value-peak)/peak*100;if(d<dd)dd=d;}
+    if(dd<0)maxDD=dd;
+  }
+  const periodStart=filteredSnaps[0]?.value;
+  const periodHigh=filteredSnaps.length>0?Math.max(...filteredSnaps.map(s=>s.value)):null;
+  const periodEnd=filteredSnaps[filteredSnaps.length-1]?.value;
+  const netChange=(periodStart!=null&&periodEnd!=null)?periodEnd-periodStart:null;
+  const netPct=(periodStart&&netChange!=null)?(netChange/periodStart*100):null;
 
   function addPosition(){
     if(!posForm.symbol.trim()||!posForm.qty||!posForm.avgCost)return;
@@ -1168,23 +1198,38 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
   }
   function addActivity(){
     if(!actForm.symbol.trim())return;
-    const na={id:Date.now(),...actForm,pnl:parseFloat(actForm.pnl)||0};
+    const acct=accounts.find(a=>a.id===actForm.accountId);
+    const na={id:Date.now(),...actForm,pnl:parseFloat(actForm.pnl)||0,ts:Date.now(),accountLabel:acct?.label||actForm.accountId};
     const upd=[na,...activity];setActivity(upd);save(PACT_KEY,upd);
-    setActForm(f=>({...f,symbol:'',detail:'',date:'',pnl:''}));setShowAddActivity(false);
+    setActForm(f=>({...f,symbol:'',detail:'',pnl:''}));setShowAddActivity(false);
   }
   function removeActivity(id){const upd=activity.filter(a=>a.id!==id);setActivity(upd);save(PACT_KEY,upd);}
   function addAccount(){
     if(!accLabel.trim())return;
-    const na={id:'acc_'+Date.now(),label:accLabel.trim()};
+    const na={id:'acc_'+Date.now(),label:accLabel.trim(),cash:parseFloat(accCash)||0};
     const upd=[...accounts,na];setAccounts(upd);save(PACC_KEY,upd);
-    setAccLabel('');setShowAddAccount(false);
+    setAccLabel('');setAccCash('');setShowAddAccount(false);
   }
+  function updateAccountCash(id,val){
+    const upd=accounts.map(a=>a.id===id?{...a,cash:parseFloat(val)||0}:a);
+    setAccounts(upd);save(PACC_KEY,upd);setEditCashId(null);setEditCashVal('');
+  }
+  function addSnapshot(){
+    if(!snapVal||!snapDate)return;
+    const ns={id:Date.now(),date:snapDate,value:parseFloat(snapVal)};
+    const upd=[...snapshots,ns].sort((a,b)=>new Date(a.date)-new Date(b.date));
+    setSnapshots(upd);save(PSNAP_KEY,upd);setSnapVal('');setShowAddSnap(false);
+  }
+  function removeSnapshot(id){const upd=snapshots.filter(s=>s.id!==id);setSnapshots(upd);save(PSNAP_KEY,upd);}
 
   const fv=v=>'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   const fp2=v=>'$'+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtK=v=>v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'k':Math.round(v).toString();
+  const fmtActDate=a=>{if(!a.ts)return a.date||'';const d=new Date(a.ts);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' \xb7 '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});};
   const inpS={padding:'6px 10px',border:'0.5px solid var(--border)',borderRadius:6,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'};
   const cardS={background:'var(--surface)',borderRadius:12,border:'0.5px solid var(--border)'};
   const lblS={fontSize:10,fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em'};
+  const hasPositions=fp.length>0;
 
   return (
     <div style={{maxWidth:1020,margin:'0 auto'}}>
@@ -1201,10 +1246,7 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
             );
           })}
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)',flexShrink:0}}>
-          <span style={{width:7,height:7,borderRadius:'50%',background:'#22c55e',display:'inline-block',flexShrink:0}}/>
-          Live &middot; synced 2m ago
-        </div>
+        <span style={{fontSize:12,color:'var(--text-muted)'}}>Manual entry mode</span>
       </div>
 
       {/* Header */}
@@ -1214,8 +1256,9 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
       </div>
 
       {showAddAccount&&(
-        <div style={{...cardS,padding:14,marginBottom:14,display:'flex',gap:8,alignItems:'flex-end'}}>
-          <div style={{flex:1}}><div style={{...lblS,marginBottom:4}}>Account name</div><input value={accLabel} onChange={e=>setAccLabel(e.target.value)} placeholder="e.g. Options (Tastytrade)" style={inpS} onKeyDown={e=>e.key==='Enter'&&addAccount()}/></div>
+        <div style={{...cardS,padding:14,marginBottom:14,display:'grid',gridTemplateColumns:'1fr 180px auto auto',gap:8,alignItems:'flex-end'}}>
+          <div><div style={{...lblS,marginBottom:4}}>Account name</div><input value={accLabel} onChange={e=>setAccLabel(e.target.value)} placeholder="e.g. Options (Tastytrade)" style={inpS} onKeyDown={e=>e.key==='Enter'&&addAccount()}/></div>
+          <div><div style={{...lblS,marginBottom:4}}>Cash balance</div><input value={accCash} onChange={e=>setAccCash(e.target.value)} placeholder="$0.00" type="number" style={inpS}/></div>
           <button onClick={addAccount} style={{padding:'7px 16px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'}}>Add</button>
           <button onClick={()=>setShowAddAccount(false)} style={{padding:'7px 12px',borderRadius:6,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'}}>Cancel</button>
         </div>
@@ -1224,15 +1267,15 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
       {/* KPI row */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',border:'0.5px solid var(--border)',borderRadius:12,marginBottom:18,overflow:'hidden'}}>
         {[
-          {lbl:'Total Value',val:fv(totalValue),sub:'+$2,140 today (+2.6%)',subC:'#22c55e',valC:'var(--text)'},
-          {lbl:'Unrealized P&L',val:(unrealizedPnl>=0?'+':'')+fv(Math.abs(unrealizedPnl)),sub:pctReturn.toFixed(1)+'% overall',valC:unrealizedPnl>=0?'#22c55e':'#ef4444'},
-          {lbl:'Day P&L',val:'+$2,140',sub:'3 trades today',valC:'#22c55e'},
-          {lbl:'Max Drawdown',val:'-$3,420',sub:'-4.1% from peak',valC:'#ef4444'},
+          {lbl:'Total Value',val:totalValue>0?fv(totalValue):'—',sub:totalValue>0&&unrealizedPnl!==0?((unrealizedPnl>=0?'+':'')+fv(Math.abs(unrealizedPnl))+' unrealized'):null,subC:unrealizedPnl>=0?'#22c55e':'#ef4444',valC:'var(--text)'},
+          {lbl:'Unrealized P&L',val:totalCost>0?((unrealizedPnl>=0?'+':'')+fv(Math.abs(unrealizedPnl))):'—',sub:totalCost>0?pctReturn.toFixed(1)+'% overall':null,valC:totalCost>0?(unrealizedPnl>=0?'#22c55e':'#ef4444'):'var(--text-muted)'},
+          {lbl:'Day P&L',val:todayCount>0?((dayPnl>=0?'+':'')+fv(Math.abs(dayPnl))):'—',sub:todayCount>0?(todayCount+' trade'+(todayCount!==1?'s':'')+' today'):null,valC:todayCount>0?(dayPnl>=0?'#22c55e':'#ef4444'):'var(--text-muted)'},
+          {lbl:'Max Drawdown',val:maxDD!==null?maxDD.toFixed(1)+'%':'—',sub:maxDD!==null&&periodHigh?('-'+fv(Math.abs(maxDD/100*periodHigh))+' from peak'):null,valC:maxDD!==null?'#ef4444':'var(--text-muted)'},
         ].map((k,i)=>(
           <div key={i} style={{padding:'20px 22px',borderRight:i<3?'0.5px solid var(--border)':'none',background:'var(--surface)'}}>
             <div style={{...lblS,marginBottom:6}}>{k.lbl}</div>
             <div style={{fontSize:26,fontWeight:700,color:k.valC,letterSpacing:'-0.5px',lineHeight:1.2}}>{k.val}</div>
-            {k.sub&&<div style={{fontSize:12,color:k.subC||'var(--text-muted)',marginTop:3}}>{k.sub}</div>}
+            <div style={{fontSize:12,color:k.sub?k.subC||'var(--text-muted)':'var(--text-muted)',marginTop:3,opacity:k.sub?1:0.45}}>{k.sub||'no data yet'}</div>
           </div>
         ))}
       </div>
@@ -1240,54 +1283,117 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
       {/* Equity curve + Allocation */}
       <div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr',gap:16,marginBottom:18}}>
         <div style={{...cardS,padding:'18px 20px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}}>
             <div style={lblS}>Portfolio equity curve</div>
-            <div style={{display:'flex',gap:3}}>
+            <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
               {['1W','1M','3M','YTD','All'].map(r=>(
-                <button key={r} onClick={()=>setTimeRange(r)} style={{padding:'3px 10px',borderRadius:6,border:'0.5px solid '+(timeRange===r?'var(--text)':'var(--border)'),background:timeRange===r?'var(--text)':'transparent',color:timeRange===r?'var(--surface)':'var(--text-muted)',fontSize:11,fontWeight:timeRange===r?600:400,cursor:'pointer',fontFamily:'var(--font)',transition:'all .1s'}}>{r}</button>
+                <button key={r} onClick={()=>setTimeRange(r)} style={{padding:'3px 10px',borderRadius:6,border:'0.5px solid '+(timeRange===r?'var(--text)':'var(--border)'),background:timeRange===r?'var(--text)':'transparent',color:timeRange===r?'var(--surface)':'var(--text-muted)',fontSize:11,fontWeight:timeRange===r?600:400,cursor:'pointer',fontFamily:'var(--font)'}}>{r}</button>
               ))}
+              <button onClick={()=>setShowAddSnap(p=>!p)} style={{padding:'3px 10px',borderRadius:6,border:'0.5px solid var(--border)',background:'transparent',color:'var(--text-muted)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'}}>+ Snapshot</button>
             </div>
           </div>
-          <svg viewBox={`0 0 ${EW} ${EH}`} width="100%" style={{display:'block',marginBottom:6}}>
-            <defs>
-              <linearGradient id="portGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--text)" stopOpacity="0.07"/>
-                <stop offset="100%" stopColor="var(--text)" stopOpacity="0"/>
-              </linearGradient>
-            </defs>
-            {yTicks.map(v=>{const y=ey(v);return(<g key={v}><line x1={EL} y1={y} x2={EW-ER} y2={y} stroke="var(--border)" strokeWidth="0.7"/><text x={EL-5} y={y+3} fontSize={9} fill="var(--text-muted)" textAnchor="end" fontFamily="Inter,sans-serif">${v/1000}k</text></g>);})}
-            {xLabels.map(({label,x})=>(<text key={label} x={x} y={EH-4} fontSize={9} fill="var(--text-muted)" textAnchor="middle" fontFamily="Inter,sans-serif">{label}</text>))}
-            <path d={areaPath} fill="url(#portGrad)"/>
-            <path d={linePath} fill="none" stroke="var(--text)" strokeWidth="1.5"/>
-            {[3,7,11].map(i=>(<circle key={i} cx={ePts[i].x} cy={ePts[i].y} r={3.5} fill="var(--surface)" stroke="var(--text)" strokeWidth="1.5"/>))}
-            <rect x={ePts[13].x-31} y={ePts[13].y-22} width={64} height={18} rx={4} fill="var(--text)"/>
-            <text x={ePts[13].x+1} y={ePts[13].y-9} fontSize={9} fill="var(--surface)" textAnchor="middle" fontFamily="Inter,sans-serif" fontWeight="600">$84,230</text>
-            <circle cx={ePts[13].x} cy={ePts[13].y} r={3.5} fill="var(--text)"/>
-          </svg>
-          <div style={{display:'flex',gap:20,paddingTop:10,borderTop:'0.5px solid var(--border)',fontSize:12,color:'var(--text-muted)',flexWrap:'wrap'}}>
-            <span>Period start <strong style={{color:'var(--text)'}}>$61,040</strong></span>
-            <span>Period high <strong style={{color:'var(--text)'}}>$85,910</strong></span>
-            <span>Net change <strong style={{color:'#22c55e'}}>+$23,190 (+38%)</strong></span>
-          </div>
+          {showAddSnap&&(
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr auto auto',gap:8,marginBottom:12,alignItems:'flex-end'}}>
+              <div><div style={{...lblS,marginBottom:3}}>Date</div><input type="date" value={snapDate} onChange={e=>setSnapDate(e.target.value)} style={inpS}/></div>
+              <div><div style={{...lblS,marginBottom:3}}>Total value ($)</div><input type="number" value={snapVal} onChange={e=>setSnapVal(e.target.value)} placeholder="e.g. 84230" style={inpS} onKeyDown={e=>e.key==='Enter'&&addSnapshot()}/></div>
+              <button onClick={addSnapshot} style={{padding:'6px 14px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'}}>Log</button>
+              <button onClick={()=>setShowAddSnap(false)} style={{padding:'6px 10px',borderRadius:6,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'}}>Cancel</button>
+            </div>
+          )}
+          {filteredSnaps.length<2?(
+            <div style={{height:130,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10,border:'0.5px dashed var(--border)',borderRadius:8}}>
+              <div style={{fontSize:13,color:'var(--text-muted)',textAlign:'center'}}>{snapshots.length===0?'Log portfolio snapshots to track your equity curve':'Need at least 2 snapshots to draw the curve'}</div>
+              {!showAddSnap&&<button onClick={()=>setShowAddSnap(true)} style={{padding:'5px 14px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'}}>+ Log snapshot</button>}
+            </div>
+          ):(
+            <svg viewBox={'0 0 '+EW+' '+EH} width="100%" style={{display:'block',marginBottom:6}}>
+              <defs>
+                <linearGradient id="portGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--text)" stopOpacity="0.07"/>
+                  <stop offset="100%" stopColor="var(--text)" stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              {yTicks.map(({v,y},ti)=>(<g key={ti}><line x1={EL} y1={y} x2={EW-ER} y2={y} stroke="var(--border)" strokeWidth="0.7"/><text x={EL-5} y={y+3} fontSize={9} fill="var(--text-muted)" textAnchor="end" fontFamily="Inter,sans-serif">${fmtK(v)}</text></g>))}
+              {xAxisLabels.map(({label,x},i)=>(<text key={i} x={x} y={EH-4} fontSize={9} fill="var(--text-muted)" textAnchor="middle" fontFamily="Inter,sans-serif">{label}</text>))}
+              <path d={areaPath} fill="url(#portGrad)"/>
+              <path d={linePath} fill="none" stroke="var(--text)" strokeWidth="1.5"/>
+              {ePts.length>3&&ePts.filter((_,i)=>i>0&&i<ePts.length-1&&i%Math.max(1,Math.floor(ePts.length/3))===0).map((p,i)=>(
+                <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="var(--surface)" stroke="var(--text)" strokeWidth="1.5"/>
+              ))}
+              {ePts.length>=1&&(<>
+                <rect x={ePts[ePts.length-1].x-35} y={ePts[ePts.length-1].y-22} width={72} height={18} rx={4} fill="var(--text)"/>
+                <text x={ePts[ePts.length-1].x+1} y={ePts[ePts.length-1].y-9} fontSize={9} fill="var(--surface)" textAnchor="middle" fontFamily="Inter,sans-serif" fontWeight="600">{fv(ePts[ePts.length-1].v)}</text>
+                <circle cx={ePts[ePts.length-1].x} cy={ePts[ePts.length-1].y} r={3.5} fill="var(--text)"/>
+              </>)}
+            </svg>
+          )}
+          {filteredSnaps.length>=2&&(
+            <div style={{display:'flex',gap:20,paddingTop:10,borderTop:'0.5px solid var(--border)',fontSize:12,color:'var(--text-muted)',flexWrap:'wrap'}}>
+              {periodStart!=null&&<span>Period start <strong style={{color:'var(--text)'}}>{fv(periodStart)}</strong></span>}
+              {periodHigh!=null&&<span>Period high <strong style={{color:'var(--text)'}}>{fv(periodHigh)}</strong></span>}
+              {netChange!=null&&<span>Net change <strong style={{color:netChange>=0?'#22c55e':'#ef4444'}}>{netChange>=0?'+':''}{fv(Math.abs(netChange))} ({netPct!=null?(netPct>=0?'+':'')+netPct.toFixed(0)+'%':''})</strong></span>}
+            </div>
+          )}
+          {snapshots.length>0&&(
+            <div style={{marginTop:12,paddingTop:12,borderTop:'0.5px solid var(--border)'}}>
+              <div style={{...lblS,marginBottom:8}}>Snapshots ({snapshots.length})</div>
+              <div style={{maxHeight:110,overflowY:'auto',display:'flex',flexDirection:'column',gap:4}}>
+                {[...snapshots].reverse().map(s=>(
+                  <div key={s.id} style={{display:'flex',alignItems:'center',gap:8,fontSize:12}}>
+                    <span style={{color:'var(--text-muted)',minWidth:100}}>{new Date(s.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+                    <span style={{color:'var(--text)',fontWeight:600}}>{fv(s.value)}</span>
+                    <button onClick={()=>removeSnapshot(s.id)} style={{marginLeft:'auto',background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:13,padding:'1px 4px'}}>x</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{...cardS,padding:'18px 20px'}}>
           <div style={{...lblS,marginBottom:14}}>Allocation</div>
-          <div style={{display:'flex',justifyContent:'center',marginBottom:8}}>
-            <svg width={200} height={200} viewBox="0 0 200 200">
-              {dSegs.map((seg,i)=>seg.path?<path key={i} d={seg.path} fill={seg.color} stroke="var(--surface)" strokeWidth={2}/>:null)}
-              <text x={100} y={95} textAnchor="middle" fontSize={20} fontWeight="700" fill="var(--text)" fontFamily="Inter,sans-serif">${Math.round(allocTotal/1000)}k</text>
-              <text x={100} y={113} textAnchor="middle" fontSize={11} fill="var(--text-muted)" fontFamily="Inter,sans-serif">total value</text>
-            </svg>
-          </div>
-          {allocData.map(([lbl,val])=>(
-            <div key={lbl} style={{display:'flex',alignItems:'center',padding:'7px 0',borderTop:'0.5px solid var(--border)'}}>
-              <div style={{width:10,height:10,borderRadius:2,background:allocColors[lbl]||'#aaa',marginRight:10,flexShrink:0}}/>
-              <span style={{flex:1,fontSize:13,color:'var(--text)'}}>{lbl}</span>
-              <span style={{fontSize:13,color:'var(--text-muted)',marginRight:14}}>${Math.round(val).toLocaleString()}</span>
-              <span style={{fontSize:13,fontWeight:700,color:'var(--text)',minWidth:32,textAlign:'right'}}>{allocTotal>0?Math.round((val/allocTotal)*100):0}%</span>
+          {allocTotal<=0?(
+            <div style={{minHeight:160,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,border:'0.5px dashed var(--border)',borderRadius:8,marginBottom:12}}>
+              <div style={{fontSize:13,color:'var(--text-muted)',textAlign:'center',padding:'0 12px'}}>Add positions or cash balance to see allocation</div>
             </div>
-          ))}
+          ):(
+            <>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:8}}>
+                <svg width={200} height={200} viewBox="0 0 200 200">
+                  {dSegs.map((seg,i)=>seg.path?<path key={i} d={seg.path} fill={seg.color} stroke="var(--surface)" strokeWidth={2}/>:null)}
+                  <text x={100} y={95} textAnchor="middle" fontSize={16} fontWeight="700" fill="var(--text)" fontFamily="Inter,sans-serif">{fv(allocTotal)}</text>
+                  <text x={100} y={113} textAnchor="middle" fontSize={11} fill="var(--text-muted)" fontFamily="Inter,sans-serif">total value</text>
+                </svg>
+              </div>
+              {allocData.map(([lbl,val])=>(
+                <div key={lbl} style={{display:'flex',alignItems:'center',padding:'7px 0',borderTop:'0.5px solid var(--border)'}}>
+                  <div style={{width:10,height:10,borderRadius:2,background:allocColors[lbl]||'#aaa',marginRight:10,flexShrink:0}}/>
+                  <span style={{flex:1,fontSize:13,color:'var(--text)'}}>{lbl}</span>
+                  <span style={{fontSize:13,color:'var(--text-muted)',marginRight:14}}>{fv(val)}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:'var(--text)',minWidth:32,textAlign:'right'}}>{Math.round((val/allocTotal)*100)}%</span>
+                </div>
+              ))}
+            </>
+          )}
+          <div style={{marginTop:14,paddingTop:14,borderTop:'0.5px solid var(--border)'}}>
+            <div style={{...lblS,marginBottom:8}}>Cash balances</div>
+            {accounts.map(a=>(
+              <div key={a.id} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6,fontSize:12}}>
+                <span style={{flex:1,color:'var(--text-muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.label}</span>
+                {editCashId===a.id?(
+                  <>
+                    <input value={editCashVal} onChange={e=>setEditCashVal(e.target.value)} type="number" style={{...inpS,width:90,textAlign:'right'}} autoFocus onKeyDown={e=>e.key==='Enter'&&updateAccountCash(a.id,editCashVal)}/>
+                    <button onClick={()=>updateAccountCash(a.id,editCashVal)} style={{padding:'3px 8px',borderRadius:4,background:PURPLE,color:'#fff',border:'none',fontSize:10,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'}}>Save</button>
+                  </>
+                ):(
+                  <>
+                    <span style={{color:'var(--text)',fontWeight:500,flexShrink:0}}>{fv(a.cash||0)}</span>
+                    <button onClick={()=>{setEditCashId(a.id);setEditCashVal(String(a.cash||0));}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:11,padding:'1px 4px',flexShrink:0}}><i className="ti ti-pencil" style={{fontSize:11}}/></button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1301,60 +1407,63 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
           </div>
         </div>
         {showAddPos&&(
-          <div style={{padding:'12px 18px',borderBottom:'0.5px solid var(--border)',background:'var(--surface2)',display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr auto',gap:8,alignItems:'end'}}>
-            <select value={posForm.accountId} onChange={e=>setPosForm(p=>({...p,accountId:e.target.value}))} style={inpS}>{accounts.map(a=><option key={a.id} value={a.id}>{a.label}</option>)}</select>
-            <input value={posForm.symbol} onChange={e=>setPosForm(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="Symbol" style={inpS}/>
-            <input value={posForm.qty} onChange={e=>setPosForm(p=>({...p,qty:e.target.value}))} placeholder="Qty" type="number" style={inpS}/>
-            <input value={posForm.avgCost} onChange={e=>setPosForm(p=>({...p,avgCost:e.target.value}))} placeholder="Avg cost $" type="number" style={inpS}/>
-            <input value={posForm.currentPrice} onChange={e=>setPosForm(p=>({...p,currentPrice:e.target.value}))} placeholder="Current price $" type="number" style={inpS}/>
-            <div style={{display:'flex',gap:5}}>
-              <button onClick={addPosition} style={{padding:'6px 14px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'}}>Add</button>
-              <button onClick={()=>setShowAddPos(false)} style={{padding:'6px 10px',borderRadius:6,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'}}>x</button>
+          <div style={{padding:'12px 18px',borderBottom:'0.5px solid var(--border)',background:'var(--surface2)'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr 1fr',gap:8,marginBottom:8}}>
+              <select value={posForm.accountId} onChange={e=>setPosForm(p=>({...p,accountId:e.target.value}))} style={inpS}>{accounts.map(a=><option key={a.id} value={a.id}>{a.label}</option>)}</select>
+              <input value={posForm.symbol} onChange={e=>setPosForm(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="Symbol" style={inpS}/>
+              <input value={posForm.qty} onChange={e=>setPosForm(p=>({...p,qty:e.target.value}))} placeholder="Qty" type="number" style={inpS}/>
+              <input value={posForm.avgCost} onChange={e=>setPosForm(p=>({...p,avgCost:e.target.value}))} placeholder="Avg cost $" type="number" style={inpS}/>
+              <input value={posForm.currentPrice} onChange={e=>setPosForm(p=>({...p,currentPrice:e.target.value}))} placeholder="Current price $" type="number" style={inpS}/>
+              <select value={posForm.sector} onChange={e=>setPosForm(p=>({...p,sector:e.target.value}))} style={inpS}>{['Technology','Financials','Healthcare','Energy','Consumer','Crypto','Real Estate','Other'].map(s=><option key={s}>{s}</option>)}</select>
+            </div>
+            <div style={{display:'flex',gap:6}}>
+              <button onClick={addPosition} style={{padding:'6px 14px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'}}>Add position</button>
+              <button onClick={()=>setShowAddPos(false)} style={{padding:'6px 10px',borderRadius:6,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'}}>Cancel</button>
             </div>
           </div>
         )}
-        <table style={{width:'100%',borderCollapse:'collapse'}}>
-          <thead>
-            <tr>
-              {['Symbol','Qty','Avg Cost','Price','P&L',''].map((h,i)=>(
+        {!hasPositions?(
+          <div style={{padding:'36px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>No positions yet — click <strong style={{color:'var(--text)'}}>+ Add</strong> to log your first holding</div>
+        ):(
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead>
+              <tr>{['Symbol','Qty','Avg Cost','Price','P&L',''].map((h,i)=>(
                 <th key={i} style={{fontSize:10,fontWeight:600,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em',padding:'10px 18px 8px',textAlign:i===0?'left':'right',borderBottom:'0.5px solid var(--border)',width:i===5?60:undefined}}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {fp.length===0?(
-              <tr><td colSpan={6} style={{padding:'28px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>No positions yet — click + Add to get started</td></tr>
-            ):(fp.map(p=>{
-              const pnl=posPnl(p);const isUp=pnl>=0;
-              if(editPosId===p.id) return(
-                <tr key={p.id} style={{background:'var(--surface2)'}}>
-                  <td style={{padding:'10px 18px',fontWeight:700,borderBottom:'0.5px solid var(--border)',color:'var(--text)'}}>{p.symbol}</td>
-                  <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}><input value={editPosForm.qty!=null?editPosForm.qty:p.qty} onChange={e=>setEditPosForm(f=>({...f,qty:e.target.value}))} style={{...inpS,width:70,textAlign:'right'}}/></td>
-                  <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}><input value={editPosForm.avgCost!=null?editPosForm.avgCost:p.avgCost} onChange={e=>setEditPosForm(f=>({...f,avgCost:e.target.value}))} style={{...inpS,width:80,textAlign:'right'}}/></td>
-                  <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}><input value={editPosForm.currentPrice!=null?editPosForm.currentPrice:p.currentPrice} onChange={e=>setEditPosForm(f=>({...f,currentPrice:e.target.value}))} style={{...inpS,width:80,textAlign:'right'}}/></td>
-                  <td style={{padding:'10px 18px',textAlign:'right',color:isUp?'#22c55e':'#ef4444',fontWeight:700,borderBottom:'0.5px solid var(--border)'}}>{isUp?'+':'-'}{fv(Math.abs(pnl))}</td>
-                  <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)',whiteSpace:'nowrap'}}>
-                    <button onClick={saveEditPos} style={{fontSize:11,padding:'4px 10px',borderRadius:5,background:PURPLE,color:'#fff',border:'none',cursor:'pointer',fontFamily:'var(--font)',marginRight:4}}>Save</button>
-                    <button onClick={()=>setEditPosId(null)} style={{fontSize:11,padding:'4px 8px',borderRadius:5,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',cursor:'pointer',fontFamily:'var(--font)'}}>x</button>
-                  </td>
-                </tr>
-              );
-              return(
-                <tr key={p.id} style={{transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                  <td style={{padding:'12px 18px',fontWeight:700,color:'var(--text)',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{p.symbol}</td>
-                  <td style={{padding:'12px 18px',textAlign:'right',color:isUp?'#22c55e':'#ef4444',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{p.qty}</td>
-                  <td style={{padding:'12px 18px',textAlign:'right',color:'var(--text-muted)',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{fp2(p.avgCost)}</td>
-                  <td style={{padding:'12px 18px',textAlign:'right',color:'var(--text)',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{fp2(p.currentPrice)}</td>
-                  <td style={{padding:'12px 18px',textAlign:'right',color:isUp?'#22c55e':'#ef4444',fontWeight:700,borderBottom:'0.5px solid var(--border)',fontSize:14}}>{isUp?'+':'-'}{fv(Math.abs(pnl))}</td>
-                  <td style={{padding:'12px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}>
-                    <button onClick={()=>{setEditPosId(p.id);setEditPosForm({qty:p.qty,avgCost:p.avgCost,currentPrice:p.currentPrice});}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:12,padding:'2px 6px',marginRight:2}} title="Edit"><i className="ti ti-pencil" style={{fontSize:12}}/></button>
-                    <button onClick={()=>removePosition(p.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,padding:'2px 4px'}} title="Remove">x</button>
-                  </td>
-                </tr>
-              );
-            }))}
-          </tbody>
-        </table>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {fp.map(p=>{
+                const pnl=posPnl(p);const isUp=pnl>=0;
+                if(editPosId===p.id) return(
+                  <tr key={p.id} style={{background:'var(--surface2)'}}>
+                    <td style={{padding:'10px 18px',fontWeight:700,borderBottom:'0.5px solid var(--border)',color:'var(--text)'}}>{p.symbol}</td>
+                    <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}><input value={editPosForm.qty!=null?editPosForm.qty:p.qty} onChange={e=>setEditPosForm(f=>({...f,qty:e.target.value}))} style={{...inpS,width:70,textAlign:'right'}}/></td>
+                    <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}><input value={editPosForm.avgCost!=null?editPosForm.avgCost:p.avgCost} onChange={e=>setEditPosForm(f=>({...f,avgCost:e.target.value}))} style={{...inpS,width:80,textAlign:'right'}}/></td>
+                    <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}><input value={editPosForm.currentPrice!=null?editPosForm.currentPrice:p.currentPrice} onChange={e=>setEditPosForm(f=>({...f,currentPrice:e.target.value}))} style={{...inpS,width:80,textAlign:'right'}}/></td>
+                    <td style={{padding:'10px 18px',textAlign:'right',color:isUp?'#22c55e':'#ef4444',fontWeight:700,borderBottom:'0.5px solid var(--border)'}}>{isUp?'+':'-'}{fv(Math.abs(pnl))}</td>
+                    <td style={{padding:'8px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)',whiteSpace:'nowrap'}}>
+                      <button onClick={saveEditPos} style={{fontSize:11,padding:'4px 10px',borderRadius:5,background:PURPLE,color:'#fff',border:'none',cursor:'pointer',fontFamily:'var(--font)',marginRight:4}}>Save</button>
+                      <button onClick={()=>setEditPosId(null)} style={{fontSize:11,padding:'4px 8px',borderRadius:5,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',cursor:'pointer',fontFamily:'var(--font)'}}>x</button>
+                    </td>
+                  </tr>
+                );
+                return(
+                  <tr key={p.id} style={{transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                    <td style={{padding:'12px 18px',fontWeight:700,color:'var(--text)',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{p.symbol}</td>
+                    <td style={{padding:'12px 18px',textAlign:'right',color:isUp?'#22c55e':'#ef4444',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{p.qty}</td>
+                    <td style={{padding:'12px 18px',textAlign:'right',color:'var(--text-muted)',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{fp2(p.avgCost)}</td>
+                    <td style={{padding:'12px 18px',textAlign:'right',color:'var(--text)',borderBottom:'0.5px solid var(--border)',fontSize:14}}>{fp2(p.currentPrice)}</td>
+                    <td style={{padding:'12px 18px',textAlign:'right',color:isUp?'#22c55e':'#ef4444',fontWeight:700,borderBottom:'0.5px solid var(--border)',fontSize:14}}>{isUp?'+':'-'}{fv(Math.abs(pnl))}</td>
+                    <td style={{padding:'12px 18px',textAlign:'right',borderBottom:'0.5px solid var(--border)'}}>
+                      <button onClick={()=>{setEditPosId(p.id);setEditPosForm({qty:p.qty,avgCost:p.avgCost,currentPrice:p.currentPrice});}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:12,padding:'2px 6px',marginRight:2}} title="Edit"><i className="ti ti-pencil" style={{fontSize:12}}/></button>
+                      <button onClick={()=>removePosition(p.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,padding:'2px 4px'}} title="Remove">x</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Recent Activity */}
@@ -1362,38 +1471,42 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',borderBottom:'0.5px solid var(--border)'}}>
           <span style={lblS}>Recent activity</span>
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <span style={{fontSize:11,color:'var(--text-muted)',background:'var(--surface2)',border:'0.5px solid var(--border)',padding:'3px 10px',borderRadius:20}}>Last 7 days</span>
+            <span style={{fontSize:11,color:'var(--text-muted)',background:'var(--surface2)',border:'0.5px solid var(--border)',padding:'3px 10px',borderRadius:20}}>{fa.length} entries</span>
             <button onClick={()=>setShowAddActivity(p=>!p)} style={{padding:'5px 12px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'}}>+ Log</button>
           </div>
         </div>
         {showAddActivity&&(
-          <div style={{padding:'12px 18px',borderBottom:'0.5px solid var(--border)',background:'var(--surface2)',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
-            <select value={actForm.type} onChange={e=>setActForm(p=>({...p,type:e.target.value}))} style={inpS}>{['BUY','SELL','DAY TRADE','DIVIDEND','SHORT','COVER'].map(t=><option key={t}>{t}</option>)}</select>
-            <input value={actForm.symbol} onChange={e=>setActForm(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="Symbol" style={inpS}/>
-            <input value={actForm.detail} onChange={e=>setActForm(p=>({...p,detail:e.target.value}))} placeholder="Detail (e.g. 10 sh @ $199.40)" style={inpS}/>
-            <input value={actForm.accountLabel} onChange={e=>setActForm(p=>({...p,accountLabel:e.target.value}))} placeholder="Account" style={inpS}/>
-            <input value={actForm.date} onChange={e=>setActForm(p=>({...p,date:e.target.value}))} placeholder="Date (e.g. Jul 6 \xb7 2:14 PM)" style={inpS}/>
-            <input value={actForm.pnl} onChange={e=>setActForm(p=>({...p,pnl:e.target.value}))} placeholder="P&L (e.g. 1994 or -500)" type="number" style={inpS}/>
-            <div style={{gridColumn:'1/-1',display:'flex',gap:6}}>
+          <div style={{padding:'12px 18px',borderBottom:'0.5px solid var(--border)',background:'var(--surface2)'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:8}}>
+              <select value={actForm.type} onChange={e=>setActForm(p=>({...p,type:e.target.value}))} style={inpS}>{['BUY','SELL','DAY TRADE','DIVIDEND','SHORT','COVER'].map(t=><option key={t}>{t}</option>)}</select>
+              <select value={actForm.accountId} onChange={e=>setActForm(p=>({...p,accountId:e.target.value}))} style={inpS}>{accounts.map(a=><option key={a.id} value={a.id}>{a.label}</option>)}</select>
+              <input value={actForm.symbol} onChange={e=>setActForm(p=>({...p,symbol:e.target.value.toUpperCase()}))} placeholder="Symbol (e.g. NVDA)" style={inpS}/>
+              <input value={actForm.detail} onChange={e=>setActForm(p=>({...p,detail:e.target.value}))} placeholder="Detail (e.g. 10 sh @ $199.40)" style={{...inpS,gridColumn:'1 / span 2'}}/>
+              <input value={actForm.pnl} onChange={e=>setActForm(p=>({...p,pnl:e.target.value}))} placeholder="P&L (e.g. 1994 or -500)" type="number" style={inpS}/>
+            </div>
+            <div style={{display:'flex',gap:6}}>
               <button onClick={addActivity} style={{padding:'6px 14px',borderRadius:6,background:PURPLE,color:'#fff',border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'var(--font)'}}>Log trade</button>
               <button onClick={()=>setShowAddActivity(false)} style={{padding:'6px 10px',borderRadius:6,background:'transparent',color:'var(--text-muted)',border:'0.5px solid var(--border)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'}}>Cancel</button>
             </div>
           </div>
         )}
-        {activity.length===0&&<div style={{padding:'28px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>No activity logged yet — click + Log to add</div>}
-        {activity.map(a=>{
-          const isBuy=a.type==='BUY';
-          return(
-            <div key={a.id} style={{display:'grid',gridTemplateColumns:'84px 1fr 150px 150px 100px 36px',alignItems:'center',padding:'12px 18px',borderBottom:'0.5px solid var(--border)',gap:8,transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-              <div style={{padding:'4px 8px',borderRadius:5,background:isBuy?'var(--text)':'transparent',color:isBuy?'var(--surface)':'var(--text)',border:isBuy?'none':'0.5px solid var(--border)',fontSize:10,fontWeight:700,textAlign:'center',letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{a.type}</div>
-              <div style={{fontSize:13}}><strong style={{color:'var(--text)'}}>{a.symbol}</strong><span style={{color:'var(--text-muted)'}}> &middot; {a.detail}</span></div>
-              <div style={{fontSize:12,color:'var(--text-muted)'}}>{a.accountLabel}</div>
-              <div style={{fontSize:12,color:'var(--text-muted)'}}>{a.date}</div>
-              <div style={{fontSize:13,fontWeight:700,color:a.pnl>=0?'#22c55e':'#ef4444',textAlign:'right'}}>{a.pnl>=0?'+':''}{a.pnl>=0?fv(a.pnl):'-'+fv(Math.abs(a.pnl))}</div>
-              <button onClick={()=>removeActivity(a.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,padding:'2px',textAlign:'center'}}>x</button>
-            </div>
-          );
-        })}
+        {fa.length===0?(
+          <div style={{padding:'36px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>No trades logged yet — click <strong style={{color:'var(--text)'}}>+ Log</strong> to add activity</div>
+        ):(
+          fa.map(a=>{
+            const isBuy=a.type==='BUY';
+            return(
+              <div key={a.id} style={{display:'grid',gridTemplateColumns:'88px 1fr 150px 140px 100px 36px',alignItems:'center',padding:'12px 18px',borderBottom:'0.5px solid var(--border)',gap:8,transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <div style={{padding:'4px 8px',borderRadius:5,background:isBuy?'var(--text)':'transparent',color:isBuy?'var(--surface)':'var(--text)',border:isBuy?'none':'0.5px solid var(--border)',fontSize:10,fontWeight:700,textAlign:'center',letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{a.type}</div>
+                <div style={{fontSize:13,minWidth:0}}><strong style={{color:'var(--text)'}}>{a.symbol}</strong>{a.detail&&<span style={{color:'var(--text-muted)'}}> &middot; {a.detail}</span>}</div>
+                <div style={{fontSize:12,color:'var(--text-muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.accountLabel}</div>
+                <div style={{fontSize:12,color:'var(--text-muted)',whiteSpace:'nowrap'}}>{fmtActDate(a)}</div>
+                <div style={{fontSize:13,fontWeight:700,color:a.pnl>=0?'#22c55e':'#ef4444',textAlign:'right',whiteSpace:'nowrap'}}>{a.pnl!==0?((a.pnl>=0?'+':'')+fv(Math.abs(a.pnl))):'—'}</div>
+                <button onClick={()=>removeActivity(a.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,padding:'2px',textAlign:'center'}}>x</button>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
