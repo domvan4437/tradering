@@ -763,22 +763,13 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
   );
 }
 
-function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,navigateJTo,jGoBack}){
-  const [slashBlockId,setSlashBlockId]=useState(null);
-  const [dragIdx,setDragIdx]=useState(null);
-  const [dragOver,setDragOver]=useState(null);
+function DailyJournal({jTree,saveJTree,activeJId,jNavHistory,navigateJTo,jGoBack}){
   const entry=activeJId&&jTree.entries?.[activeJId]?jTree.entries[activeJId]:null;
   const item=activeJId?(jTree.items||[]).find(i=>i.id===activeJId):null;
 
-  // breadcrumb: walk parentId chain upward
+  // breadcrumb
   const breadcrumb=[];
-  if(item){
-    let cur=item;
-    while(cur){
-      breadcrumb.unshift(cur);
-      cur=cur.parentId?(jTree.items||[]).find(i=>i.id===cur.parentId):null;
-    }
-  }
+  if(item){let cur=item;while(cur){breadcrumb.unshift(cur);cur=cur.parentId?(jTree.items||[]).find(i=>i.id===cur.parentId):null;}}
 
   function updateEntryField(field,val){
     if(!activeJId)return;
@@ -786,93 +777,13 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
     if(field==='name')updated.items=(updated.items||[]).map(i=>i.id===activeJId?{...i,name:val}:i);
     saveJTree(updated);
   }
-  function updateBlock(blockId,changes){
-    if(!entry)return;
-    updateEntryField('blocks',(entry.blocks||[]).map(b=>b.id===blockId?{...b,...changes}:b));
-  }
-  function addBlockAfter(blockId){
-    if(!entry)return;
-    const nb={id:'b_'+Date.now(),type:'text',content:'',checked:false};
-    const blocks=[...(entry.blocks||[])];
-    const idx=blocks.findIndex(b=>b.id===blockId);
-    blocks.splice(idx+1,0,nb);
-    updateEntryField('blocks',blocks);
-    setTimeout(()=>document.getElementById('blk_'+nb.id)?.focus(),50);
-  }
-  function insertMediaBlock(afterBlockId,dataUrl,fileName,fileType,blockType){
-    if(!entry)return;
-    const nb={id:'b_'+Date.now(),type:blockType||'file',content:dataUrl,fileName,fileType,checked:false};
-    const blocks=[...(entry.blocks||[])];
-    const idx=blocks.findIndex(b=>b.id===afterBlockId);
-    blocks.splice(idx+1,0,nb);
-    updateEntryField('blocks',blocks);
-  }
-  function removeBlock(blockId){
-    if(!entry)return;
-    const blocks=(entry.blocks||[]).filter(b=>b.id!==blockId);
-    if(blocks.length===0){updateEntryField('blocks',[]);return;}
-    const idx=(entry.blocks||[]).findIndex(b=>b.id===blockId);
-    updateEntryField('blocks',blocks);
-    if(idx>0)setTimeout(()=>document.getElementById('blk_'+(entry.blocks[idx-1].id))?.focus(),30);
-  }
-  function changeBlockType(blockId,type){
-    if(type==='subpage'){
-      // create a child page, convert this block to subpage link
-      const childId='je_'+Date.now();
-      const childItem={id:childId,type:'entry',name:'Untitled',parentId:activeJId,order:Date.now()};
-      const childEntry={blocks:[],tags:[],date:new Date().toISOString().slice(0,10)};
-      const newTree={...jTree,
-        items:[...(jTree.items||[]),childItem],
-        entries:{...(jTree.entries||{}),[childId]:childEntry}
-      };
-      // replace this block with a subpage block
-      const updatedBlocks=(entry.blocks||[]).map(b=>b.id===blockId?{...b,type:'subpage',content:'',pageId:childId}:b);
-      newTree.entries[activeJId]={...newTree.entries[activeJId],blocks:updatedBlocks};
-      saveJTree(newTree);
-      setSlashBlockId(null);
-      setTimeout(()=>navigateJTo(childId),50);
-      return;
-    }
-    updateBlock(blockId,{type});
-    setSlashBlockId(null);
-    setTimeout(()=>document.getElementById('blk_'+blockId)?.focus(),30);
-  }
-  function addBlock(){
-    if(!entry)return;
-    const nb={id:'b_'+Date.now(),type:'text',content:'',checked:false};
-    updateEntryField('blocks',[...(entry.blocks||[]),nb]);
-    setTimeout(()=>document.getElementById('blk_'+nb.id)?.focus(),50);
-  }
-  function deleteSubpageFull(blockId,pageId){
-    // remove the subpage block from current entry
-    const blocks=(entry.blocks||[]).filter(b=>b.id!==blockId);
-    // delete the child page and all its descendants from jTree
-    function getDesc(pid){const kids=(jTree.items||[]).filter(i=>i.parentId===pid);return kids.flatMap(k=>[k.id,...getDesc(k.id)]);}
-    const toDelete=[pageId,...getDesc(pageId)];
-    const newEntries={...(jTree.entries||{})};
-    toDelete.forEach(d=>delete newEntries[d]);
-    const newTree={
-      items:(jTree.items||[]).filter(i=>!toDelete.includes(i.id)),
-      entries:{...newEntries,[activeJId]:{...(jTree.entries[activeJId]||{}),blocks}}
-    };
-    saveJTree(newTree);
-  }
-  function addSubpageAfter(blockId){
-    const childId='je_'+Date.now();
-    const childItem={id:childId,type:'entry',name:'Untitled',parentId:activeJId,order:Date.now()};
-    const childEntry={blocks:[],tags:[],date:new Date().toISOString().slice(0,10)};
-    const spBlock={id:'b_'+Date.now(),type:'subpage',content:'',pageId:childId};
-    const blocks=[...(entry.blocks||[])];
-    const idx=blocks.findIndex(b=>b.id===blockId);
-    blocks.splice(idx<0?blocks.length:idx+1,0,spBlock);
-    const newTree={...jTree,
-      items:[...(jTree.items||[]),childItem],
-      entries:{...(jTree.entries||{}),[childId]:childEntry,[activeJId]:{...(jTree.entries[activeJId]||{}),blocks}}
-    };
-    saveJTree(newTree);
-    setTimeout(()=>navigateJTo(childId),50);
-  }
 
+  // Migrate old block-based entries to plain text
+  function getEntryText(){
+    if(!entry)return'';
+    if(entry.text!=null)return entry.text;
+    return(entry.blocks||[]).map(b=>b.content||b.text||'').filter(Boolean).join('\n');
+  }
 
   if(!entry)return(
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'80px 0',color:'var(--text-muted)',fontSize:13}}>
@@ -884,14 +795,13 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
 
   return(
     <div style={{maxWidth:740,margin:'0 auto',paddingBottom:60}}>
-      {/* breadcrumb */}
       {breadcrumb.length>1&&(
         <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:16,flexWrap:'wrap'}}>
           {breadcrumb.map((bc,idx)=>(
             <React.Fragment key={bc.id}>
               {idx>0&&<span style={{color:'var(--text-muted)',fontSize:12}}>/</span>}
               <span onClick={()=>idx<breadcrumb.length-1&&navigateJTo(bc.id)}
-                style={{fontSize:12,color:idx===breadcrumb.length-1?'var(--text)':'var(--text-muted)',cursor:idx<breadcrumb.length-1?'pointer':'default',fontWeight:idx===breadcrumb.length-1?500:400}}
+                style={{fontSize:12,color:idx===breadcrumb.length-1?'var(--text)''var(--text-muted)',cursor:idx<breadcrumb.length-1?'pointer':'default',fontWeight:idx===breadcrumb.length-1?500:400}}
                 onMouseEnter={e=>{if(idx<breadcrumb.length-1)e.currentTarget.style.color='var(--text)';}}
                 onMouseLeave={e=>{if(idx<breadcrumb.length-1)e.currentTarget.style.color='var(--text-muted)';}}>
                 {bc.name||'Untitled'}
@@ -905,64 +815,25 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
           )}
         </div>
       )}
-      <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:8}}>
+      <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:4}}>
         <input value={item?.name||''} onChange={e=>updateEntryField('name',e.target.value)}
           style={{flex:1,display:'block',border:'none',outline:'none',fontSize:26,fontWeight:500,color:'var(--text)',background:'none',fontFamily:'var(--font)',padding:0}}
           placeholder="Untitled"/>
-        <button onClick={()=>{const blocks=(entry.blocks||[]).map(b=>b.text||b.content||'').filter(Boolean).join(' ').slice(0,3000);const msg='Review this journal entry for me and give honest, specific coaching feedback.
-
-Entry title: '+(item?.name||'Untitled')+'
-
-Content:
-'+blocks+'
-
-I want: (1) what my mindset and process look like based on this entry, (2) any mental patterns or biases you can detect, (3) one specific thing I should focus on improving based on what I wrote.';window.dispatchEvent(new CustomEvent('ai-coach-open',{detail:{message:msg}}));}}
+        <button
+          onClick={()=>{const text=getEntryText().slice(0,3000);const msg='Review this journal entry and give me honest, specific coaching feedback.\n\nEntry: '+(item?.name||'Untitled')+'\n\n'+text+'\n\nI want: (1) what my mindset and process look like, (2) any mental patterns or biases, (3) one thing I should focus on improving.';window.dispatchEvent(new CustomEvent('ai-coach-open',{detail:{message:msg}}));}}
           style={{flexShrink:0,marginTop:6,padding:'5px 12px',borderRadius:7,border:'0.5px solid rgba(75,68,200,0.4)',background:'rgba(75,68,200,0.07)',color:'#4B44C8',fontFamily:'var(--font)',fontSize:11,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',transition:'all 0.1s'}}
-          onMouseEnter={e=>{e.currentTarget.style.background='rgba(75,68,200,0.15)';}} onMouseLeave={e=>{e.currentTarget.style.background='rgba(75,68,200,0.07)';}}>
-          ✦ AI Review
+          onMouseEnter={e=>e.currentTarget.style.background='rgba(75,68,200,0.15)'}
+          onMouseLeave={e=>e.currentTarget.style.background='rgba(75,68,200,0.07)'}>
+          ❖ AI Review
         </button>
       </div>
-
-      <div style={{display:'flex',flexWrap:'wrap',alignItems:'flex-start'}}>
-      {(entry.blocks||[]).map((block,bIdx)=>(
-        <div key={block.id} data-blk-wrap="1"
-          style={{width:block.type==='image'?(block.imgWidth||100)+'%':'100%',boxSizing:'border-box',
-            opacity:dragIdx===bIdx?0.4:1,
-            outline:dragOver===bIdx?'2px dashed #4B44C8':'none',borderRadius:6}}
-          draggable
-          onDragStart={()=>setDragIdx(bIdx)}
-          onDragOver={e=>{e.preventDefault();setDragOver(bIdx);}}
-          onDrop={e=>{e.preventDefault();
-            if(dragIdx!==null&&dragIdx!==bIdx){
-              const bs=[...(entry.blocks||[])];
-              const [mv]=bs.splice(dragIdx,1);bs.splice(bIdx,0,mv);
-              updateEntryField('blocks',bs);
-            }
-            setDragIdx(null);setDragOver(null);}}
-          onDragEnd={()=>{setDragIdx(null);setDragOver(null);}}>
-          <BlockRow block={block}
-            slashOpen={slashBlockId===block.id}
-            onUpdate={changes=>updateBlock(block.id,changes)}
-            onEnter={()=>addBlockAfter(block.id)}
-            onDelete={()=>removeBlock(block.id)}
-            onSlashOpen={()=>setSlashBlockId(slashBlockId===block.id?null:block.id)}
-            onChangeType={type=>changeBlockType(block.id,type)}
-            onNavigate={navigateJTo}
-            childPageName={(jTree.items||[]).find(i=>i.id===block.pageId)?.name||'Untitled'}
-            onAddSubpage={()=>addSubpageAfter(block.id)}
-            onDeletePage={()=>deleteSubpageFull(block.id,block.pageId)}
-            onUploadFile={(dataUrl,fileName,fileType,blockType)=>insertMediaBlock(block.id,dataUrl,fileName,fileType,blockType)}
-          />
-        </div>
-      ))}
-      </div>
-      {(entry.blocks||[]).length===0&&(
-        <div onClick={addBlock} style={{padding:'2px 0 0 24px',color:'var(--text-muted)',fontSize:14,cursor:'text',lineHeight:1.65,minHeight:120}}
-          onMouseEnter={e=>e.currentTarget.style.color='var(--text-secondary)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
-          Start writing...
-        </div>
-      )}
-
+      <textarea
+        key={activeJId}
+        defaultValue={getEntryText()}
+        onChange={e=>updateEntryField('text',e.target.value)}
+        placeholder="Start writing..."
+        style={{display:'block',width:'100%',minHeight:'70vh',border:'none',outline:'none',resize:'none',fontFamily:'var(--font)',fontSize:14,lineHeight:1.75,color:'var(--text)',background:'none',padding:0,boxSizing:'border-box'}}
+      />
     </div>
   );
 }
