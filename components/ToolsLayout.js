@@ -372,6 +372,9 @@ function TradeLog({trades,setTrades,tradesKey}){
   const empty={date:'',asset:'',direction:'Long',entry:'',exit:'',pnl:'',r:'',size:'',time:'',exitTime:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:''};
   const[form,setForm]=useState(empty);const[adding,setAdding]=useState(false);const[expanded,setExpanded]=useState(null);
   const[showBroker,setShowBroker]=useState(false);
+  const[editId,setEditId]=useState(null);const[editForm,setEditForm]=useState(empty);
+  function startEdit(i){setEditId(i);setEditForm({...trades[i]});setExpanded(null);}
+  function saveEdit(){if(editId===null)return;const u=trades.map((t,i)=>i===editId?{...t,...editForm}:t);setTrades(u);save(tradesKey,u);setEditId(null);setEditForm(empty);}
   const userSetups=load(STORAGE_KEY+'_setups2',[]);
   const fileRef=useRef(null);
   function addTrade(){if(!form.asset||!form.date)return;const u=[form,...trades];setTrades(u);save(tradesKey,u);setForm(empty);setAdding(false)}
@@ -445,23 +448,58 @@ function TradeLog({trades,setTrades,tradesKey}){
     <Card style={{padding:0,overflow:'hidden'}}><table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
       <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Time','MAE','MFE','Setup','Emotion','Rules',''].map((h,i)=><th key={h+i} style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:'left',textTransform:'uppercase',letterSpacing:'0.04em',borderBottom:'0.5px solid var(--border)',width:h===''?28:h==='Date'?90:h==='Setup'||h==='Emotion'?90:h==='Time'?110:h==='MAE'||h==='MFE'?60:undefined}}>{h}</th>)}</tr></thead>
       <tbody>{trades.map((t,i)=><React.Fragment key={i}>
-        <tr onClick={()=>setExpanded(expanded===i?null:i)} style={{cursor:'pointer',background:expanded===i?'rgba(75,68,200,0.04)':'transparent',borderBottom:'0.5px solid var(--border)'}}>
-          <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)'}}>{fmtDateWithDay(t.date)}</td>
-          <td style={{fontSize:12,padding:'7px 8px',fontWeight:500}}>{t.asset}</td>
-          <td style={{fontSize:11,padding:'7px 8px'}}><span style={{fontSize:10,fontWeight:500,padding:'2px 5px',borderRadius:3,background:t.direction==='Long'?'rgba(22,163,74,0.1)':'rgba(220,38,38,0.08)',color:t.direction==='Long'?'#15803d':'#991b1b'}}>{t.direction}</span></td>
-          <td style={{fontSize:11,padding:'7px 8px'}}>{t.entry}</td>
-          <td style={{fontSize:11,padding:'7px 8px'}}>{t.exit}</td>
-          <td style={{fontSize:11,padding:'7px 8px',fontWeight:500,color:pnlColor(t.r)}}>{t.r}</td>
-          <td style={{fontSize:12,padding:'7px 8px',fontWeight:500,color:pnlColor(t.pnl)}}>{t.pnl}</td>
-          <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)',whiteSpace:'nowrap'}}>{t.time?(t.exitTime?t.time+' – '+t.exitTime:t.time):'—'}</td>
-          <td style={{fontSize:11,padding:'7px 8px',color:t.mae?'#dc2626':'var(--text-muted)'}}>{t.mae||'—'}</td>
-          <td style={{fontSize:11,padding:'7px 8px',color:t.mfe?'#16a34a':'var(--text-muted)'}}>{t.mfe||'—'}</td>
-          <td style={{fontSize:10,padding:'7px 8px'}}><span style={{background:'var(--surface2)',padding:'2px 5px',borderRadius:3}}>{t.setup}</span></td>
-          <td style={{fontSize:10,padding:'7px 8px'}}>{t.emotion&&<span style={{padding:'2px 6px',borderRadius:10,background:EMOTION_BG[t.emotion]||'var(--surface2)',color:EMOTION_COLOR[t.emotion]||'var(--text-muted)',fontSize:9}}>{t.emotion}</span>}</td>
-          <td style={{fontSize:11,padding:'7px 8px',fontWeight:500,color:t.rules==='4/4'?'var(--green)':t.rules?.startsWith('2')?'var(--red)':'var(--text)'}}>{t.rules}</td>
-          <td style={{padding:'7px 4px',textAlign:'center'}}><button onClick={e=>{e.stopPropagation();removeTrade(i)}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14}}>×</button></td>
-        </tr>
-        {expanded===i&&<tr><td colSpan={14} style={{padding:'10px 14px',background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)',borderLeft:`2px solid ${PURPLE}`}}>{t.notes&&<div style={{fontSize:11,color:'var(--text-muted)',padding:'8px 10px',background:'var(--surface2)',borderRadius:5,lineHeight:1.5}}>{t.notes}</div>}</td></tr>}
+        {editId===i?(
+          <tr style={{background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)'}}>
+            <td colSpan={14} style={{padding:'12px 14px',borderLeft:`2px solid ${PURPLE}`}}>
+              <div style={{fontSize:10,fontWeight:600,color:PURPLE,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>Edit trade</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:8}}>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Date</div><Inp type="date" value={editForm.date||''} onChange={e=>setEditForm(f=>({...f,date:e.target.value}))}/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Asset</div><Sel value={editForm.asset||''} onChange={e=>setEditForm(f=>({...f,asset:e.target.value}))}><option value="">Select</option>{ASSETS.map(a=><option key={a}>{a}</option>)}</Sel></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Direction</div><Sel value={editForm.direction||'Long'} onChange={e=>setEditForm(f=>({...f,direction:e.target.value}))}><option>Long</option><option>Short</option></Sel></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Setup</div><Sel value={editForm.setup||''} onChange={e=>setEditForm(f=>({...f,setup:e.target.value}))}><option value="">None</option>{userSetups.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</Sel></div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:8}}>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Entry</div><Inp value={editForm.entry||''} onChange={e=>setEditForm(f=>({...f,entry:e.target.value}))} placeholder="0.00"/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Exit</div><Inp value={editForm.exit||''} onChange={e=>setEditForm(f=>({...f,exit:e.target.value}))} placeholder="0.00"/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>P&L ($)</div><Inp value={editForm.pnl||''} onChange={e=>setEditForm(f=>({...f,pnl:e.target.value}))} placeholder="+240"/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>R-multiple</div><Inp value={editForm.r||''} onChange={e=>setEditForm(f=>({...f,r:e.target.value}))} placeholder="+1.8R"/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Size</div><Inp value={editForm.size||''} onChange={e=>setEditForm(f=>({...f,size:e.target.value}))} placeholder="2 lots"/></div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:8}}>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Entry time</div><Inp type="time" value={editForm.time||''} onChange={e=>setEditForm(f=>({...f,time:e.target.value}))}/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Exit time</div><Inp type="time" value={editForm.exitTime||''} onChange={e=>setEditForm(f=>({...f,exitTime:e.target.value}))}/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>MAE ($)</div><Inp value={editForm.mae||''} onChange={e=>setEditForm(f=>({...f,mae:e.target.value}))} placeholder="-120"/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>MFE ($)</div><Inp value={editForm.mfe||''} onChange={e=>setEditForm(f=>({...f,mfe:e.target.value}))} placeholder="+340"/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Emotion</div><Sel value={editForm.emotion||''} onChange={e=>setEditForm(f=>({...f,emotion:e.target.value}))}><option value="">Select</option>{EMOTIONS.map(em=><option key={em}>{em}</option>)}</Sel></div>
+              </div>
+              <div style={{marginBottom:8}}><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Notes</div><Textarea value={editForm.notes||''} onChange={e=>setEditForm(f=>({...f,notes:e.target.value}))} placeholder="Notes..."/></div>
+              <div style={{display:'flex',gap:8}}><BtnP onClick={saveEdit}>Save changes</BtnP><BtnS onClick={()=>setEditId(null)}>Cancel</BtnS></div>
+            </td>
+          </tr>
+        ):(
+          <>
+          <tr onClick={()=>setExpanded(expanded===i?null:i)} style={{cursor:'pointer',background:expanded===i?'rgba(75,68,200,0.04)':'transparent',borderBottom:'0.5px solid var(--border)'}}>
+            <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)'}}>{fmtDateWithDay(t.date)}</td>
+            <td style={{fontSize:12,padding:'7px 8px',fontWeight:500}}>{t.asset}</td>
+            <td style={{fontSize:11,padding:'7px 8px'}}><span style={{fontSize:10,fontWeight:500,padding:'2px 5px',borderRadius:3,background:t.direction==='Long'?'rgba(22,163,74,0.1)':'rgba(220,38,38,0.08)',color:t.direction==='Long'?'#15803d':'#991b1b'}}>{t.direction}</span></td>
+            <td style={{fontSize:11,padding:'7px 8px'}}>{t.entry}</td>
+            <td style={{fontSize:11,padding:'7px 8px'}}>{t.exit}</td>
+            <td style={{fontSize:11,padding:'7px 8px',fontWeight:500,color:pnlColor(t.r)}}>{t.r}</td>
+            <td style={{fontSize:12,padding:'7px 8px',fontWeight:500,color:pnlColor(t.pnl)}}>{t.pnl}</td>
+            <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)',whiteSpace:'nowrap'}}>{t.time?(t.exitTime?t.time+' – '+t.exitTime:t.time):'—'}</td>
+            <td style={{fontSize:11,padding:'7px 8px',color:t.mae?'#dc2626':'var(--text-muted)'}}>{t.mae||'—'}</td>
+            <td style={{fontSize:11,padding:'7px 8px',color:t.mfe?'#16a34a':'var(--text-muted)'}}>{t.mfe||'—'}</td>
+            <td style={{fontSize:10,padding:'7px 8px'}}><span style={{background:'var(--surface2)',padding:'2px 5px',borderRadius:3}}>{t.setup}</span></td>
+            <td style={{fontSize:10,padding:'7px 8px'}}>{t.emotion&&<span style={{padding:'2px 6px',borderRadius:10,background:EMOTION_BG[t.emotion]||'var(--surface2)',color:EMOTION_COLOR[t.emotion]||'var(--text-muted)',fontSize:9}}>{t.emotion}</span>}</td>
+            <td style={{fontSize:11,padding:'7px 8px',fontWeight:500,color:t.rules==='4/4'?'var(--green)':t.rules?.startsWith('2')?'var(--red)':'var(--text)'}}>{t.rules}</td>
+            <td style={{padding:'7px 4px',textAlign:'center',whiteSpace:'nowrap'}}>
+              <button onClick={e=>{e.stopPropagation();startEdit(i);}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:12,padding:'0 3px'}} title="Edit"><i className="ti ti-pencil" style={{fontSize:11}}/></button>
+              <button onClick={e=>{e.stopPropagation();removeTrade(i)}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,padding:'0 3px'}} title="Delete">×</button>
+            </td>
+          </tr>
+          {expanded===i&&<tr><td colSpan={14} style={{padding:'10px 14px',background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)',borderLeft:`2px solid ${PURPLE}`}}>{t.notes&&<div style={{fontSize:11,color:'var(--text-muted)',padding:'8px 10px',background:'var(--surface2)',borderRadius:5,lineHeight:1.5}}>{t.notes}</div>}</td></tr>}
+          </>
+        )}
       </React.Fragment>)}</tbody>
     </table></Card>}
   </div>)
