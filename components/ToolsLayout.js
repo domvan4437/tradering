@@ -446,7 +446,7 @@ function TradeLog({trades,setTrades,tradesKey}){
     </Card>}
     {trades.length===0?<Card style={{textAlign:'center',padding:'40px 20px'}}><div style={{fontSize:14,fontWeight:500,marginBottom:6}}>No trades logged yet</div><BtnP onClick={()=>setAdding(true)}>+ Add your first trade</BtnP></Card>:
     <Card style={{padding:0,overflow:'hidden'}}><table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
-      <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Time','MAE','MFE','Setup','Emotion','Rules',''].map((h,i)=><th key={h+i} style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:'left',textTransform:'uppercase',letterSpacing:'0.04em',borderBottom:'0.5px solid var(--border)',width:h===''?28:h==='Date'?90:h==='Setup'||h==='Emotion'?90:h==='Time'?110:h==='MAE'||h==='MFE'?60:undefined}}>{h}</th>)}</tr></thead>
+      <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Time','MAE','MFE','Setup','Emotion','Rules',''].map((h,i)=><th key={h+i} style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:'left',textTransform:'uppercase',letterSpacing:'0.04em',borderBottom:'0.5px solid var(--border)',width:h===''?52:h==='Date'?90:h==='Setup'||h==='Emotion'?90:h==='Time'?110:h==='MAE'||h==='MFE'?60:undefined}}>{h}</th>)}</tr></thead>
       <tbody>{trades.map((t,i)=><React.Fragment key={i}>
         {editId===i?(
           <tr style={{background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)'}}>
