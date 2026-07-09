@@ -370,13 +370,18 @@ function Dashboard({trades,journals}){
 }
 
 function TradeLog({trades,setTrades,tradesKey}){
-  const empty={date:'',asset:'',direction:'Long',entry:'',exit:'',pnl:'',r:'',size:'',time:'',exitTime:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:''};
+  const empty={date:'',asset:'',direction:'Long',entry:'',exit:'',pnl:'',r:'',risk:'',size:'',time:'',exitTime:'',mae:'',mfe:'',setup:'',emotion:'',rules:'',notes:''};
   const[form,setForm]=useState(empty);const[adding,setAdding]=useState(false);const[expanded,setExpanded]=useState(null);
   const[showBroker,setShowBroker]=useState(false);
   const[editId,setEditId]=useState(null);const[editForm,setEditForm]=useState(empty);
   function startEdit(i){setEditId(i);setEditForm({...trades[i]});setExpanded(null);}
   function saveEdit(){if(editId===null)return;const u=trades.map((t,i)=>i===editId?{...t,...editForm}:t);setTrades(u);save(tradesKey,u);setEditId(null);setEditForm(empty);}
   const userSetups=load(STORAGE_KEY+'_setups2',[]);
+  const[riskMode,setRiskMode]=useState('$');
+  const _tlAccs=load('tr_port_accounts_v3',[]);
+  const tlAccTotal=_tlAccs.length>0?_tlAccs.reduce((s,a)=>s+(typeof a.cash==='number'?a.cash:parseFloat(a.cash)||0),0):null;
+  const tlNetPnl=trades.reduce((s,t)=>s+pnlNum(t.pnl),0);
+  const tlStartVal=tlAccTotal!==null?tlAccTotal-tlNetPnl:null;
   const fileRef=useRef(null);
   function addTrade(){if(!form.asset||!form.date)return;const u=[form,...trades];setTrades(u);save(tradesKey,u);setForm(empty);setAdding(false)}
   function removeTrade(i){if(!window.confirm('Delete this trade? This cannot be undone.'))return;const u=trades.filter((_,idx)=>idx!==i);setTrades(u);save(tradesKey,u)}
@@ -428,12 +433,13 @@ function TradeLog({trades,setTrades,tradesKey}){
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Direction</div><Sel value={form.direction} onChange={e=>setForm(f=>({...f,direction:e.target.value}))}><option>Long</option><option>Short</option></Sel></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Setup</div><Sel value={form.setup} onChange={e=>setForm(f=>({...f,setup:e.target.value}))}><option value="">None</option>{userSetups.length===0?<option disabled style={{color:'var(--text-muted)'}}>— create setups in Playbook —</option>:userSetups.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</Sel></div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:10}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:10,marginBottom:10}}>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Entry</div><Inp value={form.entry} onChange={e=>setForm(f=>({...f,entry:e.target.value}))} placeholder="0.00"/></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Exit</div><Inp value={form.exit} onChange={e=>setForm(f=>({...f,exit:e.target.value}))} placeholder="0.00"/></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>P&L ($)</div><Inp value={form.pnl} onChange={e=>setForm(f=>({...f,pnl:e.target.value}))} placeholder="+240"/></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>R-multiple</div><Inp value={form.r} onChange={e=>setForm(f=>({...f,r:e.target.value}))} placeholder="+1.8R"/></div>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Size</div><Inp value={form.size} onChange={e=>setForm(f=>({...f,size:e.target.value}))} placeholder="2 lots"/></div>
+        <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Risk ($)</div><Inp value={form.risk} onChange={e=>setForm(f=>({...f,risk:e.target.value}))} placeholder="500"/></div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:10}}>
         <div><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Time (entry – exit)</div><div style={{display:'flex',alignItems:'center',gap:4}}><Inp type="time" value={form.time} onChange={e=>setForm(f=>({...f,time:e.target.value}))} style={{flex:1}}/><span style={{fontSize:10,color:'var(--text-muted)',flexShrink:0}}>–</span><Inp type="time" value={form.exitTime||''} onChange={e=>setForm(f=>({...f,exitTime:e.target.value}))} style={{flex:1}}/></div></div>
@@ -445,13 +451,39 @@ function TradeLog({trades,setTrades,tradesKey}){
       <div style={{marginBottom:10}}><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Notes</div><Textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Pre-trade rationale..."/></div>
       <div style={{display:'flex',gap:8}}><BtnP onClick={addTrade}>Save trade</BtnP><BtnS onClick={()=>{setAdding(false);setForm(empty)}}>Cancel</BtnS></div>
     </Card>}
+    {(tlAccTotal!==null||tlNetPnl!==0)&&<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+      {tlStartVal!==null&&<div style={{display:'flex',alignItems:'center',gap:6,background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:7,padding:'7px 12px'}}>
+        <span style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Account start</span>
+        <span style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>${tlStartVal.toFixed(0)}</span>
+      </div>}
+      {tlAccTotal!==null&&<div style={{display:'flex',alignItems:'center',gap:6,background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:7,padding:'7px 12px'}}>
+        <span style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Account now</span>
+        <span style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>${tlAccTotal.toFixed(0)}</span>
+      </div>}
+      {tlNetPnl!==0&&<div style={{display:'flex',alignItems:'center',gap:6,background:tlNetPnl>0?'rgba(22,163,74,0.08)':'rgba(220,38,38,0.07)',border:`0.5px solid ${tlNetPnl>0?'rgba(22,163,74,0.25)':'rgba(220,38,38,0.2)'}`,borderRadius:7,padding:'7px 12px'}}>
+        <span style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Net P&L</span>
+        <span style={{fontSize:13,fontWeight:600,color:tlNetPnl>0?'var(--green)':'var(--red)'}}>{tlNetPnl>0?'+':''}${tlNetPnl.toFixed(0)}</span>
+        {tlStartVal!==null&&tlStartVal>0&&<span style={{fontSize:10,color:tlNetPnl>0?'#15803d':'#991b1b',fontWeight:500}}>({tlNetPnl>0?'+':''}{ ((tlNetPnl/tlStartVal)*100).toFixed(1)}%)</span>}
+      </div>}
+    </div>}
     {trades.length===0?<Card style={{textAlign:'center',padding:'40px 20px'}}><div style={{fontSize:14,fontWeight:500,marginBottom:6}}>No trades logged yet</div><BtnP onClick={()=>setAdding(true)}>+ Add your first trade</BtnP></Card>:
     <Card style={{padding:0,overflow:'hidden'}}><table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
-      <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Time','MAE','MFE','Setup','Emotion','Rules',''].map((h,i)=><th key={h+i} style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:'left',textTransform:'uppercase',letterSpacing:'0.04em',borderBottom:'0.5px solid var(--border)',width:h===''?52:h==='Date'?90:h==='Setup'||h==='Emotion'?90:h==='Time'?110:h==='MAE'||h==='MFE'?60:undefined}}>{h}</th>)}</tr></thead>
+      <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Risk','Time','MAE','MFE','Setup','Emotion','Rules',''].map((h,i)=>{
+        if(h==='Risk')return(<th key="Risk" style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:'left',borderBottom:'0.5px solid var(--border)',width:72}}>
+          <div style={{display:'flex',alignItems:'center',gap:4}}>
+            <span style={{textTransform:'uppercase',letterSpacing:'0.04em'}}>Risk</span>
+            <select value={riskMode} onChange={e=>{e.stopPropagation();setRiskMode(e.target.value);}} onClick={e=>e.stopPropagation()} style={{fontSize:9,padding:'1px 3px',border:'0.5px solid var(--border)',borderRadius:3,background:'var(--surface)',color:'var(--text-muted)',cursor:'pointer',outline:'none'}}>
+              <option value="$">$</option>
+              <option value="%">%</option>
+            </select>
+          </div>
+        </th>);
+        return<th key={h+i} style={{fontSize:10,color:'var(--text-muted)',fontWeight:500,padding:'6px 8px',textAlign:'left',textTransform:'uppercase',letterSpacing:'0.04em',borderBottom:'0.5px solid var(--border)',width:h===''?52:h==='Date'?90:h==='Setup'||h==='Emotion'?90:h==='Time'?110:h==='MAE'||h==='MFE'?60:undefined}}>{h}</th>;
+      })}</tr></thead>
       <tbody>{trades.map((t,i)=><React.Fragment key={i}>
         {editId===i?(
           <tr style={{background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)'}}>
-            <td colSpan={14} style={{padding:'12px 14px',borderLeft:`2px solid ${PURPLE}`}}>
+            <td colSpan={15} style={{padding:'12px 14px',borderLeft:`2px solid ${PURPLE}`}}>
               <div style={{fontSize:10,fontWeight:600,color:PURPLE,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>Edit trade</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:8}}>
                 <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Date</div><Inp type="date" value={editForm.date||''} onChange={e=>setEditForm(f=>({...f,date:e.target.value}))}/></div>
@@ -459,12 +491,13 @@ function TradeLog({trades,setTrades,tradesKey}){
                 <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Direction</div><Sel value={editForm.direction||'Long'} onChange={e=>setEditForm(f=>({...f,direction:e.target.value}))}><option>Long</option><option>Short</option></Sel></div>
                 <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Setup</div><Sel value={editForm.setup||''} onChange={e=>setEditForm(f=>({...f,setup:e.target.value}))}><option value="">None</option>{userSetups.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</Sel></div>
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:8}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:8,marginBottom:8}}>
                 <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Entry</div><Inp value={editForm.entry||''} onChange={e=>setEditForm(f=>({...f,entry:e.target.value}))} placeholder="0.00"/></div>
                 <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Exit</div><Inp value={editForm.exit||''} onChange={e=>setEditForm(f=>({...f,exit:e.target.value}))} placeholder="0.00"/></div>
                 <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>P&L ($)</div><Inp value={editForm.pnl||''} onChange={e=>setEditForm(f=>({...f,pnl:e.target.value}))} placeholder="+240"/></div>
                 <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>R-multiple</div><Inp value={editForm.r||''} onChange={e=>setEditForm(f=>({...f,r:e.target.value}))} placeholder="+1.8R"/></div>
                 <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Size</div><Inp value={editForm.size||''} onChange={e=>setEditForm(f=>({...f,size:e.target.value}))} placeholder="2 lots"/></div>
+                <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Risk ($)</div><Inp value={editForm.risk||''} onChange={e=>setEditForm(f=>({...f,risk:e.target.value}))} placeholder="500"/></div>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:8}}>
                 <div><div style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>Entry time</div><Inp type="time" value={editForm.time||''} onChange={e=>setEditForm(f=>({...f,time:e.target.value}))}/></div>
@@ -487,6 +520,9 @@ function TradeLog({trades,setTrades,tradesKey}){
             <td style={{fontSize:11,padding:'7px 8px'}}>{t.exit}</td>
             <td style={{fontSize:11,padding:'7px 8px',fontWeight:500,color:pnlColor(t.r)}}>{t.r}</td>
             <td style={{fontSize:12,padding:'7px 8px',fontWeight:500,color:pnlColor(t.pnl)}}>{t.pnl}</td>
+            <td style={{fontSize:11,padding:'7px 8px',color:t.risk?'var(--red)':'var(--text-muted)'}}>
+              {t.risk?(riskMode==='%'&&tlAccTotal?`${((pnlNum(t.risk)/tlAccTotal)*100).toFixed(1)}%`:riskMode==='%'&&!tlAccTotal?`$${pnlNum(t.risk).toFixed(0)}`:`$${pnlNum(t.risk).toFixed(0)}`):'—'}
+            </td>
             <td style={{fontSize:11,padding:'7px 8px',color:'var(--text-muted)',whiteSpace:'nowrap'}}>{t.time?(t.exitTime?t.time+' – '+t.exitTime:t.time):'—'}</td>
             <td style={{fontSize:11,padding:'7px 8px',color:t.mae?'#dc2626':'var(--text-muted)'}}>{t.mae||'—'}</td>
             <td style={{fontSize:11,padding:'7px 8px',color:t.mfe?'#16a34a':'var(--text-muted)'}}>{t.mfe||'—'}</td>
@@ -498,7 +534,7 @@ function TradeLog({trades,setTrades,tradesKey}){
               <button onClick={e=>{e.stopPropagation();removeTrade(i)}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,padding:'0 3px'}} title="Delete">×</button>
             </td>
           </tr>
-          {expanded===i&&<tr><td colSpan={14} style={{padding:'10px 14px',background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)',borderLeft:`2px solid ${PURPLE}`}}>{t.notes&&<div style={{fontSize:11,color:'var(--text-muted)',padding:'8px 10px',background:'var(--surface2)',borderRadius:5,lineHeight:1.5}}>{t.notes}</div>}</td></tr>}
+          {expanded===i&&<tr><td colSpan={15} style={{padding:'10px 14px',background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)',borderLeft:`2px solid ${PURPLE}`}}>{t.notes&&<div style={{fontSize:11,color:'var(--text-muted)',padding:'8px 10px',background:'var(--surface2)',borderRadius:5,lineHeight:1.5}}>{t.notes}</div>}</td></tr>}
           </>
         )}
       </React.Fragment>)}</tbody>
