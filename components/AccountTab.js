@@ -1145,125 +1145,118 @@ function MonetizationTab() {
 }
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
-const SETTINGS_SECTIONS = ['Account', 'Appearance', 'Notifications', 'Privacy', 'Broker', 'Billing', 'Delete my account']
-
-function SettingsContent({ section, user }) {
+function SettingsPage({ user }) {
+  const inp = { width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box' }
+  const secHead = { fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 14, paddingBottom: 8, borderBottom: '0.5px solid var(--border)' }
   return (
-    <div style={{ maxWidth: 520 }}>
-      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', marginBottom: 16 }}>{section}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32, maxWidth: 560 }}>
 
-        {section === 'Account' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Email</div>
-                <div style={{ display: 'flex', gap: 6 }}><input defaultValue={user?.email || ''} style={{ flex: 1, padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }} /><BtnS>Change</BtnS></div>
-              </div>
-              <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Username</div>
-                <input defaultValue={user?.name || ''} style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box' }} />
-              </div>
+      {/* Account */}
+      <div>
+        <div style={secHead}>Account</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Email</div>
+              <div style={{ display: 'flex', gap: 6 }}><input defaultValue={user?.email || ''} style={{ ...inp, flex: 1, width: 'auto' }} /><BtnS>Change</BtnS></div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Nationality</div>
-                <select style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }}>
-                  <option value="">Select country</option>
-                  {['🇺🇸 United States','🇬🇧 United Kingdom','🇨🇦 Canada','🇦🇺 Australia','🇩🇪 Germany','🇫🇷 France','🇯🇵 Japan','🇳🇱 Netherlands','🇸🇬 Singapore','🇦🇪 UAE','🇿🇦 South Africa','🇧🇷 Brazil','🇮🇳 India','🇳🇿 New Zealand','🇨🇭 Switzerland','🇸🇪 Sweden','🇳🇴 Norway','🇩🇰 Denmark','🇵🇹 Portugal','🇦🇹 Austria','🇲🇽 Mexico','🇦🇷 Argentina','🇰🇷 South Korea','🇹🇷 Turkey','🇮🇱 Israel','🇵🇱 Poland','🇪🇸 Spain','🇮🇹 Italy','🇭🇰 Hong Kong','🇹🇭 Thailand','Other'].map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Timezone</div>
-                <select style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }}>
-                  {['UTC-12','UTC-11','UTC-10','UTC-9','UTC-8 Pacific','UTC-7 Mountain','UTC-6 Central','UTC-5 Eastern','UTC-4','UTC-3','UTC-2','UTC-1','UTC+0 London','UTC+1 Paris','UTC+2','UTC+3 Dubai','UTC+4','UTC+5','UTC+5:30 India','UTC+6','UTC+7','UTC+8 Singapore','UTC+9 Tokyo','UTC+10 Sydney','UTC+11','UTC+12'].map(t => <option key={t}>{t}</option>)}
-                </select>
-              </div>
+            <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Username</div>
+              <input defaultValue={user?.name || ''} style={inp} />
             </div>
-            <ChangePasswordSection />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '0.5px solid var(--border)' }}>
-              <div><div style={{ fontSize: 12, fontWeight: 500 }}>Two-factor authentication</div><div style={{ fontSize: 10, color: '#dc2626' }}>Currently off</div></div>
-              <BtnS>Enable 2FA</BtnS>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '0.5px solid var(--border)' }}>
-              <div><div style={{ fontSize: 12, fontWeight: 500 }}>Plan: Free</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Upgrade for analytics, revenue share, and more</div></div>
-              <BtnP>Upgrade to Pro</BtnP>
-            </div>
-            <BtnP style={{ width: 120 }}>Save changes</BtnP>
           </div>
-        )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Nationality</div>
+              <select style={inp}><option value="">Select country</option>{['🇺🇸 United States','🇬🇧 United Kingdom','🇨🇦 Canada','🇦🇺 Australia','🇩🇪 Germany','🇫🇷 France','🇯🇵 Japan','🇳🇱 Netherlands','🇸🇬 Singapore','🇦🇪 UAE','🇿🇦 South Africa','🇧🇷 Brazil','🇮🇳 India','🇳🇿 New Zealand','🇨🇭 Switzerland','🇸🇪 Sweden','🇳🇴 Norway','🇩🇰 Denmark','🇵🇹 Portugal','🇦🇹 Austria','🇲🇽 Mexico','🇦🇷 Argentina','🇰🇷 South Korea','🇹🇷 Turkey','🇮🇱 Israel','🇵🇱 Poland','🇪🇸 Spain','🇮🇹 Italy','🇭🇰 Hong Kong','🇹🇭 Thailand','Other'].map(c=><option key={c}>{c}</option>)}</select>
+            </div>
+            <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Timezone</div>
+              <select style={inp}>{['UTC-12','UTC-11','UTC-10','UTC-9','UTC-8 Pacific','UTC-7 Mountain','UTC-6 Central','UTC-5 Eastern','UTC-4','UTC-3','UTC-2','UTC-1','UTC+0 London','UTC+1 Paris','UTC+2','UTC+3 Dubai','UTC+4','UTC+5','UTC+5:30 India','UTC+6','UTC+7','UTC+8 Singapore','UTC+9 Tokyo','UTC+10 Sydney','UTC+11','UTC+12'].map(t=><option key={t}>{t}</option>)}</select>
+            </div>
+          </div>
+          <ChangePasswordSection />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '0.5px solid var(--border)' }}>
+            <div><div style={{ fontSize: 12, fontWeight: 500 }}>Two-factor authentication</div><div style={{ fontSize: 10, color: '#dc2626' }}>Currently off</div></div>
+            <BtnS>Enable 2FA</BtnS>
+          </div>
+          <BtnP style={{ width: 120, marginTop: 4 }}>Save changes</BtnP>
+        </div>
+      </div>
 
-        {section === 'Appearance' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Theme</div>
-              <select style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }}>
-                <option>System default</option><option>Light</option><option>Dark</option>
-              </select>
+      {/* Plan & Billing */}
+      <div>
+        <div style={secHead}>Plan &amp; Billing</div>
+        <div style={{ padding: '14px', background: 'var(--surface2)', borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>Current plan: <span style={{ color: PURPLE }}>{user?.plan ? user.plan.charAt(0).toUpperCase()+user.plan.slice(1) : 'Free'}</span></div>
+              {(!user?.plan || user.plan === 'free') && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Upgrade for AI coach, analytics, revenue share, and more.</div>}
             </div>
-            <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Default market section on load</div>
-              <select style={{ width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none' }}>
-                <option>Commodities</option><option>Stocks</option><option>Forex</option><option>Crypto</option><option>Futures</option>
-              </select>
+            {(!user?.plan || user.plan === 'free') && <BtnP>Upgrade to Pro</BtnP>}
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No payment methods on file.</div>
+      </div>
+
+      {/* Appearance */}
+      <div>
+        <div style={secHead}>Appearance</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Theme</div>
+            <select style={inp}><option>System default</option><option>Light</option><option>Dark</option></select>
+          </div>
+          <div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Default section on load</div>
+            <select style={inp}><option>Community</option><option>Journal</option><option>Tools</option><option>Competitions</option></select>
+          </div>
+          <BtnP style={{ width: 120, marginTop: 4 }}>Save</BtnP>
+        </div>
+      </div>
+
+      {/* Notifications */}
+      <div>
+        <div style={secHead}>Notifications</div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {[
+            { label: 'New followers', sub: 'When someone follows you' },
+            { label: 'Post likes & comments', sub: 'When someone engages with your posts' },
+            { label: 'Trade idea results', sub: 'When your public trade ideas hit targets' },
+            { label: 'Group activity', sub: 'New posts in your groups' },
+            { label: 'New subscribers', sub: 'When someone subscribes to a paid product' },
+            { label: 'Platform updates', sub: 'New features and announcements' },
+          ].map((n, i, a) => (
+            <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
+              <div><div style={{ fontSize: 12 }}>{n.label}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{n.sub}</div></div>
+              <input type="checkbox" defaultChecked style={{ cursor: 'pointer', width: 16, height: 16 }} />
             </div>
-            <BtnP style={{ width: 120 }}>Save</BtnP>
-          </div>
-        )}
+          ))}
+        </div>
+      </div>
 
-        {section === 'Notifications' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {[
-              { label: 'New followers', sub: 'When someone follows you' },
-              { label: 'Post likes & comments', sub: 'When someone engages with your posts' },
-              { label: 'Trade idea results', sub: 'When your public trade ideas hit targets' },
-              { label: 'Group activity', sub: 'New posts in your groups' },
-              { label: 'New subscribers', sub: 'When someone subscribes to a paid product' },
-              { label: 'Platform updates', sub: 'New features and announcements' },
-            ].map((n, i, a) => (
-              <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
-                <div><div style={{ fontSize: 12 }}>{n.label}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{n.sub}</div></div>
-                <input type="checkbox" defaultChecked style={{ cursor: 'pointer', width: 16, height: 16 }} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {section === 'Privacy' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {[
-              { label: 'Show profile on leaderboards', sub: 'Let others find you in rankings' },
-              { label: 'Show trade history publicly', sub: 'Others can see your win rate and trade log' },
-              { label: 'Allow direct messages', sub: "From users you don't follow" },
-              { label: 'Show online status', sub: "Let others see when you're active" },
-            ].map((n, i, a) => (
-              <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
-                <div><div style={{ fontSize: 12 }}>{n.label}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{n.sub}</div></div>
-                <input type="checkbox" defaultChecked style={{ cursor: 'pointer', width: 16, height: 16 }} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {section === 'Broker' && (
-          <div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>Connect your brokerage account to automatically track and verify your trade history.</div>
-            <BtnP style={{ marginBottom: 10 }}>Connect broker</BtnP>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Supports: Interactive Brokers, TD Ameritrade, TradeStation, MetaTrader 4/5, and more.</div>
-          </div>
-        )}
-
-        {section === 'Billing' && (
-          <div>
-            <div style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 8, marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>Current plan: <span style={{ color: PURPLE }}>Free</span></div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Upgrade to Pro for advanced analytics, revenue share, and priority support.</div>
+      {/* Privacy */}
+      <div>
+        <div style={secHead}>Privacy</div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {[
+            { label: 'Show profile on leaderboards', sub: 'Let others find you in rankings' },
+            { label: 'Show trade history publicly', sub: 'Others can see your win rate and trade log' },
+            { label: 'Allow direct messages', sub: "From users you don't follow" },
+            { label: 'Show online status', sub: "Let others see when you're active" },
+          ].map((n, i, a) => (
+            <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < a.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
+              <div><div style={{ fontSize: 12 }}>{n.label}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{n.sub}</div></div>
+              <input type="checkbox" defaultChecked style={{ cursor: 'pointer', width: 16, height: 16 }} />
             </div>
-            <BtnP style={{ marginBottom: 10 }}>Upgrade to Pro</BtnP>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No active subscriptions or payment methods on file.</div>
-          </div>
-        )}
+          ))}
+        </div>
+      </div>
 
-        {section === 'Delete my account' && (
-          <div style={{ padding: '12px', background: 'rgba(220,38,38,0.05)', border: '0.5px solid rgba(220,38,38,0.3)', borderRadius: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: '#dc2626', marginBottom: 4 }}>Delete account</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>Permanently delete your TradeZar account. This cannot be undone.</div>
-            <button style={{ padding: '7px 14px', background: 'transparent', color: '#dc2626', border: '0.5px solid #dc2626', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' }}>Delete my account</button>
-          </div>
-        )}
+      {/* Danger zone */}
+      <div>
+        <div style={{ ...secHead, color: '#dc2626', borderBottomColor: 'rgba(220,38,38,0.2)' }}>Danger zone</div>
+        <div style={{ padding: '14px', background: 'rgba(220,38,38,0.04)', border: '0.5px solid rgba(220,38,38,0.25)', borderRadius: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>Delete account</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>Permanently delete your TradeZar account and all data. This cannot be undone.</div>
+          <button style={{ padding: '7px 14px', background: 'transparent', color: '#dc2626', border: '0.5px solid #dc2626', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' }}>Delete my account</button>
+        </div>
+      </div>
+
     </div>
   )
 }
@@ -1327,33 +1320,22 @@ function ChangePasswordSection() {
   )
 }
 
-function SettingsTab({ user }) { return null }
-
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-const SETTINGS_ICONS = {
-  'Account': 'ti-user', 'Appearance': 'ti-palette', 'Notifications': 'ti-bell',
-  'Privacy': 'ti-lock', 'Broker': 'ti-plug-connected', 'Billing': 'ti-credit-card',
-  'Delete my account': 'ti-trash'
-}
-
 const ACCOUNT_TABS = [
-  { key: 'overview',     label: 'Profile',               sub: 'Edit your public profile',    icon: 'ti-user'            },
-  { key: 'analytics',    label: 'Analytics',             sub: 'Performance & community',     icon: 'ti-chart-bar'       },
-  { key: 'monetization', label: 'Monetization',          sub: 'Earnings & payouts',          icon: 'ti-currency-dollar' },
-  { key: 'broker',       label: 'Connect Broker',        sub: 'Sync your trading accounts',  icon: 'ti-building-bank'   },
-  { key: 'settings',     label: 'Settings',              sub: 'Account & preferences',       icon: 'ti-settings'        },
+  { key: 'overview',     label: 'Profile',         icon: 'ti-user'            },
+  { key: 'analytics',    label: 'Analytics',        icon: 'ti-chart-bar'       },
+  { key: 'monetization', label: 'Monetization',     icon: 'ti-currency-dollar' },
+  { key: 'broker',       label: 'Connect Broker',   icon: 'ti-building-bank'   },
+  { key: 'settings',     label: 'Settings',         icon: 'ti-settings'        },
 ]
 
 export default function AccountTab({ user }) {
   const [activeTab, setActiveTab] = useState('overview')
-  const [settingsSection, setSettingsSection] = useState('Account')
-
-  const meta = ACCOUNT_TABS.find(t => t.key === activeTab) || ACCOUNT_TABS[0]
 
   return (
     <div style={{ fontFamily: 'var(--font)', display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
-      {/* ── SIDEBAR — 56px fixed, matches Community/Compete ── */}
+      {/* ── SIDEBAR ── */}
       <div style={{ width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 4, borderRight: '0.5px solid var(--border)', background: 'var(--surface)', flexShrink: 0, alignSelf: 'stretch' }}>
         {ACCOUNT_TABS.map(t => {
           const isActive = activeTab === t.key
@@ -1370,34 +1352,16 @@ export default function AccountTab({ user }) {
 
       {/* ── MAIN CONTENT ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-
-
-
-        {/* Settings horizontal subtab strip */}
-        {activeTab === 'settings' && (
-          <div style={{ display: 'flex', alignItems: 'center', padding: '0 18px', gap: 20, borderBottom: '0.5px solid var(--border)', flexShrink: 0, height: 44, overflowX: 'auto' }}>
-            {SETTINGS_SECTIONS.map(sec => (
-              <span key={sec} onClick={() => setSettingsSection(sec)}
-                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: settingsSection === sec ? 600 : 400, color: settingsSection === sec ? 'var(--text)' : 'var(--text-muted)', position: 'relative', height: 44, display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-                <i className={`ti ${SETTINGS_ICONS[sec] || 'ti-circle'}`} style={{ fontSize: 14 }} aria-hidden="true" />
-                {sec}
-                {settingsSection === sec && <span style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, background: '#534AB7', borderRadius: 1 }} />}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Scrollable content */}
         {activeTab === 'overview' ? (
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
             <ProfileTab user={user} />
           </div>
         ) : (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
             {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
             {activeTab === 'monetization' && <MonetizationTab />}
             {activeTab === 'broker'       && <BrokerTab />}
-            {activeTab === 'settings'     && <SettingsContent section={settingsSection} user={user} />}
+            {activeTab === 'settings'     && <SettingsPage user={user} />}
           </div>
         )}
       </div>

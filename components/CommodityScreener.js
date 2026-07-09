@@ -498,21 +498,8 @@ export default function App() {
             })}
           </div>
 
-          {/* Right side */}
+          {/* Right side — account button only */}
           <div style={{ display:'flex', alignItems:'center', gap:8, marginLeft:8, flexShrink:0 }}>
-            {plan==='free' && userInfo && (
-              <span style={{ fontSize:11, fontWeight:600, color:'var(--nav-text-active)', background:'var(--nav-badge)', border:'1px solid var(--nav-badge-border)', padding:'3px 9px', borderRadius:5 }}>
-                FREE · {userInfo.screeningsToday}/{userInfo.limits?.screeningsPerDay}
-              </span>
-            )}
-            {plan==='pro' && <span style={{ fontSize:11, fontWeight:600, color:'var(--green)', background:'var(--green-bg)', padding:'3px 8px', borderRadius:3 }}>PRO</span>}
-            {plan==='trader' && <span style={{ fontSize:11, fontWeight:600, color:'var(--gold)', background:'var(--gold-bg)', padding:'3px 8px', borderRadius:3 }}>TRADER</span>}
-            {plan==='free' && (
-              <button onClick={()=>handleUpgrade()}
-                style={{ background:'var(--nav-badge)', color:'var(--nav-text-active)', border:'1px solid var(--nav-badge-border)', padding:'5px 13px', borderRadius:3, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'var(--font)' }}>
-                Upgrade
-              </button>
-            )}
             <button onClick={toggle}
               style={{ background:'var(--nav-badge)', border:'1px solid var(--nav-badge-border)', color:'var(--nav-text-active)', width:28, height:28, borderRadius:3, cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
               {theme==='dark'?'○':'●'}
@@ -529,14 +516,34 @@ export default function App() {
                 {userInfo?.name||session?.user?.name||session?.user?.email?.split('@')[0]||'Account'} ▾
               </button>
               {showAccount && (
-                <div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'1px solid var(--border)', minWidth:200, zIndex:999, borderRadius:'var(--radius)', boxShadow:'var(--shadow-lg)' }}>
+                <div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'1px solid var(--border)', minWidth:220, zIndex:999, borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.35)' }}>
                   <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)' }}>
-                    <p style={{ fontSize:12, color:'var(--text)', margin:0, fontWeight:500 }}>{session?.user?.email}</p>
-                    <p style={{ fontSize:11, color:'var(--text-muted)', margin:'4px 0 0', textTransform:'uppercase' }}>{plan}</p>
+                    <div style={{ fontSize:12, color:'var(--text)', fontWeight:600, marginBottom:2 }}>{userInfo?.name||session?.user?.name||'Account'}</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)' }}>{session?.user?.email}</div>
+                    <div style={{ marginTop:6, display:'inline-block', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 8px', borderRadius:10, background: plan==='trader'?'rgba(217,119,6,0.12)':plan==='pro'?'rgba(75,68,200,0.12)':'var(--surface2)', color: plan==='trader'?'#d97706':plan==='pro'?'#4B44C8':'var(--text-muted)' }}>{plan}</div>
                   </div>
-                  <Link href="/pricing" style={{ display:'block', padding:'10px 16px', fontSize:13, color:'var(--text-muted)', textDecoration:'none' }}>Pricing</Link>
-                  {plan!=='free' && <button onClick={handleManageBilling} style={{ display:'block', width:'100%', background:'transparent', color:'var(--text-muted)', border:'none', padding:'10px 16px', fontSize:13, textAlign:'left', cursor:'pointer', fontFamily:'var(--font)' }}>Manage Billing</button>}
-                  <button onClick={()=>import('next-auth/react').then(m=>m.signOut({callbackUrl:'/'}))} style={{ display:'block', width:'100%', background:'transparent', color:'var(--red)', border:'none', borderTop:'1px solid var(--border)', padding:'10px 16px', fontSize:13, textAlign:'left', cursor:'pointer', fontFamily:'var(--font)' }}>Sign Out</button>
+                  <div style={{ padding:'6px' }}>
+                    <button onClick={()=>{setSection('account');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <i className="ti ti-user" style={{ fontSize:15, color:'var(--text-muted)', width:18 }} /> Profile
+                    </button>
+                    <button onClick={()=>{setSection('account');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <i className="ti ti-settings" style={{ fontSize:15, color:'var(--text-muted)', width:18 }} /> Settings
+                    </button>
+                    <button onClick={()=>{setSection('account');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <i className="ti ti-credit-card" style={{ fontSize:15, color:'var(--text-muted)', width:18 }} />
+                      <span>Plan &amp; Billing</span>
+                      {plan==='free' && <span style={{ marginLeft:'auto', fontSize:10, fontWeight:600, color:'#4B44C8', background:'rgba(75,68,200,0.1)', padding:'2px 7px', borderRadius:8 }}>Upgrade</span>}
+                    </button>
+                  </div>
+                  <div style={{ borderTop:'1px solid var(--border)', padding:'6px' }}>
+                    <button onClick={()=>import('next-auth/react').then(m=>m.signOut({callbackUrl:'/'}))} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--red)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='rgba(220,38,38,0.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <i className="ti ti-logout" style={{ fontSize:15, width:18 }} /> Sign out
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -2438,4 +2445,4 @@ function ReferenceTab() {
     </div>
   )
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
