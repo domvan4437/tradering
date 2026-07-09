@@ -946,7 +946,7 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
           );
         })()}
         <span onClick={() => goToProfile(t.authorSlug || t.userId)} style={{ fontSize:13, fontWeight:600, color:'var(--text)', fontFamily:'var(--font)', cursor:'pointer' }}>{t.user}</span>
-        <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{new Date(t.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+        <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)' }}>{t.time}</span>
         {t.asset && <span style={{ fontSize:10, fontWeight:500, padding:'2px 8px', borderRadius:12, background:'#EEEDFE', color:'#3C3489', fontFamily:'var(--font)' }}>{t.asset}</span>}
         {t.userId === myUserId && (
           <button onClick={() => onDelete(t.id)} style={{ all:'unset', cursor:'pointer', marginLeft:'auto', fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font)', padding:'2px 8px', borderRadius:6 }}
@@ -1022,7 +1022,7 @@ function ThreadsFeed({ onNewPost, currentUserId }) {
           authorImage: p.authorImage || null,
           body: p.content,
           asset: p.assetTag,
-          time: p.createdAt,
+          time: (()=>{const s=Math.floor((Date.now()-new Date(p.createdAt))/1000);if(s<60)return`${s}s`;if(s<3600)return`${Math.floor(s/60)}m`;if(s<86400)return`${Math.floor(s/3600)}h`;return`${Math.floor(s/86400)}d`;})(),
           likes: p.likes || 0,
           liked: p.liked || false,
           commentsCount: p.commentsCount || 0,
