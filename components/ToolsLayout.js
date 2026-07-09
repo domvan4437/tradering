@@ -630,6 +630,13 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
   const [hov,setHov]=useState(false);
   const [dotMenu,setDotMenu]=useState(false);
   const fileInputRef=useRef(null);
+  const taRef=useRef(null);
+  useEffect(()=>{
+    const el=taRef.current;
+    if(!el)return;
+    el.style.height='auto';
+    el.style.height=el.scrollHeight+'px';
+  },[block.content]);
   function handleFileSelect(e){
     const file=e.target.files[0];if(!file)return;
     const isImage=file.type.startsWith('image/');
@@ -742,7 +749,7 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
         {block.checked&&<i className="ti ti-check" style={{fontSize:9,color:'#fff'}}/>}
       </div>}
       <div style={{flex:1,position:'relative',...calloutWrap}}>
-        <textarea id={'blk_'+block.id} value={block.content==null||typeof block.content!=='string'?'':block.content} onChange={handleChange} onKeyDown={handleKey} rows={1}
+        <textarea ref={taRef} id={'blk_'+block.id} value={block.content==null||typeof block.content!=='string'?'':block.content} onChange={handleChange} onKeyDown={handleKey} rows={1}
           placeholder={isH1?'Heading 1':isH2?'Heading 2':isBullet?'List item':isCheck?'Checklist item':isCallout?'Callout...':'Type '/' for blocks…'}
           style={{...taStyle,minHeight:'1.65em'}}/>
         {slashOpen&&<div style={{position:'absolute',left:0,top:'100%',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:8,padding:5,zIndex:200,boxShadow:'0 4px 16px rgba(0,0,0,0.12)',width:180}}>
