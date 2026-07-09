@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useLayoutEffect } from 'react'
 
 const PURPLE = '#4B44C8'
 const STORAGE_KEY = 'tr_journal_v3'
@@ -631,12 +631,12 @@ function BlockRow({block,onUpdate,onEnter,onDelete,onSlashOpen,slashOpen,onChang
   const [dotMenu,setDotMenu]=useState(false);
   const fileInputRef=useRef(null);
   const taRef=useRef(null);
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     const el=taRef.current;
     if(!el)return;
     el.style.height='auto';
     el.style.height=el.scrollHeight+'px';
-  },[block.content]);
+  });
   function handleFileSelect(e){
     const file=e.target.files[0];if(!file)return;
     const isImage=file.type.startsWith('image/');
