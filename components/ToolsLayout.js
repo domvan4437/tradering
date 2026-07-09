@@ -801,7 +801,7 @@ function DailyJournal({jTree,saveJTree,activeJId,jNavHistory,navigateJTo,jGoBack
             <React.Fragment key={bc.id}>
               {idx>0&&<span style={{color:'var(--text-muted)',fontSize:12}}>/</span>}
               <span onClick={()=>idx<breadcrumb.length-1&&navigateJTo(bc.id)}
-                style={{fontSize:12,color:idx===breadcrumb.length-1?'var(--text)''var(--text-muted)',cursor:idx<breadcrumb.length-1?'pointer':'default',fontWeight:idx===breadcrumb.length-1?500:400}}
+                style={{fontSize:12,color:idx===breadcrumb.length-1?'var(--text)':'var(--text-muted)',cursor:idx<breadcrumb.length-1?'pointer':'default',fontWeight:idx===breadcrumb.length-1?500:400}}
                 onMouseEnter={e=>{if(idx<breadcrumb.length-1)e.currentTarget.style.color='var(--text)';}}
                 onMouseLeave={e=>{if(idx<breadcrumb.length-1)e.currentTarget.style.color='var(--text-muted)';}}>
                 {bc.name||'Untitled'}
