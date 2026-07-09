@@ -340,6 +340,7 @@ export default function App() {
   const handleUpgrade = (feature) => { setUpgradeFeature(feature||null); setShowUpgrade(true) }
   const { theme, toggle } = useTheme()
   const [section, setSection] = useState('community')
+  const [accountTab, setAccountTab] = useState('overview')
   const [viewingProfile, setViewingProfile] = useState(null) // slug of profile being viewed
 
   useEffect(() => {
@@ -523,15 +524,15 @@ export default function App() {
                     <div style={{ marginTop:6, display:'inline-block', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 8px', borderRadius:10, background: plan==='trader'?'rgba(217,119,6,0.12)':plan==='pro'?'rgba(75,68,200,0.12)':'var(--surface2)', color: plan==='trader'?'#d97706':plan==='pro'?'#4B44C8':'var(--text-muted)' }}>{plan}</div>
                   </div>
                   <div style={{ padding:'6px' }}>
-                    <button onClick={()=>{setSection('account');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
+                    <button onClick={()=>{setSection('account');setAccountTab('overview');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
                       onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                       <i className="ti ti-user" style={{ fontSize:15, color:'var(--text-muted)', width:18 }} /> Profile
                     </button>
-                    <button onClick={()=>{setSection('account');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
+                    <button onClick={()=>{setSection('account');setAccountTab('settings');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
                       onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                       <i className="ti ti-settings" style={{ fontSize:15, color:'var(--text-muted)', width:18 }} /> Settings
                     </button>
-                    <button onClick={()=>{setSection('account');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
+                    <button onClick={()=>{setSection('account');setAccountTab('settings');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
                       onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                       <i className="ti ti-credit-card" style={{ fontSize:15, color:'var(--text-muted)', width:18 }} />
                       <span>Plan &amp; Billing</span>
@@ -584,7 +585,7 @@ export default function App() {
         ) : section==='tools2' ? (
           <ToolsLayout tab={tab} setTab={setTab} userInfo={userInfo} />
         ) : section==='account' ? (
-          <div style={{ flex:1, overflow:'hidden', display:'flex' }}><AccountTab user={userInfo} /></div>
+          <div style={{ flex:1, overflow:'hidden', display:'flex' }}><AccountTab user={userInfo} requestTab={accountTab} /></div>
         ) : (
           <>
             {/* Commodities tabs */}

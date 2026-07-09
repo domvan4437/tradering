@@ -1329,8 +1329,9 @@ const ACCOUNT_TABS = [
   { key: 'settings',     label: 'Settings',         icon: 'ti-settings'        },
 ]
 
-export default function AccountTab({ user }) {
-  const [activeTab, setActiveTab] = useState('overview')
+export default function AccountTab({ user, requestTab }) {
+  const [activeTab, setActiveTab] = useState(requestTab || 'overview')
+  React.useEffect(() => { if (requestTab) setActiveTab(requestTab) }, [requestTab])
 
   return (
     <div style={{ fontFamily: 'var(--font)', display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
