@@ -541,6 +541,24 @@ function TradeLog({trades,setTrades,tradesKey}){
               </>}
             </div>
             {t.notes&&<div style={{fontSize:11,color:'var(--text-muted)',padding:'8px 10px',background:'var(--surface2)',borderRadius:5,lineHeight:1.5}}>{t.notes}</div>}
+            <div style={{marginTop:8}}>
+              <button onClick={e=>{e.stopPropagation();const msg='Analyze this trade for me in detail:
+- Date: '+(t.date||'?')+'
+- Asset: '+(t.asset||'?')+'
+- Direction: '+(t.direction||'?')+'
+- Setup: '+(t.setup||'none')+'
+- P&L: '+(t.pnl||'?')+'
+- R: '+(t.r||'?')+'
+- Emotion: '+(t.emotion||'none')+'
+- Risk: '+(t.risk||'not logged')+'
+- Notes: '+(t.notes||'none')+'
+
+Give me: (1) what I likely did right or wrong based on the setup and emotion, (2) what the P&L and R suggest about execution quality, (3) one specific improvement I can apply to my next similar trade.';window.dispatchEvent(new CustomEvent('ai-coach-open',{detail:{message:msg}}));}}
+                style={{padding:'4px 12px',borderRadius:6,border:'0.5px solid rgba(75,68,200,0.4)',background:'rgba(75,68,200,0.07)',color:'#4B44C8',fontFamily:'var(--font)',fontSize:11,fontWeight:600,cursor:'pointer',transition:'all 0.1s'}}
+                onMouseEnter={e=>{e.currentTarget.style.background='rgba(75,68,200,0.15)';}} onMouseLeave={e=>{e.currentTarget.style.background='rgba(75,68,200,0.07)';}}>
+                ✦ AI Analysis
+              </button>
+            </div>
           </td></tr>}
           </>
         )}
@@ -880,9 +898,23 @@ function DailyJournal({jTree,saveJTree,activeJId,setActiveJId,jNavHistory,naviga
           )}
         </div>
       )}
-      <input value={item?.name||''} onChange={e=>updateEntryField('name',e.target.value)}
-        style={{display:'block',width:'100%',border:'none',outline:'none',fontSize:26,fontWeight:500,color:'var(--text)',background:'none',fontFamily:'var(--font)',marginBottom:8,padding:0}}
-        placeholder="Untitled"/>
+      <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:8}}>
+        <input value={item?.name||''} onChange={e=>updateEntryField('name',e.target.value)}
+          style={{flex:1,display:'block',border:'none',outline:'none',fontSize:26,fontWeight:500,color:'var(--text)',background:'none',fontFamily:'var(--font)',padding:0}}
+          placeholder="Untitled"/>
+        <button onClick={()=>{const blocks=(entry.blocks||[]).map(b=>b.text||b.content||'').filter(Boolean).join(' ').slice(0,3000);const msg='Review this journal entry for me and give honest, specific coaching feedback.
+
+Entry title: '+(item?.name||'Untitled')+'
+
+Content:
+'+blocks+'
+
+I want: (1) what my mindset and process look like based on this entry, (2) any mental patterns or biases you can detect, (3) one specific thing I should focus on improving based on what I wrote.';window.dispatchEvent(new CustomEvent('ai-coach-open',{detail:{message:msg}}));}}
+          style={{flexShrink:0,marginTop:6,padding:'5px 12px',borderRadius:7,border:'0.5px solid rgba(75,68,200,0.4)',background:'rgba(75,68,200,0.07)',color:'#4B44C8',fontFamily:'var(--font)',fontSize:11,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',transition:'all 0.1s'}}
+          onMouseEnter={e=>{e.currentTarget.style.background='rgba(75,68,200,0.15)';}} onMouseLeave={e=>{e.currentTarget.style.background='rgba(75,68,200,0.07)';}}>
+          ✦ AI Review
+        </button>
+      </div>
 
       <div style={{display:'flex',flexWrap:'wrap',alignItems:'flex-start'}}>
       {(entry.blocks||[]).map((block,bIdx)=>(
