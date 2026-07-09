@@ -382,6 +382,12 @@ function TradeLog({trades,setTrades,tradesKey}){
   const tlAccTotal=_tlAccs.length>0?_tlAccs.reduce((s,a)=>s+(typeof a.cash==='number'?a.cash:parseFloat(a.cash)||0),0):null;
   const tlNetPnl=trades.reduce((s,t)=>s+pnlNum(t.pnl),0);
   const tlStartVal=tlAccTotal!==null?tlAccTotal-tlNetPnl:null;
+  const tradeBalances=(()=>{
+    const sorted=[...trades.map((t,idx)=>({idx,date:t.date||'',pnl:pnlNum(t.pnl)}))].sort((a,b)=>a.date.localeCompare(b.date));
+    const map={};let running=tlStartVal||0;
+    sorted.forEach(({idx,pnl})=>{const before=running;running+=pnl;map[idx]={before,after:running};});
+    return map;
+  })();
   const fileRef=useRef(null);
   function addTrade(){if(!form.asset||!form.date)return;const u=[form,...trades];setTrades(u);save(tradesKey,u);setForm(empty);setAdding(false)}
   function removeTrade(i){if(!window.confirm('Delete this trade? This cannot be undone.'))return;const u=trades.filter((_,idx)=>idx!==i);setTrades(u);save(tradesKey,u)}
@@ -451,21 +457,6 @@ function TradeLog({trades,setTrades,tradesKey}){
       <div style={{marginBottom:10}}><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>Notes</div><Textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Pre-trade rationale..."/></div>
       <div style={{display:'flex',gap:8}}><BtnP onClick={addTrade}>Save trade</BtnP><BtnS onClick={()=>{setAdding(false);setForm(empty)}}>Cancel</BtnS></div>
     </Card>}
-    {(tlAccTotal!==null||tlNetPnl!==0)&&<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-      {tlStartVal!==null&&<div style={{display:'flex',alignItems:'center',gap:6,background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:7,padding:'7px 12px'}}>
-        <span style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Account start</span>
-        <span style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>${tlStartVal.toFixed(0)}</span>
-      </div>}
-      {tlAccTotal!==null&&<div style={{display:'flex',alignItems:'center',gap:6,background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:7,padding:'7px 12px'}}>
-        <span style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Account now</span>
-        <span style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>${tlAccTotal.toFixed(0)}</span>
-      </div>}
-      {tlNetPnl!==0&&<div style={{display:'flex',alignItems:'center',gap:6,background:tlNetPnl>0?'rgba(22,163,74,0.08)':'rgba(220,38,38,0.07)',border:`0.5px solid ${tlNetPnl>0?'rgba(22,163,74,0.25)':'rgba(220,38,38,0.2)'}`,borderRadius:7,padding:'7px 12px'}}>
-        <span style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Net P&L</span>
-        <span style={{fontSize:13,fontWeight:600,color:tlNetPnl>0?'var(--green)':'var(--red)'}}>{tlNetPnl>0?'+':''}${tlNetPnl.toFixed(0)}</span>
-        {tlStartVal!==null&&tlStartVal>0&&<span style={{fontSize:10,color:tlNetPnl>0?'#15803d':'#991b1b',fontWeight:500}}>({tlNetPnl>0?'+':''}{ ((tlNetPnl/tlStartVal)*100).toFixed(1)}%)</span>}
-      </div>}
-    </div>}
     {trades.length===0?<Card style={{textAlign:'center',padding:'40px 20px'}}><div style={{fontSize:14,fontWeight:500,marginBottom:6}}>No trades logged yet</div><BtnP onClick={()=>setAdding(true)}>+ Add your first trade</BtnP></Card>:
     <Card style={{padding:0,overflow:'hidden'}}><table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
       <thead><tr style={{background:'var(--surface2)'}}>{['Date','Asset','Side','Entry','Exit','R','P&L','Risk','Time','MAE','MFE','Setup','Emotion','Rules',''].map((h,i)=>{
@@ -534,7 +525,23 @@ function TradeLog({trades,setTrades,tradesKey}){
               <button onClick={e=>{e.stopPropagation();removeTrade(i)}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:14,padding:'0 3px'}} title="Delete">×</button>
             </td>
           </tr>
-          {expanded===i&&<tr><td colSpan={15} style={{padding:'10px 14px',background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)',borderLeft:`2px solid ${PURPLE}`}}>{t.notes&&<div style={{fontSize:11,color:'var(--text-muted)',padding:'8px 10px',background:'var(--surface2)',borderRadius:5,lineHeight:1.5}}>{t.notes}</div>}</td></tr>}
+          {expanded===i&&<tr><td colSpan={15} style={{padding:'10px 14px',background:'rgba(75,68,200,0.04)',borderBottom:'0.5px solid var(--border)',borderLeft:`2px solid ${PURPLE}`}}>
+            <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:t.notes?8:0}}>
+              {tradeBalances[i]&&(tlStartVal!==null||tradeBalances[i].before!==0)&&<>
+                <div style={{display:'flex',alignItems:'center',gap:5}}>
+                  <span style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>Balance before</span>
+                  <span style={{fontSize:12,fontWeight:600,color:'var(--text)'}}>${tradeBalances[i].before.toFixed(0)}</span>
+                </div>
+                <span style={{fontSize:12,color:'var(--text-muted)'}}>→</span>
+                <div style={{display:'flex',alignItems:'center',gap:5}}>
+                  <span style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>After</span>
+                  <span style={{fontSize:12,fontWeight:600,color:tradeBalances[i].after>=tradeBalances[i].before?'var(--green)':'var(--red)'}}>${tradeBalances[i].after.toFixed(0)}</span>
+                </div>
+                {tradeBalances[i].before!==0&&<span style={{fontSize:10,color:'var(--text-muted)'}}>({((pnlNum(t.pnl)/Math.abs(tradeBalances[i].before))*100)>=0?'+':''}{((pnlNum(t.pnl)/Math.abs(tradeBalances[i].before))*100).toFixed(2)}% of account)</span>}
+              </>}
+            </div>
+            {t.notes&&<div style={{fontSize:11,color:'var(--text-muted)',padding:'8px 10px',background:'var(--surface2)',borderRadius:5,lineHeight:1.5}}>{t.notes}</div>}
+          </td></tr>}
           </>
         )}
       </React.Fragment>)}</tbody>
