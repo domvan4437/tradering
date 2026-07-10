@@ -73,8 +73,18 @@ function EquityChart({points}){
       <path d={areaD} fill="url(#eq-g)"/>
       <path d={lineD} fill="none" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
       {hP&&<line x1={hX} y1={pt} x2={hX} y2={pt+cH} stroke="rgba(0,0,0,0.12)" strokeWidth="1" strokeDasharray="3,2"/>}
+      {/* Persistent balance labels on each point (staggered above/below) */}
+      {points.map((p,i)=>{
+        const cx=toX(i),cy=toY(p.bal);
+        const above=i%2===0;
+        const lx=Math.min(Math.max(cx,pl+2),W-pr-2);
+        const ly=above?cy-14:cy+22;
+        return hi===null?(
+          <text key={'lbl'+i} x={lx} y={ly} textAnchor="middle" fontSize="8.5" fill={i===0?'#94a3b8':p.pnl>=0?'#16a34a':'#ef4444'} fontFamily="var(--font)" fontWeight="600" opacity="0.85">{fmtK(p.bal)}</text>
+        ):null;
+      })}
       {points.map((p,i)=>(
-        <circle key={i} cx={toX(i)} cy={toY(p.bal)} r={hi===i?5.5:3.5}
+        <circle key={i} cx={toX(i)} cy={toY(p.bal)} r={hi===i?6:4}
           fill={i===0?'#94a3b8':p.pnl>=0?'#16a34a':'#ef4444'}
           stroke="var(--surface)" strokeWidth="1.5" style={{cursor:'crosshair'}}
           onMouseEnter={()=>setHi(i)} onMouseLeave={()=>setHi(null)}/>
@@ -291,36 +301,48 @@ function Dashboard({trades,journals}){
     </div>
 
     {/* ── Recent Trades ── */}
-    <Card>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+    <Card style={{padding:'14px 0'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,padding:'0 16px'}}>
         <SH style={{margin:0}}>Recent Trades</SH>
         {recentTrades.length>0&&<span style={{fontSize:10,fontWeight:600,padding:'3px 8px',borderRadius:5,background:'var(--surface2)',color:'var(--text-muted)',border:'0.5px solid var(--border)'}}>{recentTrades.length} trades</span>}
       </div>
       {recentTrades.length===0
         ?<div style={{fontSize:12,color:'var(--text-muted)',textAlign:'center',padding:'24px 0'}}>No trades yet</div>
-        :<table style={{width:'100%',borderCollapse:'collapse'}}>
-          <thead>
-            <tr>
-              {['DATE','ASSET','SIDE','SETUP','EMOTION','P&L'].map(h=>(
-                <th key={h} style={{fontSize:9,color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',padding:'5px 10px',textAlign:h==='P&L'?'right':'left',borderBottom:'0.5px solid var(--border)'}}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {recentTrades.map((t,i)=>(
-              <tr key={i} style={{borderBottom:'0.5px solid var(--border)'}}>
-                <td style={{fontSize:11,padding:'10px 10px',color:'#4B44C8',fontWeight:500}}>{t.date}</td>
-                <td style={{fontSize:13,padding:'10px 10px',fontWeight:700,color:'var(--text)'}}>{t.asset}</td>
-                <td style={{fontSize:11,padding:'10px 10px'}}>
-                  <span style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:5,background:t.direction==='Long'?'rgba(22,163,74,0.1)':'rgba(220,38,38,0.08)',color:t.direction==='Long'?'#15803d':'#991b1b'}}>{t.direction}</span>
-                </td>
-                <td style={{fontSize:11,padding:'10px 10px'}}>{t.setup?<span style={{background:'var(--surface2)',padding:'2px 8px',borderRadius:5,fontSize:11,border:'0.5px solid var(--border)'}}>{t.setup}</span>:<span style={{color:'var(--text-muted)'}}>—</span>}</td>
-                <td style={{fontSize:11,padding:'10px 10px'}}>{t.emotion?<span style={{padding:'3px 9px',borderRadius:10,background:EMOTION_BG[t.emotion]||'var(--surface2)',color:EMOTION_COLOR[t.emotion]||'var(--text-muted)',fontSize:11,fontWeight:500,border:'0.5px solid var(--border)'}}>{t.emotion}</span>:<span style={{color:'var(--text-muted)'}}>—</span>}</td>
-                <td style={{fontSize:13,padding:'10px 10px',fontWeight:700,color:pnlColor(t.pnl),textAlign:'right'}}>{t.pnl?`${pnlNum(t.pnl)>0?'+':''}${t.pnl}`:'—'}</td>
+        :<div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',minWidth:860}}>
+            <thead>
+              <tr>
+                {['DATE','TIME','ASSET','SIDE','ENTRY','EXIT','STOP','R','MAE','MFE','SIZE','SETUP','EMOTION','P&L'].map(h=>(
+                  <th key={h} style={{fontSize:9,color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',padding:'5px 10px',textAlign:h==='P&L'?'right':'left',borderBottom:'0.5px solid var(--border)',whiteSpace:'nowrap'}}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {recentTrades.map((t,i)=>{
+                const dash=v=>v||<span style={{color:'var(--text-muted)'}}>—</span>;
+                return(
+                <tr key={i} style={{borderBottom:'0.5px solid var(--border)'}}>
+                  <td style={{fontSize:11,padding:'9px 10px',color:'#4B44C8',fontWeight:500,whiteSpace:'nowrap'}}>{t.date||'—'}</td>
+                  <td style={{fontSize:11,padding:'9px 10px',color:'var(--text-muted)',whiteSpace:'nowrap'}}>{t.time?t.time+(t.exitTime?' – '+t.exitTime:''):'—'}</td>
+                  <td style={{fontSize:13,padding:'9px 10px',fontWeight:700,color:'var(--text)',whiteSpace:'nowrap'}}>{t.asset||'—'}</td>
+                  <td style={{fontSize:11,padding:'9px 10px',whiteSpace:'nowrap'}}>
+                    <span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:4,background:t.direction==='Long'?'rgba(22,163,74,0.1)':'rgba(220,38,38,0.08)',color:t.direction==='Long'?'#15803d':'#991b1b'}}>{t.direction||'—'}</span>
+                  </td>
+                  <td style={{fontSize:11,padding:'9px 10px',fontWeight:500}}>{dash(t.entry)}</td>
+                  <td style={{fontSize:11,padding:'9px 10px',fontWeight:500}}>{dash(t.exit)}</td>
+                  <td style={{fontSize:11,padding:'9px 10px',color:'var(--text-muted)'}}>{dash(t.risk)}</td>
+                  <td style={{fontSize:11,padding:'9px 10px',fontWeight:600,color:pnlColor(t.r)}}>{dash(t.r)}</td>
+                  <td style={{fontSize:11,padding:'9px 10px',color:'#dc2626'}}>{t.mae||<span style={{color:'var(--text-muted)'}}>—</span>}</td>
+                  <td style={{fontSize:11,padding:'9px 10px',color:'#16a34a'}}>{t.mfe||<span style={{color:'var(--text-muted)'}}>—</span>}</td>
+                  <td style={{fontSize:11,padding:'9px 10px',color:'var(--text-muted)'}}>{dash(t.size)}</td>
+                  <td style={{fontSize:11,padding:'9px 10px'}}>{t.setup?<span style={{background:'var(--surface2)',padding:'2px 7px',borderRadius:4,fontSize:10,border:'0.5px solid var(--border)',whiteSpace:'nowrap'}}>{t.setup}</span>:<span style={{color:'var(--text-muted)'}}>—</span>}</td>
+                  <td style={{fontSize:11,padding:'9px 10px'}}>{t.emotion?<span style={{padding:'2px 8px',borderRadius:10,background:EMOTION_BG[t.emotion]||'var(--surface2)',color:EMOTION_COLOR[t.emotion]||'var(--text-muted)',fontSize:10,fontWeight:500,whiteSpace:'nowrap'}}>{t.emotion}</span>:<span style={{color:'var(--text-muted)'}}>—</span>}</td>
+                  <td style={{fontSize:12,padding:'9px 10px',fontWeight:700,color:pnlColor(t.pnl),textAlign:'right',whiteSpace:'nowrap'}}>{t.pnl?(pnlNum(t.pnl)>0?'+':'')+t.pnl:'—'}</td>
+                </tr>
+              );})}
+            </tbody>
+          </table>
+        </div>
       }
     </Card>
 
@@ -467,16 +489,16 @@ function Dashboard({trades,journals}){
       </Card>
       <Card>
         <SH>R-Multiple Distribution</SH>
-        <div style={{display:'flex',alignItems:'flex-end',gap:5,height:130,padding:'0 4px',marginBottom:4}}>
+        <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-around',gap:4,height:130,padding:'0 8px',marginBottom:4}}>
           {rBuckets.map(b=>{
             const hPct=Math.max(b.c/rMax*100,b.c>0?10:0);
             const isNeg=b.label.startsWith('-');const isZ=b.label==='0R';
             const col=isNeg?'#ef4444':isZ?'#94a3b8':'#22c55e';
             const bg=isNeg?'rgba(239,68,68,0.1)':isZ?'rgba(148,163,184,0.1)':'rgba(34,197,94,0.1)';
             return(
-              <div key={b.label} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',height:'100%',gap:5}}>
+              <div key={b.label} style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',height:'100%',gap:5,width:28}}>
                 {b.c>0&&<span style={{fontSize:10,fontWeight:700,color:col}}>{b.c}</span>}
-                <div style={{width:'100%',height:`${hPct}%`,minHeight:b.c>0?14:0,background:b.c>0?col:bg,borderRadius:'4px 4px 0 0',opacity:b.c>0?0.9:0.4}}/>
+                <div style={{width:18,height:`${hPct}%`,minHeight:b.c>0?14:0,background:b.c>0?col:bg,borderRadius:'4px 4px 0 0',opacity:b.c>0?0.9:0.4}}/>
                 <span style={{fontSize:9,color:b.c>0?'var(--text)':'var(--text-muted)',fontWeight:b.c>0?600:400,lineHeight:1}}>{b.label}</span>
               </div>
             );
