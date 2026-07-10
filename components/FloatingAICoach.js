@@ -232,6 +232,88 @@ function DrawingCanvas({ src, onDone, onCancel }) {
   );
 }
 
+// ── AI annotation renderer ────────────────────────────────────────────────────
+async function drawAnnotationsOnImage(imgSrc, annotations) {
+  return new Promise(resolve => {
+    const img = new window.Image();
+    img.onload = () => {
+      const W = img.naturalWidth || 800;
+      const H = img.naturalHeight || 500;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, W, H);
+      const lw = Math.max(Math.min(W, H) * 0.004, 2);
+
+      function lbl(text, x, y, color) {
+        const fs = Math.max(Math.round(Math.min(W, H) * 0.026), 12);
+        ctx.save();
+        ctx.font = 'bold ' + fs + 'px sans-serif';
+        const tw = ctx.measureText(text).width;
+        const pad = 5, bh = fs + pad * 2;
+        ctx.globalAlpha = 0.72; ctx.fillStyle = '#111';
+        ctx.fillRect(x, y - bh + pad, tw + pad * 2, bh);
+        ctx.globalAlpha = 1; ctx.fillStyle = color || '#fff';
+        ctx.fillText(text, x + pad, y);
+        ctx.restore();
+      }
+
+      annotations.forEach(ann => {
+        const c = ann.color || '#ff3333';
+        ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = lw;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = 1;
+        ctx.setLineDash([]);
+
+        if (ann.type === 'arrow') {
+          const x1 = ann.x1 * W, y1 = ann.y1 * H, x2 = ann.x2 * W, y2 = ann.y2 * H;
+          const hl = Math.max(lw * 6, Math.min(W, H) * 0.032);
+          const a = Math.atan2(y2 - y1, x2 - x1);
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x2, y2); ctx.lineTo(x2 - hl * Math.cos(a - Math.PI / 6), y2 - hl * Math.sin(a - Math.PI / 6));
+          ctx.moveTo(x2, y2); ctx.lineTo(x2 - hl * Math.cos(a + Math.PI / 6), y2 - hl * Math.sin(a + Math.PI / 6));
+          ctx.stroke();
+          if (ann.label) lbl(ann.label, x2, y2 - 10, c);
+        } else if (ann.type === 'rect') {
+          const rx = ann.x * W, ry = ann.y * H, rw = ann.w * W, rh = ann.h * H;
+          ctx.globalAlpha = 0.15; ctx.fillStyle = c; ctx.fillRect(rx, ry, rw, rh);
+          ctx.globalAlpha = 1; ctx.strokeRect(rx, ry, rw, rh);
+          if (ann.label) lbl(ann.label, rx, ry - 6, c);
+        } else if (ann.type === 'hline') {
+          ctx.setLineDash([W * 0.018, W * 0.009]);
+          ctx.beginPath(); ctx.moveTo(0, ann.y * H); ctx.lineTo(W, ann.y * H); ctx.stroke();
+          ctx.setLineDash([]);
+          if (ann.label) lbl(ann.label, W * 0.01, ann.y * H - 6, c);
+        } else if (ann.type === 'vline') {
+          ctx.setLineDash([H * 0.018, H * 0.009]);
+          ctx.beginPath(); ctx.moveTo(ann.x * W, 0); ctx.lineTo(ann.x * W, H); ctx.stroke();
+          ctx.setLineDash([]);
+          if (ann.label) lbl(ann.label, ann.x * W + 5, H * 0.04, c);
+        } else if (ann.type === 'circle') {
+          const cx = ann.cx * W, cy = ann.cy * H, rx2 = (ann.r || 0.05) * W, ry2 = (ann.r || 0.05) * H;
+          ctx.beginPath(); ctx.ellipse(cx, cy, rx2, ry2, 0, 0, Math.PI * 2);
+          ctx.globalAlpha = 0.15; ctx.fill();
+          ctx.globalAlpha = 1; ctx.stroke();
+          if (ann.label) lbl(ann.label, cx - rx2, cy - ry2 - 6, c);
+        } else if (ann.type === 'text') {
+          lbl(ann.text || ann.label || '', ann.x * W, ann.y * H, c);
+        }
+      });
+
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(null);
+    img.src = imgSrc;
+  });
+}
+
+function stripAnnotations(text) {
+  let r = text.replace(/\s*\[ANNOTATIONS\][\s\S]*?\[\/ANNOTATIONS\]\s*/g, '').trim();
+  const partial = r.indexOf('[ANNOTATIONS]');
+  if (partial !== -1) r = r.slice(0, partial).trim();
+  return r;
+}
+
 // ── Quick prompts ─────────────────────────────────────────────────────────────
 const QUICK_CATS = [
   { label: 'My Stats', prompts: ['What are my strongest and weakest setups?', 'Break down my emotional trading patterns', 'Which asset am I most profitable on?', 'Review my last 10 trades and find patterns'] },
@@ -421,11 +503,24 @@ export default function FloatingAICoach() {
         const { done, value } = await reader.read();
         if (done) break;
         full += decoder.decode(value, { stream: true });
-        const snap = full;
+        const snap = stripAnnotations(full);
         setMessages(prev => { const next = [...prev]; next[next.length - 1] = { role: 'assistant', content: snap, streaming: true }; return next; });
       }
-      setMessages(prev => { const next = [...prev]; next[next.length - 1] = { role: 'assistant', content: full, streaming: false }; return next; });
-      const finalMsgs = [...history, { role: 'assistant', content: full }];
+      // Parse AI annotations from full response and render onto the image
+      const cleanFull = stripAnnotations(full);
+      let annotatedImg = null;
+      const annotMatch = full.match(/\[ANNOTATIONS\]([\s\S]*?)\[\/ANNOTATIONS\]/);
+      if (annotMatch) {
+        try {
+          const annotData = JSON.parse(annotMatch[1].trim());
+          const lastUserImg = [...history].reverse().find(m => m.image)?.image;
+          if (lastUserImg && annotData.annotations?.length) {
+            annotatedImg = await drawAnnotationsOnImage(lastUserImg, annotData.annotations);
+          }
+        } catch {}
+      }
+      setMessages(prev => { const next = [...prev]; next[next.length - 1] = { role: 'assistant', content: cleanFull, streaming: false, annotatedImg }; return next; });
+      const finalMsgs = [...history, { role: 'assistant', content: cleanFull }];
       generateFollowUps(finalMsgs);
       saveConversation(finalMsgs); // auto-save every exchange
     } catch {
@@ -583,6 +678,10 @@ export default function FloatingAICoach() {
                 React.createElement('div', { style: { maxWidth: '85%', padding: '9px 13px', borderRadius: m.role === 'user' ? '14px 14px 3px 14px' : '3px 14px 14px 14px', background: m.role === 'user' ? 'linear-gradient(135deg,#4B44C8,#7c3aed)' : m.isLimit ? 'rgba(245,158,11,0.08)' : 'var(--surface2)', color: m.role === 'user' ? '#fff' : m.isLimit ? '#f59e0b' : 'var(--text)', border: m.isLimit ? '0.5px solid rgba(245,158,11,0.3)' : 'none', fontSize: 13.5, lineHeight: 1.65 } },
                   m.role === 'user' && m.image && React.createElement('img', { src: m.image, alt: 'chart', style: { display: 'block', maxWidth: '100%', borderRadius: 6, marginBottom: 6, maxHeight: 120, objectFit: 'cover' } }),
                   m.role === 'user' ? React.createElement('span', null, m.content) : React.createElement(Markdown, { text: m.content }),
+                  m.annotatedImg && React.createElement('div', { style: { marginTop: 8 } },
+                    React.createElement('div', { style: { fontSize: 10, color: 'var(--text-muted)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 } }, '✦ AI Annotated Chart'),
+                    React.createElement('img', { src: m.annotatedImg, alt: 'AI annotated chart', style: { display: 'block', maxWidth: '100%', borderRadius: 7, border: '0.5px solid var(--border)' } })
+                  ),
                   m.streaming && React.createElement('span', { style: { display: 'inline-block', width: 8, height: 14, background: PURPLE, borderRadius: 1, marginLeft: 2, animation: 'tz-blink 0.8s step-end infinite', verticalAlign: 'text-bottom' } }),
                   m.isLimit && React.createElement('button', { onClick: () => { window.location.href = '/api/stripe/checkout?plan=pro'; }, style: { display: 'block', marginTop: 8, padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#fff', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, cursor: 'pointer' } }, 'Upgrade to Pro →')
                 )
