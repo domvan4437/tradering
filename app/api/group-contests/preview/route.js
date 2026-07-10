@@ -54,6 +54,7 @@ export async function GET(request) {
     const members = contest.entries.map(e => ({
       id: e.user.id,
       name: e.user.displayName || e.user.name || e.user.username || 'Trader',
+      image: `/api/avatar/${e.user.id}`,
       pnl: +(portfolioMap[e.user.id] || 0).toFixed(2),
       teamName: e.teamName || null,
       groupId: e.groupId || null,
@@ -70,6 +71,7 @@ export async function GET(request) {
           .map(e => ({
             id: e.user.id,
             name: e.user.displayName || e.user.name || e.user.username || 'Trader',
+            image: `/api/avatar/${e.user.id}`,
             pnl: +(portfolioMap[e.user.id] || 0).toFixed(2),
           }))
         teamMembers.sort((a, b) => b.pnl - a.pnl)

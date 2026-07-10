@@ -22,7 +22,7 @@ const mapPost = (p, session, repostedBy = null) => ({
   groupId: p.groupId,
   createdAt: p.createdAt,
   authorName: p.user?.username || p.user?.name || 'Trader',
-  authorImage: p.user?.image || null,
+  authorImage: `/api/avatar/${p.userId}`,
   authorSlug: p.user?.profileSlug || p.user?.username || null,
   user: p.user,
   liked: p.postLikes.length > 0,

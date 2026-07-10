@@ -84,16 +84,18 @@ function typeStyle(t) { return TYPE_COLORS[t] || TYPE_COLORS['General']; }
 
 // ── Avatar ────────────────────────────────────────────────────
 function Avatar({ letter, grad, size = 40, imageUrl }) {
+  const [failed, setFailed] = useState(false);
+  const showImg = imageUrl && !failed;
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
-      background: imageUrl ? '#e5e7eb' : grad,
+      background: showImg ? '#e5e7eb' : grad,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'var(--font)', fontSize: size * 0.38, fontWeight: 700,
       color: '#fff', flexShrink: 0, overflow: 'hidden',
     }}>
-      {imageUrl
-        ? <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      {showImg
+        ? <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setFailed(true)} />
         : letter}
     </div>
   );

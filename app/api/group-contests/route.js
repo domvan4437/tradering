@@ -95,6 +95,7 @@ export async function GET(request) {
         memberCount: c._count?.entries ?? 0,
         joined: (c.entries?.length ?? 0) > 0,
         creatorName: c.creator?.displayName || c.creator?.name || c.creator?.username || 'Trader',
+        creatorImage: c.creator?.id ? `/api/avatar/${c.creator.id}` : null,
         creatorSlug: c.creator?.profileSlug || c.creator?.id,
         isCreator: c.creatorId === uid,
         teamFormat: c.teamFormat || null,

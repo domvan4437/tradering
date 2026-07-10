@@ -21,7 +21,7 @@ export async function GET(request) {
         content: c.content,
         createdAt: c.createdAt,
         authorName: c.user?.username || c.user?.name || 'Trader',
-        authorImage: c.user?.image || null,
+        authorImage: `/api/avatar/${c.userId}`,
       })),
     })
   } catch (e) {
@@ -46,7 +46,7 @@ export async function POST(request) {
         content: comment.content,
         createdAt: comment.createdAt,
         authorName: comment.user?.username || comment.user?.name || 'Trader',
-        authorImage: comment.user?.image || null,
+        authorImage: `/api/avatar/${comment.userId}`,
         userId: comment.userId,
       },
     })

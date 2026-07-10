@@ -373,7 +373,7 @@ export default function App() {
   const navItems = [['Community','community'],['Competitions','compete'],['Tools','tools2'],['Account','account']]
 
   return (
-    <UserAvatarContext.Provider value={userInfo?.image || null}>
+    <UserAvatarContext.Provider value={session?.user?.id ? `/api/avatar/${session.user.id}` : (userInfo?.image || null)}>
     <div style={{ height:'100vh', overflow:'hidden', display:'flex', flexDirection:'column', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontSize:13 }}>
 
       {/* ── Navbar — TradingView style ── */}
