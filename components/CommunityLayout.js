@@ -907,7 +907,7 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote, myName }) {
       const res = await fetch(`/api/social/posts/comment?postId=${t.id}`);
       const data = await res.json();
       if (data.comments) {
-        setComments(data.comments.map(c => ({ id: c.id, text: c.content, user: c.authorName || 'Trader' })));
+        setComments(data.comments.map(c => ({ id: c.id, text: c.content, user: c.authorName || 'Trader', authorImage: c.authorImage || null })));
         setCommentCount(data.comments.length);
       }
     } catch(e) {}
@@ -922,7 +922,7 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote, myName }) {
   const addComment = async () => {
     if (!commentText.trim()) return;
     const text = commentText;
-    setComments(prev => [...prev, { id: Date.now(), text, user: myName || 'You' }]);
+    setComments(prev => [...prev, { id: Date.now(), text, user: myName || 'You', authorImage: myAvatar || null }]);
     setCommentCount(c => c + 1);
     setCommentText('');
     try {
@@ -984,7 +984,9 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote, myName }) {
           ) : (
             comments.map(c => (
               <div key={c.id} style={{ display:'flex', gap:8, marginBottom:8 }}>
-                <div style={{ width:24, height:24, borderRadius:'50%', background:'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, color:'#fff', flexShrink:0 }}>{(c.user||'T')[0].toUpperCase()}</div>
+                <div style={{ width:24, height:24, borderRadius:'50%', background: c.authorImage ? 'transparent' : 'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                  {c.authorImage ? <img src={c.authorImage} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (c.user||'T')[0].toUpperCase()}
+                </div>
                 <div style={{ flex:1, background:'var(--surface2)', borderRadius:8, padding:'5px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text)' }}>
                   <span style={{ fontWeight:700, marginRight:6 }}>{c.user}</span>{c.text}
                 </div>

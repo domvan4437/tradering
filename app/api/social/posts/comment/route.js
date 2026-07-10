@@ -11,7 +11,7 @@ export async function GET(request) {
     const comments = await prisma.socialComment.findMany({
       where: { postId },
       orderBy: { createdAt: 'asc' },
-      include: { user: { select: { name: true, username: true } } },
+      include: { user: { select: { name: true, username: true, image: true } } },
     })
     return Response.json({
       comments: comments.map(c => ({
@@ -21,6 +21,7 @@ export async function GET(request) {
         content: c.content,
         createdAt: c.createdAt,
         authorName: c.user?.username || c.user?.name || 'Trader',
+        authorImage: c.user?.image || null,
       })),
     })
   } catch (e) {
@@ -36,7 +37,7 @@ export async function POST(request) {
     if (!postId || !content?.trim()) return Response.json({ error: 'postId and content required' }, { status: 400 })
     const comment = await prisma.socialComment.create({
       data: { postId, userId: session.user.id, content: content.trim() },
-      include: { user: { select: { name: true, username: true } } },
+      include: { user: { select: { name: true, username: true, image: true } } },
     })
     return Response.json({
       comment: {
@@ -45,6 +46,7 @@ export async function POST(request) {
         content: comment.content,
         createdAt: comment.createdAt,
         authorName: comment.user?.username || comment.user?.name || 'Trader',
+        authorImage: comment.user?.image || null,
         userId: comment.userId,
       },
     })

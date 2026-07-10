@@ -164,7 +164,7 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
       const res = await fetch(`/api/social/posts/comment?postId=${post.id}`);
       const data = await res.json();
       if (data.comments) {
-        setLocalComments(data.comments.map(c => ({ id: c.id, text: c.content, user: c.authorName || 'Trader' })));
+        setLocalComments(data.comments.map(c => ({ id: c.id, text: c.content, user: c.authorName || 'Trader', authorImage: c.authorImage || null })));
         setCommentCount(data.comments.length);
       }
     } catch(e) {}
@@ -175,7 +175,7 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
   const addComment = async () => {
     if (!comment.trim()) return;
     const text = comment;
-    setLocalComments(prev => [...prev, { id: Date.now(), text, user: myName || 'You' }]);
+    setLocalComments(prev => [...prev, { id: Date.now(), text, user: myName || 'You', authorImage: myAvatar || null }]);
     setCommentCount(c => c + 1); setComment('');
     try { await fetch('/api/social/posts/comment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: post.id, content: text }) }); } catch(e) {}
   };
@@ -346,7 +346,9 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
             <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>No comments yet.</div>
           ) : localComments.map(c => (
             <div key={c.id} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{(c.user||'T')[0].toUpperCase()}</div>
+              <div style={{ width: 26, height: 26, borderRadius: '50%', background: c.authorImage ? 'transparent' : 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+                {c.authorImage ? <img src={c.authorImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (c.user||'T')[0].toUpperCase()}
+              </div>
               <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 10, padding: '6px 10px', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)' }}>
                 <span style={{ fontWeight: 700, marginRight: 6 }}>{c.user}</span>{c.text}
               </div>
