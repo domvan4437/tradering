@@ -8,11 +8,21 @@ export async function GET(request) {
   const channelId = searchParams.get('channelId')
   const messages = await prisma.groupMessage.findMany({
     where: { channelId },
-    include: { user: { select: { id: true, name: true, username: true } } },
+    include: { user: { select: { id: true, name: true, username: true, displayName: true } } },
     orderBy: { createdAt: 'asc' },
-    take: 50
+    take: 100
   })
-  return Response.json({ messages })
+  return Response.json({
+    messages: messages.map(m => ({
+      id: m.id,
+      userId: m.userId,
+      channelId: m.channelId,
+      content: m.content,
+      createdAt: m.createdAt,
+      authorName: m.user?.displayName || m.user?.username || m.user?.name || 'Trader',
+      authorImage: `/api/avatar/${m.userId}`,
+    }))
+  })
 }
 
 export async function POST(request) {
@@ -25,7 +35,17 @@ export async function POST(request) {
   if (!isMember) return Response.json({ error: 'Not a member' }, { status: 403 })
   const message = await prisma.groupMessage.create({
     data: { channelId, userId: session.user.id, content },
-    include: { user: { select: { id: true, name: true, username: true } } }
+    include: { user: { select: { id: true, name: true, username: true, displayName: true } } }
   })
-  return Response.json({ message })
+  return Response.json({
+    message: {
+      id: message.id,
+      userId: message.userId,
+      channelId: message.channelId,
+      content: message.content,
+      createdAt: message.createdAt,
+      authorName: message.user?.displayName || message.user?.username || message.user?.name || 'Trader',
+      authorImage: `/api/avatar/${message.userId}`,
+    }
+  })
 }

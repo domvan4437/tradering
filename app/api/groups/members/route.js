@@ -19,7 +19,7 @@ export async function GET(request) {
       id: m.user.id,
       name: m.user.displayName || m.user.name || m.user.username || 'Trader',
       username: m.user.username,
-      image: m.user.image || null,
+      image: `/api/avatar/${m.user.id}`,
       role: m.role,
     }))
   })

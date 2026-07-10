@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import FeedTab from './FeedTab';
 import DMTab from './DMTab';
@@ -97,7 +97,8 @@ function GroupChatRoom({ group, activeRoom, myName }) {
   const myAvatar = useContext(UserAvatarContext);
   const [msg, setMsg] = useState('');
   const [messages, setMessages] = useState([]);
-  const [attachment, setAttachment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [channelId, setChannelId] = useState(null);
   const [popover, setPopover] = useState(false);
   const [linkInput, setLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -106,9 +107,45 @@ function GroupChatRoom({ group, activeRoom, myName }) {
   const popRef = useRef(null);
   const endRef = useRef(null);
 
+  // Find the channelId for activeRoom
   useEffect(() => {
-    try { const d = localStorage.getItem('tr_chat_'+group.id+'_'+activeRoom); setMessages(d ? JSON.parse(d) : []); } catch { setMessages([]); }
-  }, [group.id, activeRoom]);
+    if (!group?.id) return;
+    fetch(`/api/groups/channels?groupId=${group.id}`)
+      .then(r => r.json())
+      .then(d => {
+        const ch = (d.channels || []).find(c => c.name === activeRoom) || (d.channels || [])[0];
+        setChannelId(ch?.id || null);
+      })
+      .catch(() => setChannelId(null));
+  }, [group?.id, activeRoom]);
+
+  // Fetch messages from API
+  const fetchMessages = useCallback(async () => {
+    if (!channelId) return;
+    try {
+      const res = await fetch(`/api/groups/messages?channelId=${channelId}`);
+      const d = await res.json();
+      if (d.messages) {
+        setMessages(d.messages.map(m => ({
+          id: m.id,
+          userId: m.userId,
+          user: m.authorName,
+          avatar: m.authorImage,
+          text: m.content,
+          time: new Date(m.createdAt).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }),
+        })));
+      }
+    } catch {}
+    setLoading(false);
+  }, [channelId]);
+
+  useEffect(() => {
+    if (!channelId) return;
+    setLoading(true);
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 5000);
+    return () => clearInterval(interval);
+  }, [channelId, fetchMessages]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
 
@@ -130,73 +167,75 @@ function GroupChatRoom({ group, activeRoom, myName }) {
     setPopover(false);
   };
 
+  const [attachment, setAttachment] = useState(null);
+
   const attachLink = () => {
     if (!linkUrl.trim()) return;
     const url = linkUrl.startsWith('http') ? linkUrl : 'https://'+linkUrl;
     setAttachment({ type:'link', url, name:url }); setLinkUrl(''); setLinkInput(false); setPopover(false);
   };
 
-  const send = () => {
-    if (!msg.trim() && !attachment) return;
-    const displayName = myName || 'you';
-    const m = { id:Date.now(), user:displayName, avatar: myAvatar||null, text:msg.trim(), time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), attachment: attachment||null };
-    const updated = [...messages, m];
-    setMessages(updated);
-    try { localStorage.setItem('tr_chat_'+group.id+'_'+activeRoom, JSON.stringify(updated)); } catch {}
-    setMsg(''); setAttachment(null);
-  };
-
-  const deleteMsg = (id) => {
-    const updated = messages.filter(m => m.id !== id);
-    setMessages(updated);
-    try { localStorage.setItem('tr_chat_'+group.id+'_'+activeRoom, JSON.stringify(updated)); } catch {}
-    setHoveredMsg(null);
+  const send = async () => {
+    if (!msg.trim() || !channelId) return;
+    const text = msg.trim();
+    setMsg('');
+    // Optimistic
+    const optimistic = {
+      id: 'opt-'+Date.now(),
+      userId: null,
+      user: myName || 'You',
+      avatar: myAvatar || null,
+      text,
+      time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }),
+    };
+    setMessages(prev => [...prev, optimistic]);
+    try {
+      await fetch('/api/groups/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId, content: text }),
+      });
+      // Refresh to get the real message with correct userId/avatar
+      fetchMessages();
+    } catch {}
   };
 
   const popItems = [
     { label:'Image', icon:'📷', action:() => { fileRef.current.accept='image/*'; fileRef.current.click(); } },
-    { label:'File', icon:'📎', action:() => { fileRef.current.accept='.pdf,.doc,.docx,.txt,.csv,.xlsx'; fileRef.current.click(); } },
     { label:'Link', icon:'🔗', action:() => { setLinkInput(true); setPopover(false); } },
   ];
-
-  const myDisplayName = myName || 'you';
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0, overflow:'hidden' }}>
 
       <div style={{ flex:1, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
-        {messages.length === 0 && <div style={{ textAlign:'center', padding:'40px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>No messages in #{activeRoom} yet. Say hello!</div>}
-        {messages.map(m => {
-          const isOwn = m.user === myDisplayName;
-          const isHovered = hoveredMsg === m.id;
-          return (
-            <div key={m.id} onMouseEnter={() => setHoveredMsg(m.id)} onMouseLeave={() => setHoveredMsg(null)}
-              style={{ display:'flex', gap:10, alignItems:'flex-start', position:'relative', padding:'2px 4px', borderRadius:8, background: isHovered ? 'var(--surface2)' : 'transparent' }}>
-              <div style={{ width:32, height:32, borderRadius:'50%', background: m.avatar ? 'transparent' : getColor(m.user), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
-                {m.avatar ? <img src={m.avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.user||'?')[0].toUpperCase()}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
-                  <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{m.user}</span>
-                  <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.time}</span>
+        {loading
+          ? <div style={{ textAlign:'center', padding:'40px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading…</div>
+          : messages.length === 0
+          ? <div style={{ textAlign:'center', padding:'40px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>No messages in #{activeRoom} yet. Say hello!</div>
+          : messages.map(m => {
+            const isHovered = hoveredMsg === m.id;
+            return (
+              <div key={m.id} onMouseEnter={() => setHoveredMsg(m.id)} onMouseLeave={() => setHoveredMsg(null)}
+                style={{ display:'flex', gap:10, alignItems:'flex-start', position:'relative', padding:'2px 4px', borderRadius:8, background: isHovered ? 'var(--surface2)' : 'transparent' }}>
+                <div style={{ width:32, height:32, borderRadius:'50%', background: m.avatar ? 'transparent' : getColor(m.user), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                  {m.avatar
+                    ? <img src={m.avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e => { e.currentTarget.style.display='none'; }} />
+                    : (m.user||'?')[0].toUpperCase()}
                 </div>
-                {m.text && <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text)', lineHeight:1.5 }}>{m.text}</div>}
-                {m.attachment?.type==="image" && <div style={{ marginTop:6, borderRadius:10, overflow:'hidden', maxWidth:280 }}><img src={m.attachment.url} alt="" style={{ width:'100%', display:'block', borderRadius:10 }} /></div>}
-                {m.attachment?.type==="file" && <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', maxWidth:280 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div><div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text)' }}>{m.attachment.name}</div>{m.attachment.size&&<div style={{ fontFamily:'var(--font)', fontSize:10, color:'var(--text-muted)' }}>{m.attachment.size}</div>}</div></div>}
-                {m.attachment?.type==="link" && <a href={m.attachment.url} target="_blank" rel="noreferrer" style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', maxWidth:280, textDecoration:'none' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--accent)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.attachment.url}</span></a>}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+                    <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{m.user}</span>
+                    <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.time}</span>
+                  </div>
+                  {m.text && <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text)', lineHeight:1.5 }}>{m.text}</div>}
+                  {m.attachment?.type==="image" && <div style={{ marginTop:6, borderRadius:10, overflow:'hidden', maxWidth:280 }}><img src={m.attachment.url} alt="" style={{ width:'100%', display:'block', borderRadius:10 }} /></div>}
+                  {m.attachment?.type==="link" && <a href={m.attachment.url} target="_blank" rel="noreferrer" style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', maxWidth:280, textDecoration:'none' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--accent)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.attachment.url}</span></a>}
+                </div>
               </div>
-              {/* Delete button — shows on hover for any message */}
-              {isHovered && (
-                <button onClick={() => deleteMsg(m.id)} title="Delete message"
-                  style={{ position:'absolute', top:2, right:4, width:26, height:26, borderRadius:6, background:'rgba(220,38,38,0.1)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#dc2626', fontSize:12 }}
-                  onMouseEnter={e => e.currentTarget.style.background='rgba(220,38,38,0.2)'}
-                  onMouseLeave={e => e.currentTarget.style.background='rgba(220,38,38,0.1)'}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                </button>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        }
         <div ref={endRef} />
       </div>
 
@@ -215,8 +254,7 @@ function GroupChatRoom({ group, activeRoom, myName }) {
             <button onClick={() => { setLinkInput(false); setLinkUrl(''); }} style={{ padding:'7px 10px', borderRadius:8, background:'var(--surface2)', color:'var(--text-muted)', border:'1px solid var(--border)', cursor:'pointer' }}>×</button>
           </div>
         )}
-        <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx" style={{ display:'none' }} onChange={handleFile} />
-        {/* Message bar */}
+        <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFile} />
         <div style={{ display:'flex', gap:8, alignItems:'center', background:'var(--surface2)', border:'2px solid #534AB7', borderRadius:14, padding:'10px 14px', boxShadow:'0 2px 12px rgba(83,74,183,0.18)' }}>
           <div ref={popRef} style={{ position:'relative', flexShrink:0 }}>
             <button onClick={() => setPopover(p => !p)} style={{ width:28, height:28, borderRadius:'50%', background:popover?PURPLE:'rgba(83,74,183,0.2)', border:'1px solid '+(popover?PURPLE:'#534AB7'), display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#AFA9EC', fontSize:20, lineHeight:1, fontWeight:300, outline:'none' }}>+</button>
@@ -235,7 +273,7 @@ function GroupChatRoom({ group, activeRoom, myName }) {
           <input value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} }}
             placeholder={'Message #'+activeRoom}
             style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none', caretColor:'#534AB7' }} />
-          <button onClick={send} disabled={!msg.trim()&&!attachment} style={{ width:30, height:30, borderRadius:8, background:(msg.trim()||attachment)?PURPLE:'rgba(83,74,183,0.3)', color:'#fff', border:'none', cursor:(msg.trim()||attachment)?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <button onClick={send} disabled={!msg.trim()} style={{ width:30, height:30, borderRadius:8, background:msg.trim()?PURPLE:'rgba(83,74,183,0.3)', color:'#fff', border:'none', cursor:msg.trim()?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
