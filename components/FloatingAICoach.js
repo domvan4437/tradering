@@ -243,60 +243,174 @@ async function drawAnnotationsOnImage(imgSrc, annotations) {
       canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, W, H);
-      const lw = Math.max(Math.min(W, H) * 0.004, 2);
 
-      function lbl(text, x, y, color) {
-        const fs = Math.max(Math.round(Math.min(W, H) * 0.026), 12);
+      const sc = Math.min(W, H) / 480;
+      const lw = Math.max(sc * 2.8, 2);
+      const fs = Math.max(Math.round(sc * 12.5), 11);
+      const placed = []; // label collision tracking
+
+      // Rounded rect helper (cross-browser safe)
+      function fillRoundRect(x, y, w, h, r) {
+        r = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+        ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
+        ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawLabel(text, anchorX, anchorY, color) {
         ctx.save();
-        ctx.font = 'bold ' + fs + 'px sans-serif';
+        ctx.font = 'bold ' + fs + 'px -apple-system, system-ui, Arial, sans-serif';
         const tw = ctx.measureText(text).width;
-        const pad = 5, bh = fs + pad * 2;
-        ctx.globalAlpha = 0.72; ctx.fillStyle = '#111';
-        ctx.fillRect(x, y - bh + pad, tw + pad * 2, bh);
-        ctx.globalAlpha = 1; ctx.fillStyle = color || '#fff';
-        ctx.fillText(text, x + pad, y);
+        const padX = sc * 8, padY = sc * 5;
+        const bw = tw + padX * 2, bh = fs + padY * 2;
+
+        // Initial position: above-left of anchor
+        let lx = anchorX, ly = anchorY - bh - sc * 6;
+
+        // Clamp to image bounds
+        if (lx + bw > W - 4) lx = W - bw - 4;
+        if (lx < 2) lx = 2;
+        if (ly < 2) ly = anchorY + sc * 6;
+        if (ly + bh > H - 2) ly = anchorY - bh - sc * 6;
+
+        // Collision: push down until clear (max 4 attempts)
+        for (let t = 0; t < 4; t++) {
+          const hit = placed.some(r => lx < r.x + r.w + 2 && lx + bw > r.x - 2 && ly < r.y + r.h + 2 && ly + bh > r.y - 2);
+          if (!hit) break;
+          ly += bh + sc * 4;
+          if (ly + bh > H - 2) { ly = Math.max(2, anchorY - bh * (t + 2) - sc * 6); break; }
+        }
+        placed.push({ x: lx, y: ly, w: bw, h: bh });
+
+        // Drop shadow
+        ctx.shadowColor = 'rgba(0,0,0,0.7)';
+        ctx.shadowBlur = sc * 8;
+        ctx.shadowOffsetX = sc; ctx.shadowOffsetY = sc;
+
+        // Dark pill background
+        ctx.fillStyle = 'rgba(8,8,12,0.88)';
+        fillRoundRect(lx, ly, bw, bh, bh / 2);
+
+        // Colored left accent
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+        ctx.fillStyle = color;
+        fillRoundRect(lx, ly, sc * 4, bh, sc * 2);
+
+        // Label text
+        ctx.fillStyle = '#fff';
+        ctx.fillText(text, lx + padX + sc * 3, ly + fs + padY * 0.6);
         ctx.restore();
       }
 
+      function setShadow() {
+        ctx.shadowColor = 'rgba(0,0,0,0.75)';
+        ctx.shadowBlur = lw * 3.5;
+      }
+      function clrShadow() {
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+      }
+
+      function filledArrow(x, y, angle, size, color) {
+        ctx.save();
+        ctx.fillStyle = color;
+        setShadow();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - size * Math.cos(angle - Math.PI / 7), y - size * Math.sin(angle - Math.PI / 7));
+        ctx.lineTo(x - size * 0.45 * Math.cos(angle), y - size * 0.45 * Math.sin(angle));
+        ctx.lineTo(x - size * Math.cos(angle + Math.PI / 7), y - size * Math.sin(angle + Math.PI / 7));
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function hexToRgba(hex, alpha) {
+        const h = hex.replace('#', '');
+        const r = parseInt(h.substring(0, 2), 16);
+        const g = parseInt(h.substring(2, 4), 16);
+        const b = parseInt(h.substring(4, 6), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
+      }
+
       annotations.forEach(ann => {
-        const c = ann.color || '#ff3333';
-        ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = lw;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = 1;
-        ctx.setLineDash([]);
+        const c = /^#[0-9a-fA-F]{6}$/.test(ann.color) ? ann.color : '#ff3333';
+        ctx.strokeStyle = c; ctx.fillStyle = c;
+        ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.globalAlpha = 1; ctx.setLineDash([]);
+        clrShadow();
 
         if (ann.type === 'arrow') {
           const x1 = ann.x1 * W, y1 = ann.y1 * H, x2 = ann.x2 * W, y2 = ann.y2 * H;
-          const hl = Math.max(lw * 6, Math.min(W, H) * 0.032);
-          const a = Math.atan2(y2 - y1, x2 - x1);
-          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(x2, y2); ctx.lineTo(x2 - hl * Math.cos(a - Math.PI / 6), y2 - hl * Math.sin(a - Math.PI / 6));
-          ctx.moveTo(x2, y2); ctx.lineTo(x2 - hl * Math.cos(a + Math.PI / 6), y2 - hl * Math.sin(a + Math.PI / 6));
-          ctx.stroke();
-          if (ann.label) lbl(ann.label, x2, y2 - 10, c);
+          const headSz = Math.max(lw * 5.5, sc * 14);
+          const angle = Math.atan2(y2 - y1, x2 - x1);
+          const x2s = x2 - headSz * 0.55 * Math.cos(angle);
+          const y2s = y2 - headSz * 0.55 * Math.sin(angle);
+          setShadow();
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2s, y2s); ctx.stroke();
+          clrShadow();
+          filledArrow(x2, y2, angle, headSz, c);
+          if (ann.label) drawLabel(ann.label, x2, y2, c);
+
         } else if (ann.type === 'rect') {
           const rx = ann.x * W, ry = ann.y * H, rw = ann.w * W, rh = ann.h * H;
-          ctx.globalAlpha = 0.15; ctx.fillStyle = c; ctx.fillRect(rx, ry, rw, rh);
-          ctx.globalAlpha = 1; ctx.strokeRect(rx, ry, rw, rh);
-          if (ann.label) lbl(ann.label, rx, ry - 6, c);
+          // Zone fill with subtle gradient
+          const grad = ctx.createLinearGradient(rx, ry, rx, ry + rh);
+          grad.addColorStop(0, hexToRgba(c, 0.28));
+          grad.addColorStop(1, hexToRgba(c, 0.08));
+          ctx.fillStyle = grad;
+          ctx.fillRect(rx, ry, rw, rh);
+          // Top/bottom borders
+          setShadow();
+          ctx.strokeStyle = c; ctx.lineWidth = lw;
+          ctx.strokeRect(rx, ry, rw, rh);
+          clrShadow();
+          // Thicker top border accent
+          ctx.lineWidth = lw * 2;
+          ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx + rw, ry); ctx.stroke();
+          ctx.lineWidth = lw;
+          if (ann.label) drawLabel(ann.label, rx + rw * 0.15, ry, c);
+
         } else if (ann.type === 'hline') {
-          ctx.setLineDash([W * 0.018, W * 0.009]);
-          ctx.beginPath(); ctx.moveTo(0, ann.y * H); ctx.lineTo(W, ann.y * H); ctx.stroke();
-          ctx.setLineDash([]);
-          if (ann.label) lbl(ann.label, W * 0.01, ann.y * H - 6, c);
+          ctx.setLineDash([sc * 12, sc * 6]);
+          setShadow();
+          ctx.lineWidth = lw * 1.2;
+          ctx.beginPath(); ctx.moveTo(W * 0.01, ann.y * H); ctx.lineTo(W * 0.86, ann.y * H); ctx.stroke();
+          clrShadow(); ctx.setLineDash([]); ctx.lineWidth = lw;
+          // Tiny tick at start
+          ctx.beginPath(); ctx.moveTo(W * 0.01, ann.y * H - lw * 2); ctx.lineTo(W * 0.01, ann.y * H + lw * 2); ctx.stroke();
+          if (ann.label) drawLabel(ann.label, W * 0.03, ann.y * H, c);
+
         } else if (ann.type === 'vline') {
-          ctx.setLineDash([H * 0.018, H * 0.009]);
-          ctx.beginPath(); ctx.moveTo(ann.x * W, 0); ctx.lineTo(ann.x * W, H); ctx.stroke();
-          ctx.setLineDash([]);
-          if (ann.label) lbl(ann.label, ann.x * W + 5, H * 0.04, c);
+          ctx.setLineDash([sc * 12, sc * 6]);
+          setShadow();
+          ctx.lineWidth = lw * 1.2;
+          ctx.beginPath(); ctx.moveTo(ann.x * W, H * 0.04); ctx.lineTo(ann.x * W, H * 0.92); ctx.stroke();
+          clrShadow(); ctx.setLineDash([]); ctx.lineWidth = lw;
+          if (ann.label) drawLabel(ann.label, ann.x * W, H * 0.1, c);
+
         } else if (ann.type === 'circle') {
-          const cx = ann.cx * W, cy = ann.cy * H, rx2 = (ann.r || 0.05) * W, ry2 = (ann.r || 0.05) * H;
-          ctx.beginPath(); ctx.ellipse(cx, cy, rx2, ry2, 0, 0, Math.PI * 2);
-          ctx.globalAlpha = 0.15; ctx.fill();
-          ctx.globalAlpha = 1; ctx.stroke();
-          if (ann.label) lbl(ann.label, cx - rx2, cy - ry2 - 6, c);
+          const cx = ann.cx * W, cy = ann.cy * H;
+          const rx2 = (ann.r || 0.04) * W, ry2 = (ann.r || 0.04) * H;
+          // Fill
+          ctx.fillStyle = hexToRgba(c, 0.2);
+          ctx.beginPath(); ctx.ellipse(cx, cy, rx2, ry2, 0, 0, Math.PI * 2); ctx.fill();
+          // Stroke (glow effect via double draw)
+          setShadow();
+          ctx.strokeStyle = c; ctx.lineWidth = lw * 2;
+          ctx.beginPath(); ctx.ellipse(cx, cy, rx2, ry2, 0, 0, Math.PI * 2); ctx.stroke();
+          clrShadow();
+          ctx.lineWidth = lw;
+          ctx.strokeStyle = c;
+          ctx.beginPath(); ctx.ellipse(cx, cy, rx2, ry2, 0, 0, Math.PI * 2); ctx.stroke();
+          if (ann.label) drawLabel(ann.label, cx, cy - ry2, c);
+
         } else if (ann.type === 'text') {
-          lbl(ann.text || ann.label || '', ann.x * W, ann.y * H, c);
+          drawLabel(ann.text || ann.label || '', ann.x * W, ann.y * H, c);
         }
       });
 
