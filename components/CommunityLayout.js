@@ -93,12 +93,11 @@ function UserSearch() {
   );
 }
 
-function GroupChatRoom({ group, activeRoom, myName }) {
+function GroupChatRoom({ group, activeRoom, channelId, myName }) {
   const myAvatar = useContext(UserAvatarContext);
   const [msg, setMsg] = useState('');
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [channelId, setChannelId] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [popover, setPopover] = useState(false);
   const [linkInput, setLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -107,25 +106,11 @@ function GroupChatRoom({ group, activeRoom, myName }) {
   const popRef = useRef(null);
   const endRef = useRef(null);
 
-  // Find the channelId for activeRoom
-  useEffect(() => {
-    if (!group?.id) return;
-    setLoading(true);
-    fetch(`/api/groups/channels?groupId=${group.id}`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(d => {
-        const ch = (d.channels || []).find(c => c.name === activeRoom) || (d.channels || [])[0];
-        setChannelId(ch?.id || null);
-        if (!ch?.id) setLoading(false);
-      })
-      .catch(() => { setChannelId(null); setLoading(false); });
-  }, [group?.id, activeRoom]);
-
   // Fetch messages from API
-  const fetchMessages = useCallback(async () => {
-    if (!channelId) return;
+  const fetchMessages = useCallback(async (cid) => {
+    if (!cid) return;
     try {
-      const res = await fetch(`/api/groups/messages?channelId=${channelId}`);
+      const res = await fetch(`/api/groups/messages?channelId=${cid}`);
       const d = await res.json();
       if (d.messages) {
         setMessages(d.messages.map(m => ({
@@ -139,13 +124,15 @@ function GroupChatRoom({ group, activeRoom, myName }) {
       }
     } catch {}
     setLoading(false);
-  }, [channelId]);
+  }, []);
 
   useEffect(() => {
-    if (!channelId) return;
+    // Clear immediately when room changes so old messages don't linger
+    setMessages([]);
+    if (!channelId) { setLoading(false); return; }
     setLoading(true);
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 5000);
+    fetchMessages(channelId);
+    const interval = setInterval(() => fetchMessages(channelId), 5000);
     return () => clearInterval(interval);
   }, [channelId, fetchMessages]);
 
@@ -198,7 +185,7 @@ function GroupChatRoom({ group, activeRoom, myName }) {
         body: JSON.stringify({ channelId, content: text }),
       });
       // Refresh to get the real message with correct userId/avatar
-      fetchMessages();
+      fetchMessages(channelId);
     } catch {}
   };
 
@@ -209,6 +196,13 @@ function GroupChatRoom({ group, activeRoom, myName }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0, overflow:'hidden' }}>
+
+      {/* Room header */}
+      <div style={{ padding:'8px 16px', borderBottom:'1px solid var(--border)', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
+        <span style={{ fontFamily:'var(--font)', fontSize:14, color:'var(--text-muted)', fontWeight:400 }}>#</span>
+        <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)' }}>{activeRoom}</span>
+        {!channelId && <span style={{ fontFamily:'var(--font)', fontSize:11, color:'#ef4444', marginLeft:4 }}>— not connected</span>}
+      </div>
 
       <div style={{ flex:1, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
         {loading
@@ -398,7 +392,7 @@ function GroupsView({ currentUserId }) {
   const [showBrowse, setShowBrowse] = useState(false);
   const [showManageRooms, setShowManageRooms] = useState(false);
   const [customRooms, setCustomRooms] = useState(['general']);
-  const [dbRooms, setDbRooms] = useState([]);
+  const [dbChannels, setDbChannels] = useState([]); // full objects: { id, name, type }
   const [newRoomName, setNewRoomName] = useState('');
   const [createName, setCreateName] = useState('');
   const [createType, setCreateType] = useState('club');
@@ -505,20 +499,18 @@ function GroupsView({ currentUserId }) {
   }, [openGroup?.id]);
 
   React.useEffect(() => {
-    if (!openGroup?.id) { setDbRooms([]); return; }
+    if (!openGroup?.id) { setDbChannels([]); return; }
     fetch(`/api/groups/channels?groupId=${openGroup.id}`)
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(d => {
-        const names = (d.channels || []).map(c => c.name);
-        if (names.length > 0) {
-          setDbRooms(names);
-          // If activeRoom not in DB, switch to first
-          setActiveRoom(prev => names.includes(prev) ? prev : names[0]);
-        } else {
-          setDbRooms([]);
+        const chs = d.channels || [];
+        setDbChannels(chs);
+        if (chs.length > 0) {
+          // If current activeRoom not in DB channels, switch to first
+          setActiveRoom(prev => chs.find(c => c.name === prev) ? prev : chs[0].name);
         }
       })
-      .catch(() => setDbRooms([]));
+      .catch(() => setDbChannels([]));
   }, [openGroup?.id]);
 
   return (
@@ -537,7 +529,7 @@ function GroupsView({ currentUserId }) {
           </div>
           <div style={{ padding:'8px 8px 4px' }}>
             <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:600, color:'var(--text-muted)', padding:'4px 10px', letterSpacing:'0.08em', textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%' }}>Rooms<button title="Manage rooms" onClick={()=>setShowManageRooms(true)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', borderRadius:4, color:'var(--text-muted)', display:'flex', alignItems:'center' }} onMouseEnter={e=>e.currentTarget.style.color='#4B44C8'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-settings" style={{fontSize:14}} aria-hidden="true"/></button></div>
-            {(dbRooms.length > 0 ? dbRooms : customRooms).map(ch => (
+            {(dbChannels.length > 0 ? dbChannels.map(c => c.name) : customRooms).map(ch => (
               <button key={ch} onClick={() => { setActiveRoom(ch); setDropdownOpen(false); }}
                 style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, border:'none', background:activeRoom===ch?'#EEEDFE':'transparent', color:activeRoom===ch?'#3C3489':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:activeRoom===ch?600:400, cursor:'pointer', textAlign:'left' }}
                 onMouseEnter={e => { if(activeRoom!==ch) e.currentTarget.style.background='var(--surface2)'; }}
@@ -629,7 +621,12 @@ function GroupsView({ currentUserId }) {
       {/* Chat */}
       <div style={{ flex:1, overflow:'hidden' }}>
         {openGroup
-          ? <GroupChatRoom group={openGroup} activeRoom={activeRoom} myName={displayMe} />
+          ? <GroupChatRoom
+              group={openGroup}
+              activeRoom={activeRoom}
+              channelId={dbChannels.find(c => c.name === activeRoom)?.id || null}
+              myName={displayMe}
+            />
           : <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:12 }}>
               <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)' }}>No groups yet</div>
               <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Click + to create your first group.</div>
