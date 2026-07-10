@@ -1262,17 +1262,22 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
         <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', minHeight:0 }}>
           {tab === 'feed' && (
             <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
-              <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:28, borderBottom:'0.5px solid var(--border)', flexShrink:0, height:44 }}>
-                {['discover','following','threads'].map(s => (
-                  <span key={s} onClick={() => setFeedSection(s)}
-                    style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:14, fontWeight:feedSection===s?600:400, color:feedSection===s?'var(--text)':'var(--text-muted)', position:'relative', height:44, display:'inline-flex', alignItems:'center', whiteSpace:'nowrap' }}>
-                    {feedSection===s && <span style={{ position:'absolute', bottom:-1, left:0, right:0, height:2, background:'var(--text)', borderRadius:1 }} />}
-                    {s==='threads'?'Threads':s[0].toUpperCase()+s.slice(1)}
-                  </span>
-                ))}
-                <button style={{ all:'unset', marginLeft:'auto', cursor:'pointer', width:28, height:28, borderRadius:'50%', background:'#534AB7', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0 }}
-                  onMouseEnter={e => e.currentTarget.style.background='#3C3489'}
-                  onMouseLeave={e => e.currentTarget.style.background='#534AB7'}
+              <div style={{ display:'flex', alignItems:'center', padding:'12px 18px', gap:8, flexShrink:0 }}>
+                {['discover','following','threads'].map(s => {
+                  const active = feedSection === s;
+                  const label = s === 'threads' ? 'Threads' : s[0].toUpperCase() + s.slice(1);
+                  return (
+                    <button key={s} onClick={() => setFeedSection(s)}
+                      style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600, padding:'6px 16px', borderRadius:20, background: active ? 'var(--text)' : 'transparent', color: active ? 'var(--surface)' : 'var(--text-muted)', border: active ? 'none' : '1px solid var(--border)', transition:'all 0.12s', whiteSpace:'nowrap' }}
+                      onMouseEnter={e => { if(!active){ e.currentTarget.style.background='var(--surface2)'; e.currentTarget.style.color='var(--text)'; }}}
+                      onMouseLeave={e => { if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; }}}>
+                      {label}
+                    </button>
+                  );
+                })}
+                <button style={{ all:'unset', marginLeft:'auto', cursor:'pointer', width:30, height:30, borderRadius:'50%', background:'var(--text)', color:'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0, lineHeight:1 }}
+                  onMouseEnter={e => e.currentTarget.style.opacity='0.8'}
+                  onMouseLeave={e => e.currentTarget.style.opacity='1'}
                   title="New post" onClick={()=>setShowPostModal(true)}>+</button>
               </div>
               <div style={{ flex:1, overflow:'hidden', minHeight:0, display:'flex' }}>

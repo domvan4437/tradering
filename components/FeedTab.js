@@ -24,17 +24,23 @@ function getColor(name) {
   return colors[(name||'?').charCodeAt(0) % colors.length];
 }
 
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const secs = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  const days = Math.floor(secs / 86400);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
 function mapApiPost(p) {
   const name = p.authorName || p.user?.username || p.user?.name || 'Trader';
   const username = p.user?.username || p.user?.name || 'trader';
   const letter = name[0]?.toUpperCase() || 'T';
-  const elapsed = (() => {
-    const secs = Math.floor((Date.now() - new Date(p.createdAt)) / 1000);
-    if (secs < 60) return `${secs}s ago`;
-    if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
-    if (secs < 86400) return `${Math.floor(secs/3600)}h ago`;
-    return `${Math.floor(secs/86400)}d ago`;
-  })();
   return {
     id: p.id,
     userId: p.userId,
@@ -44,7 +50,8 @@ function mapApiPost(p) {
     avatar: letter,
     grad: gradFromId(p.userId),
     slug: username,
-    time: elapsed,
+    createdAt: p.createdAt,
+    time: timeAgo(p.createdAt),
     body: p.content || p.body || '',
     postType: p.postType || p.type || 'General',
     assetTag: p.assetTag || p.symbol || '',
@@ -132,6 +139,9 @@ function PollBlock({ postId, initialPoll, initialVoted }) {
 // ── Post Card ─────────────────────────────────────────────────
 function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
   const myAvatar = useContext(UserAvatarContext);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(t); }, []);
+  const displayTime = post.createdAt ? timeAgo(post.createdAt) : post.time;
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState('');
   const [localComments, setLocalComments] = useState([]);
@@ -209,7 +219,7 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
               </span>
             )}
           </div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{post.time}</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{displayTime}</div>
         </div>
 
         {/* ··· menu */}
@@ -491,11 +501,6 @@ export default function FeedTab({ currentUserId, activeTab: activeTabProp }) {
             ))}
           </div>
         )}
-      </div>
-
-      {/* ── Right sidebar (hidden below 900px via CSS min-width trick) ── */}
-      <div style={{ display: 'flex', flexShrink: 0 }}>
-        <FeedSidebar posts={posts} />
       </div>
 
     </div>
