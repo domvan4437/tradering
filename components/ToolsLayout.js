@@ -73,16 +73,6 @@ function EquityChart({points}){
       <path d={areaD} fill="url(#eq-g)"/>
       <path d={lineD} fill="none" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
       {hP&&<line x1={hX} y1={pt} x2={hX} y2={pt+cH} stroke="rgba(0,0,0,0.12)" strokeWidth="1" strokeDasharray="3,2"/>}
-      {/* Persistent balance labels on each point (staggered above/below) */}
-      {points.map((p,i)=>{
-        const cx=toX(i),cy=toY(p.bal);
-        const above=i%2===0;
-        const lx=Math.min(Math.max(cx,pl+2),W-pr-2);
-        const ly=above?cy-14:cy+22;
-        return hi===null?(
-          <text key={'lbl'+i} x={lx} y={ly} textAnchor="middle" fontSize="8.5" fill={i===0?'#94a3b8':p.pnl>=0?'#16a34a':'#ef4444'} fontFamily="var(--font)" fontWeight="600" opacity="0.85">{fmtK(p.bal)}</text>
-        ):null;
-      })}
       {points.map((p,i)=>(
         <circle key={i} cx={toX(i)} cy={toY(p.bal)} r={hi===i?6:4}
           fill={i===0?'#94a3b8':p.pnl>=0?'#16a34a':'#ef4444'}
@@ -534,32 +524,53 @@ function Dashboard({trades,journals}){
         }
       </Card>
       <Card>
-        <SH>Monthly P&amp;L</SH>
-        {monthList.length===0
-          ?<div style={{fontSize:11,color:'var(--text-muted)'}}>No monthly data yet.</div>
-          :<>
-            <div style={{display:'flex',alignItems:'flex-end',gap:6,height:120,marginBottom:6}}>
-              {monthList.map(([m,val])=>{
-                const hPct=Math.max(Math.abs(val)/maxAbsMonth*90,val!==0?8:0);
-                const col=val>=0?'#22c55e':'#ef4444';
-                const [,mm]=m.split('-');
-                return(
-                  <div key={m} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',height:'100%',gap:4}}>
-                    {val!==0&&<span style={{fontSize:9,fontWeight:700,color:col,whiteSpace:'nowrap'}}>{val>0?'+':''}{val>=1000|val<=-1000?(val/1000).toFixed(1)+'k':val.toFixed(0)}</span>}
-                    <div style={{width:'100%',height:`${hPct}%`,background:col,borderRadius:'4px 4px 0 0',opacity:0.85,minHeight:val!==0?6:0}}/>
-                    <span style={{fontSize:9,color:'var(--text-muted)',fontWeight:500}}>{mm}</span>
-                  </div>
-                );
-              })}
-            </div>
-            {(()=>{const best=monthList.reduce((a,b)=>b[1]>a[1]?b:a,monthList[0]);const worst=monthList.reduce((a,b)=>b[1]<a[1]?b:a,monthList[0]);return(
-              <div style={{display:'flex',justifyContent:'space-between',paddingTop:8,borderTop:'0.5px solid var(--border)',fontSize:11}}>
-                <span style={{color:'var(--text-muted)'}}>Best month ({best?best[0].slice(5):'—'}) <span style={{fontWeight:700,color:'#22c55e'}}>{best&&best[1]>0?`+$${best[1]>=1000?(best[1]/1000).toFixed(1)+'k':best[1].toFixed(0)}`:'—'}</span></span>
-                <span style={{color:'var(--text-muted)'}}>Worst month <span style={{fontWeight:700,color:'#ef4444'}}>{worst&&worst[1]<0?`-$${Math.abs(worst[1])>=1000?(Math.abs(worst[1])/1000).toFixed(1)+'k':Math.abs(worst[1]).toFixed(0)}`:'—'}</span></span>
+        {(()=>{
+          const MON_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const yr12=Array.from({length:12},(_,mi)=>{
+            const key=`${calYear}-${String(mi+1).padStart(2,'0')}`;
+            return{mi,key,val:byMonth[key]??null};
+          });
+          const nonNull=yr12.filter(x=>x.val!==null);
+          const maxAbs12=Math.max(...yr12.map(x=>Math.abs(x.val||0)),1);
+          const best=nonNull.length?nonNull.reduce((a,b)=>b.val>a.val?b:a):null;
+          const worst=nonNull.length?nonNull.reduce((a,b)=>b.val<a.val?b:a):null;
+          const curMi=now.getFullYear()===calYear?now.getMonth():-1;
+          const yearTotal=nonNull.reduce((s,x)=>s+x.val,0);
+          return(<>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+              <SH style={{margin:0}}>Monthly P&amp;L</SH>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                {nonNull.length>0&&<span style={{fontSize:10,fontWeight:600,color:yearTotal>=0?'#22c55e':'#ef4444',padding:'2px 7px',borderRadius:5,background:yearTotal>=0?'rgba(34,197,94,0.08)':'rgba(239,68,68,0.08)'}}>{yearTotal>=0?'+':''}${Math.abs(yearTotal)>=1000?(yearTotal/1000).toFixed(1)+'k':yearTotal.toFixed(0)} {calYear}</span>}
+                <button onClick={()=>setCalYear(y=>y-1)} style={{width:24,height:24,border:'0.5px solid var(--border)',borderRadius:5,background:'transparent',cursor:'pointer',color:'var(--text-muted)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10}}>◀</button>
+                <span style={{fontSize:11,fontWeight:600,color:'var(--text)',minWidth:32,textAlign:'center'}}>{calYear}</span>
+                <button onClick={()=>setCalYear(y=>y+1)} style={{width:24,height:24,border:'0.5px solid var(--border)',borderRadius:5,background:'transparent',cursor:'pointer',color:'var(--text-muted)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10}}>▶</button>
               </div>
-            );})()}
-          </>
-        }
+            </div>
+            {nonNull.length===0
+              ?<div style={{fontSize:11,color:'var(--text-muted)',padding:'20px 0',textAlign:'center'}}>No trades in {calYear}</div>
+              :<>
+                <div style={{display:'flex',alignItems:'flex-end',gap:3,height:110,marginBottom:6}}>
+                  {yr12.map(({mi,key,val})=>{
+                    const hPct=val!==null?Math.max(Math.abs(val)/maxAbs12*86,val!==0?6:2):0;
+                    const col=val===null?'var(--border)':val>0?'#22c55e':val<0?'#ef4444':'#94a3b8';
+                    const isCur=mi===curMi;
+                    return(
+                      <div key={mi} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',height:'100%',gap:3}}>
+                        {val!==null&&val!==0&&<span style={{fontSize:8,fontWeight:700,color:col,whiteSpace:'nowrap',lineHeight:1}}>{val>0?'+':''}${Math.abs(val)>=1000?(val/1000).toFixed(1)+'k':val.toFixed(0)}</span>}
+                        <div style={{width:10,height:val!==null&&val!==0?`${hPct}%`:'2px',background:val!==null&&val!==0?col:'var(--border)',borderRadius:'3px 3px 0 0',opacity:val===null?0.3:0.9,minHeight:val!==null&&val!==0?4:2}}/>
+                        <span style={{fontSize:8.5,color:isCur?PURPLE:'var(--text-muted)',fontWeight:isCur?700:500,lineHeight:1}}>{MON_NAMES[mi]}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',paddingTop:8,borderTop:'0.5px solid var(--border)',fontSize:11}}>
+                  <span style={{color:'var(--text-muted)'}}>Best <span style={{color:'#22c55e',fontWeight:700}}>{best?MON_NAMES[best.mi]+' '+(best.val>0?'+':'')+'$'+(Math.abs(best.val)>=1000?(best.val/1000).toFixed(1)+'k':best.val.toFixed(0)):'—'}</span></span>
+                  <span style={{color:'var(--text-muted)'}}>Worst <span style={{color:'#ef4444',fontWeight:700}}>{worst&&worst.val<0?MON_NAMES[worst.mi]+' -$'+(Math.abs(worst.val)>=1000?(Math.abs(worst.val)/1000).toFixed(1)+'k':Math.abs(worst.val).toFixed(0)):'—'}</span></span>
+                </div>
+              </>
+            }
+          </>);
+        })()}
       </Card>
     </div>
 
@@ -1955,7 +1966,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
         </div>}
 
         {/* Scrollable content */}
-        <div style={{ flex:1, overflowY:'auto', padding:'16px 24px' }}>
+        <div style={{ flex:1, overflowY:'auto', padding:'16px 24px 120px 24px' }}>
           {tab==='Journal' && journalTab==='dashboard' && <Dashboard trades={trades} journals={journals}/>}
           {tab==='Journal' && journalTab==='tradelog'  && <TradeLog  trades={trades} setTrades={setTrades} tradesKey={tradesKey}/>}
           {tab==='Journal' && journalTab==='daily'     && <DailyJournal jTree={jTree} saveJTree={saveJTree} activeJId={activeJId} setActiveJId={setActiveJId} jNavHistory={jNavHistory} navigateJTo={navigateJTo} jGoBack={jGoBack}/>}
