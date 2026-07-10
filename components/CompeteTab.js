@@ -668,27 +668,54 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile, onDelete }
 // ─── Data cards ───────────────────────────────────────────────────────────────
 function ChallengeCard({ match, onAccept, onOpenProfile }) {
   const [preview, setPreview] = useState(false);
+  const initials = (match.challengerName || '?')[0].toUpperCase();
+  const colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
+  const bg = colors[(match.challengerName || '').charCodeAt(0) % colors.length];
   return (
     <>
       {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} onOpenProfile={onOpenProfile} />}
-      <div onClick={() => setPreview(true)} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-        onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
-        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'18px 20px', cursor:'pointer', display:'flex', flexDirection:'column', gap:0, transition:'box-shadow 0.15s, border-color 0.15s' }}
+        onClick={() => setPreview(true)}
+        onMouseEnter={e => { e.currentTarget.style.borderColor='#534AB7'; e.currentTarget.style.boxShadow='0 2px 12px rgba(83,74,183,0.10)'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.boxShadow='none'; }}
       >
-        <div style={{ width: 38, height: 38, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <i className="ti ti-swords" style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
+        {/* Top row: market badge + timing */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+          <span style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:6, padding:'3px 8px' }}>
+            {(match.asset || 'ANY').toUpperCase()}
+          </span>
+          <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>
+            {match.timeLeft ? `Starts in ${match.timeLeft}` : timeAgo(match.createdAt)}
+          </span>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
-            {match.challengerName}
-            {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10, fontWeight: 500 }}>${match.buyIn} stake</span>}
+        {/* VS row */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+          {/* Challenger */}
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, flex:1 }}>
+            <div style={{ width:52, height:52, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
+              {initials}
+            </div>
+            <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{match.challengerName}</span>
           </div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
-            {match.asset} · {match.timeLeft || 'Open'} · {timeAgo(match.createdAt)}
+          <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text-muted)', flex:'0 0 auto', padding:'0 12px' }}>VS</span>
+          {/* Open slot */}
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, flex:1 }}>
+            <div style={{ width:52, height:52, borderRadius:'50%', border:'2px dashed #d1d5db', display:'flex', alignItems:'center', justifyContent:'center', background:'transparent' }}>
+              <span style={{ fontFamily:'var(--font)', fontSize:22, color:'#d1d5db', fontWeight:400 }}>?</span>
+            </div>
+            <span style={{ fontFamily:'var(--font)', fontSize:13, color:'#9ca3af' }}>Open slot</span>
           </div>
-          {match.description && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{match.description}</div>}
         </div>
-        <i className="ti ti-chevron-right" style={{ fontSize: 16, color: '#534AB7', flexShrink: 0 }} />
+        {/* Meta row */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+          <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{match.timeLeft ? `${match.timeLeft} P&L %` : 'P&L %'}</span>
+          <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{match.buyIn > 0 ? `$${match.buyIn.toLocaleString()} stake` : 'Free'}</span>
+        </div>
+        {/* Accept button */}
+        <button onClick={e => { e.stopPropagation(); setPreview(true); }}
+          style={{ width:'100%', padding:'11px', borderRadius:10, background:'#111827', color:'#fff', border:'none', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer', letterSpacing:'0.01em' }}>
+          Accept challenge
+        </button>
       </div>
     </>
   );
@@ -698,45 +725,68 @@ function MatchCard({ match, currentUserId, onClick, onDelete }) {
   const isChallenger = match.challengerId === currentUserId;
   const myScore = isChallenger ? match.challengerScore : match.opponentScore;
   const oppScore = isChallenger ? match.opponentScore : match.challengerScore;
+  const myName = isChallenger ? match.challengerName : match.opponentName;
   const oppName = isChallenger ? match.opponentName : match.challengerName;
   const canDelete = isChallenger && match.status !== 'active';
+  const isLive = match.status === 'active';
+  const colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
+  const myBg = colors[(myName || '').charCodeAt(0) % colors.length];
+  const oppBg = colors[(oppName || '').charCodeAt(0) % colors.length];
+  const myPnl = Number(myScore) || 0;
+  const oppPnl = Number(oppScore) || 0;
   return (
-    <div onClick={onClick} style={{ ...S.card, cursor: 'pointer', transition: 'border-color 0.15s' }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = '#534AB7'}
-      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+    <div onClick={onClick} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'18px 20px', cursor:'pointer', display:'flex', flexDirection:'column', gap:0, transition:'box-shadow 0.15s, border-color 0.15s' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor='#534AB7'; e.currentTarget.style.boxShadow='0 2px 12px rgba(83,74,183,0.10)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.boxShadow='none'; }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-          vs {oppName}
-          {match.buyIn > 0 && <span style={{ marginLeft: 6, fontSize: 11, background: '#EEEDFE', color: '#3C3489', padding: '2px 7px', borderRadius: 10 }}>${match.buyIn} stake</span>}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: match.status === 'active' ? '#059669' : '#d97706', fontWeight: 600 }}>
-            {match.status === 'active' ? '● Live' : '⏳ Waiting'}
-          </span>
+      {/* Top row */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+        <span style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:6, padding:'3px 8px' }}>
+          {(match.asset || 'ANY').toUpperCase()}
+        </span>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          {isLive && <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'#059669' }}>● Live</span>}
           {canDelete && onDelete && (
-            <button onClick={e => { e.stopPropagation(); onDelete(match.id); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--text-muted)' }}
-              title="Delete match">
-              <i className="ti ti-trash" style={{ fontSize: 14 }} />
+            <button onClick={e => { e.stopPropagation(); onDelete(match.id); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:'2px 4px' }} title="Delete">
+              <i className="ti ti-trash" style={{ fontSize:14 }} />
             </button>
           )}
-          <i className="ti ti-chevron-right" style={{ fontSize: 14, color: '#534AB7' }} />
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 6 }}>
-        <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>You</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: myScore >= 0 ? '#059669' : '#dc2626' }}>{myScore > 0 ? '+' : ''}${Math.abs(Number(myScore)).toFixed(2)}</div>
+      {/* VS row */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+        {/* Me */}
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, flex:1 }}>
+          <div style={{ width:52, height:52, borderRadius:'50%', background:myBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
+            {(myName||'?')[0].toUpperCase()}
+          </div>
+          <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{myName}</span>
+          <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: myPnl >= 0 ? '#059669' : '#dc2626' }}>
+            {myPnl >= 0 ? '+' : ''}{myPnl.toFixed(1)}%
+          </span>
         </div>
-        <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>{oppName}</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: oppScore >= 0 ? '#059669' : '#dc2626' }}>{oppScore > 0 ? '+' : ''}${Math.abs(Number(oppScore)).toFixed(2)}</div>
+        <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text-muted)', flex:'0 0 auto', padding:'0 12px' }}>VS</span>
+        {/* Opponent */}
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, flex:1 }}>
+          <div style={{ width:52, height:52, borderRadius:'50%', background:oppBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
+            {(oppName||'?')[0].toUpperCase()}
+          </div>
+          <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{oppName}</span>
+          <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: oppPnl >= 0 ? '#059669' : '#dc2626' }}>
+            {oppPnl >= 0 ? '+' : ''}{oppPnl.toFixed(1)}%
+          </span>
         </div>
       </div>
-      <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
-        {match.asset} · {match.timeLeft || 'No end date'} · Tap to view &amp; trade
+      {/* Meta */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+        <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{match.timeLeft || 'Ongoing'}</span>
+        <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{match.buyIn > 0 ? `$${match.buyIn.toLocaleString()} stake` : 'Free'}</span>
       </div>
+      {/* Watch button */}
+      <button onClick={e => { e.stopPropagation(); onClick(); }}
+        style={{ width:'100%', padding:'11px', borderRadius:10, background:'transparent', color:'var(--text)', border:'1px solid var(--border)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        Watch match
+      </button>
     </div>
   );
 }
@@ -1276,68 +1326,114 @@ function H2HTab({ currentUserId, onOpenProfile }) {
     return matchAsset && matchSearch;
   });
 
+  const ASSETS = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
+  const inviteCount = (data.invites || []).length;
+
+  const sidebarNav = [
+    { key: 'browse', label: 'Browse', badge: null },
+    { key: 'mymatches', label: 'My matches', badge: null },
+    { key: 'invites', label: 'Invites', badge: inviteCount > 0 ? inviteCount : null },
+  ];
+
+  const renderGrid = (items) => (
+    loading ? (
+      <div style={{ textAlign:'center', padding:'60px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading…</div>
+    ) : items.length === 0 ? (
+      <EmptyState icon="ti-swords" title="No challenges yet" sub="Post a challenge to get started" btnLabel="Post challenge" onBtnClick={() => setShowModal(true)} />
+    ) : (
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+        {items}
+      </div>
+    )
+  );
+
   return (
-    <div style={{ padding: 18 }}>
+    <div style={{ display:'flex', flex:1, minHeight:0, width:'100%' }}>
       {showModal && <PostChallengeModal onClose={() => setShowModal(false)} onSuccess={fetchData} />}
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-        <SearchBar placeholder="Search by trader name or @username..." value={search} onChange={setSearch} />
-        <button onClick={() => setShowModal(true)} style={S.primaryBtn}>
+      {/* ── Sidebar ── */}
+      <div style={{ width:220, flexShrink:0, borderRight:'1px solid var(--border)', padding:'20px 16px', display:'flex', flexDirection:'column', gap:0, overflowY:'auto' }}>
+        <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Head to Head</div>
+        <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Challenge traders 1v1</div>
+
+        <button onClick={() => setShowModal(true)}
+          style={{ width:'100%', padding:'10px 14px', borderRadius:10, background:'#111827', color:'#fff', border:'none', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer', marginBottom:20, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
           <i className="ti ti-plus" aria-hidden="true" /> Post challenge
         </button>
+
+        {/* Nav items */}
+        <div style={{ display:'flex', flexDirection:'column', gap:2, marginBottom:24 }}>
+          {sidebarNav.map(item => (
+            <button key={item.key} onClick={() => setInner(item.key)}
+              style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:8, border:'none', background: inner===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: inner===item.key ? 600 : 400, color: inner===item.key ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
+              {item.label}
+              {item.badge && (
+                <span style={{ background:'#111827', color:'#fff', borderRadius:'50%', width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Market filter */}
+        <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:8 }}>Market</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+          {ASSETS.map(a => (
+            <button key={a} onClick={() => setAssetFilter(a)}
+              style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'none', background: assetFilter===a ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 600 : 400, color: assetFilter===a ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
+              {a}
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>Search by trader name or @username</div>
 
-      <InnerTabs
-        tabs={[['browse', `Browse${data.open?.length ? ` (${data.open.length})` : ''}`], ['mymatches', `My matches${data.myMatches?.length ? ` (${data.myMatches.length})` : ''}`], ['invites', `Invites${data.invites?.length ? ` (${data.invites.length})` : ''}`]]}
-        active={inner}
-        onChange={setInner}
-      />
+      {/* ── Main content ── */}
+      <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
+        {/* Search bar */}
+        <div style={{ marginBottom:20 }}>
+          <SearchBar placeholder="Search by trader name or @username..." value={search} onChange={setSearch} />
+        </div>
 
-      {inner === 'browse' && (
-        <>
-          <AssetPills active={assetFilter} onChange={setAssetFilter} />
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
-          ) : filteredOpen.length === 0 ? (
-            <EmptyState icon="ti-swords" title="No open challenges" sub="Be the first — post a challenge above" btnLabel="Post challenge" onBtnClick={() => setShowModal(true)} />
+        {inner === 'browse' && renderGrid(
+          filteredOpen.map(m => <ChallengeCard key={m.id} match={m} onAccept={handleAccept} onOpenProfile={onOpenProfile} />)
+        )}
+
+        {inner === 'mymatches' && (() => {
+          const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+          const active = (data.myMatches || []).filter(m => !m.endDate || new Date(m.endDate).getTime() > cutoff);
+          const recentlyEnded = (data.myMatches || []).filter(m => m.endDate && new Date(m.endDate).getTime() <= cutoff);
+          if (loading) return <div style={{ textAlign:'center', padding:'60px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading…</div>;
+          if (active.length === 0 && recentlyEnded.length === 0) return <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />;
+          return (
+            <>
+              {active.length > 0 && (
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                  {active.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
+                </div>
+              )}
+              {recentlyEnded.length > 0 && (
+                <>
+                  <div style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', padding:'20px 0 10px' }}>Recently ended</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                    {recentlyEnded.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
+
+        {inner === 'invites' && (
+          loading ? (
+            <div style={{ textAlign:'center', padding:'60px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading…</div>
+          ) : (data.invites || []).length === 0 ? (
+            <EmptyState icon="ti-bell" title="No invites" sub="When traders challenge you, they appear here" />
           ) : (
-            filteredOpen.map(m => <ChallengeCard key={m.id} match={m} onAccept={handleAccept} onOpenProfile={onOpenProfile} />)
-          )}
-        </>
-      )}
-
-      {inner === 'mymatches' && (() => {
-        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-        const active = (data.myMatches || []).filter(m => !m.endDate || new Date(m.endDate).getTime() > cutoff);
-        const recentlyEnded = (data.myMatches || []).filter(m => m.endDate && new Date(m.endDate).getTime() <= cutoff);
-        return loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
-        ) : active.length === 0 && recentlyEnded.length === 0 ? (
-          <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />
-        ) : (
-          <>
-            {active.length === 0 && <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />}
-            {active.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
-            {recentlyEnded.length > 0 && (
-              <>
-                <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '14px 0 6px' }}>Recently ended</div>
-                {recentlyEnded.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
-              </>
-            )}
-          </>
-        );
-      })()}
-
-      {inner === 'invites' && (
-        loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
-        ) : (data.invites || []).length === 0 ? (
-          <EmptyState icon="ti-bell" title="No invites" sub="When traders challenge you, they appear here" />
-        ) : (
-          (data.invites || []).map(m => <InviteCard key={m.id} match={m} onAccept={handleAccept} onDecline={handleDecline} onOpenProfile={onOpenProfile} />)
-        )
-      )}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+              {(data.invites || []).map(m => <InviteCard key={m.id} match={m} onAccept={handleAccept} onDecline={handleDecline} onOpenProfile={onOpenProfile} />)}
+            </div>
+          )
+        )}
+      </div>
     </div>
   );
 }
@@ -2186,8 +2282,8 @@ export default function CompeteTab({ currentUserId, externalTab }) {
 
       {/* Main content */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        {meta && (
+        {/* Header — hidden for H2H which has its own sidebar title */}
+        {meta && resolvedTab !== 'h2h' && (
           <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
             <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
@@ -2195,7 +2291,7 @@ export default function CompeteTab({ currentUserId, externalTab }) {
         )}
 
         {/* Tab content */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, overflow: resolvedTab === 'h2h' ? 'hidden' : 'auto', display: resolvedTab === 'h2h' ? 'flex' : 'block' }}>
           {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
           {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
           {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
