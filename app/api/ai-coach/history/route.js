@@ -67,6 +67,18 @@ export async function POST(req) {
   }
 }
 
+export async function PATCH(req) {
+  const session = await getSession();
+  if (!session?.user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const { id, title } = await req.json();
+  if (!id || !title) return Response.json({ error: 'Missing id or title' }, { status: 400 });
+  await prisma.aIConversation.updateMany({
+    where: { id, userId: session.user.id },
+    data: { title: title.slice(0, 100) },
+  });
+  return Response.json({ ok: true });
+}
+
 export async function DELETE(req) {
   const session = await getSession();
   if (!session?.user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
