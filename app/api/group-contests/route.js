@@ -23,9 +23,15 @@ export async function GET(request) {
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const uid = session.user.id
 
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
     const [allContestsRaw, myContests] = await Promise.all([
       prisma.tournament.findMany({
-        where: { type: 'group', status: { in: ['open', 'active'] } },
+        where: {
+          type: 'group',
+          status: { in: ['open', 'active'] },
+          OR: [{ endDate: null }, { endDate: { gt: cutoff } }],
+        },
         include: {
           creator: { select: { id: true, name: true, username: true, displayName: true, profileSlug: true } },
           _count: { select: { entries: true } },
@@ -36,10 +42,13 @@ export async function GET(request) {
       }),
       prisma.tournament.findMany({
         where: {
-          type: 'group',
-          OR: [
-            { entries: { some: { userId: uid } } },
-            { creatorId: uid },
+          AND: [
+            { type: 'group' },
+            { OR: [{ endDate: null }, { endDate: { gt: cutoff } }] },
+            { OR: [
+              { entries: { some: { userId: uid } } },
+              { creatorId: uid },
+            ]},
           ],
         },
         include: {
