@@ -1076,6 +1076,14 @@ function ThreadsFeed({ onNewPost, currentUserId }) {
 }
 
 function PostComposer({ onClose, currentUserId, feedSection }) {
+  const myAvatar = React.useContext(UserAvatarContext);
+  const [myName, setMyName] = React.useState('');
+  React.useEffect(() => {
+    fetch('/api/auth/session').then(r=>r.json()).then(d=>{
+      const n = d?.user?.name || d?.user?.email || '';
+      setMyName(n);
+    }).catch(()=>{});
+  }, []);
   const [text, setText] = React.useState('');
   const [assetTag, setAssetTag] = React.useState('');
   const [attachment, setAttachment] = React.useState(null);
@@ -1156,7 +1164,11 @@ function PostComposer({ onClose, currentUserId, feedSection }) {
 
       {/* Body */}
       <div style={{ display:'flex', gap:10, alignItems:'flex-start', padding:'14px 16px' }}>
-        <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, marginTop:2 }}>Y</div>
+        <div style={{ width:34, height:34, borderRadius:'50%', background:'linear-gradient(135deg,#534AB7,#7F77DD)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, marginTop:2, overflow:'hidden' }}>
+          {myAvatar
+            ? <img src={myAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            : (myName ? myName[0].toUpperCase() : '?')}
+        </div>
         <textarea
           value={text}
           onChange={e => setText(e.target.value.slice(0,280))}
@@ -1167,13 +1179,6 @@ function PostComposer({ onClose, currentUserId, feedSection }) {
         />
       </div>
 
-      {/* Asset tag */}
-      <div style={{ padding:'0 16px 10px', display:'flex', alignItems:'center', gap:8 }}>
-        <span style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)', flexShrink:0 }}>Asset:</span>
-        <input value={assetTag} onChange={e=>setAssetTag(e.target.value.toUpperCase().slice(0,10))}
-          placeholder="e.g. GOLD, EURUSD, BTC"
-          style={{ ...iStyle, flex:1 }} />
-      </div>
 
       {/* Attachment preview */}
       {attachment && (
