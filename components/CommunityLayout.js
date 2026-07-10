@@ -110,13 +110,15 @@ function GroupChatRoom({ group, activeRoom, myName }) {
   // Find the channelId for activeRoom
   useEffect(() => {
     if (!group?.id) return;
+    setLoading(true);
     fetch(`/api/groups/channels?groupId=${group.id}`)
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(d => {
         const ch = (d.channels || []).find(c => c.name === activeRoom) || (d.channels || [])[0];
         setChannelId(ch?.id || null);
+        if (!ch?.id) setLoading(false);
       })
-      .catch(() => setChannelId(null));
+      .catch(() => { setChannelId(null); setLoading(false); });
   }, [group?.id, activeRoom]);
 
   // Fetch messages from API
@@ -396,6 +398,7 @@ function GroupsView({ currentUserId }) {
   const [showBrowse, setShowBrowse] = useState(false);
   const [showManageRooms, setShowManageRooms] = useState(false);
   const [customRooms, setCustomRooms] = useState(['general']);
+  const [dbRooms, setDbRooms] = useState([]);
   const [newRoomName, setNewRoomName] = useState('');
   const [createName, setCreateName] = useState('');
   const [createType, setCreateType] = useState('club');
@@ -501,6 +504,23 @@ function GroupsView({ currentUserId }) {
       .catch(() => setMembers([]));
   }, [openGroup?.id]);
 
+  React.useEffect(() => {
+    if (!openGroup?.id) { setDbRooms([]); return; }
+    fetch(`/api/groups/channels?groupId=${openGroup.id}`)
+      .then(r => r.json())
+      .then(d => {
+        const names = (d.channels || []).map(c => c.name);
+        if (names.length > 0) {
+          setDbRooms(names);
+          // If activeRoom not in DB, switch to first
+          setActiveRoom(prev => names.includes(prev) ? prev : names[0]);
+        } else {
+          setDbRooms([]);
+        }
+      })
+      .catch(() => setDbRooms([]));
+  }, [openGroup?.id]);
+
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
       {/* Fixed dropdown rendered at body level via fixed positioning */}
@@ -517,12 +537,13 @@ function GroupsView({ currentUserId }) {
           </div>
           <div style={{ padding:'8px 8px 4px' }}>
             <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:600, color:'var(--text-muted)', padding:'4px 10px', letterSpacing:'0.08em', textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%' }}>Rooms<button title="Manage rooms" onClick={()=>setShowManageRooms(true)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', borderRadius:4, color:'var(--text-muted)', display:'flex', alignItems:'center' }} onMouseEnter={e=>e.currentTarget.style.color='#4B44C8'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-settings" style={{fontSize:14}} aria-hidden="true"/></button></div>
-            {customRooms.map(ch => (
+            {(dbRooms.length > 0 ? dbRooms : customRooms).map(ch => (
               <button key={ch} onClick={() => { setActiveRoom(ch); setDropdownOpen(false); }}
                 style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, border:'none', background:activeRoom===ch?'#EEEDFE':'transparent', color:activeRoom===ch?'#3C3489':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:activeRoom===ch?600:400, cursor:'pointer', textAlign:'left' }}
                 onMouseEnter={e => { if(activeRoom!==ch) e.currentTarget.style.background='var(--surface2)'; }}
                 onMouseLeave={e => { if(activeRoom!==ch) e.currentTarget.style.background='transparent'; }}>
                 <span style={{ fontSize:14 }}>#</span> {ch}
+                {activeRoom===ch && <span style={{ marginLeft:'auto', fontSize:10, color:PURPLE }}>●</span>}
               </button>
             ))}
           </div>
@@ -575,10 +596,15 @@ function GroupsView({ currentUserId }) {
           : groups.map(g => {
             const active = openGroup && openGroup.id === g.id;
             return (
-              <button key={g.id} onClick={e => handleIconClick(e, g)} title={g.name}
-                style={{ width:40, height:40, borderRadius: g.type === 'club' ? '50%' : 10, background:g.grad||PURPLE, border:active?'2px solid '+PURPLE:'2px solid transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'#fff', cursor:'pointer', flexShrink:0, overflow:'hidden', transition:'all 0.2s', outline:'none', padding:0 }}>
-                {g.profileImg ? <img src={g.profileImg} alt={g.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
-              </button>
+              <div key={g.id} style={{ position:'relative', flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center' }}>
+                <button onClick={e => handleIconClick(e, g)} title={g.name}
+                  style={{ width:40, height:40, borderRadius: g.type === 'club' ? '50%' : 10, background:g.grad||PURPLE, border:active?'2px solid '+PURPLE:'2px solid transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'#fff', cursor:'pointer', overflow:'hidden', transition:'all 0.15s', outline:'none', padding:0 }}>
+                  {g.profileImg ? <img src={g.profileImg} alt={g.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
+                </button>
+                {active && (
+                  <div style={{ position:'absolute', bottom:-7, left:'50%', transform:'translateX(-50%)', width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderBottom:'5px solid '+PURPLE }} />
+                )}
+              </div>
             );
           })
         }
