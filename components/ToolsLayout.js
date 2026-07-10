@@ -73,12 +73,14 @@ function EquityChart({points}){
       <path d={areaD} fill="url(#eq-g)"/>
       <path d={lineD} fill="none" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
       {hP&&<line x1={hX} y1={pt} x2={hX} y2={pt+cH} stroke="rgba(0,0,0,0.12)" strokeWidth="1" strokeDasharray="3,2"/>}
-      {points.map((p,i)=>(
-        <circle key={i} cx={toX(i)} cy={toY(p.bal)} r={hi===i?6:4}
-          fill={i===0?'#94a3b8':p.pnl>=0?'#16a34a':'#ef4444'}
-          stroke="var(--surface)" strokeWidth="1.5" style={{cursor:'crosshair'}}
-          onMouseEnter={()=>setHi(i)} onMouseLeave={()=>setHi(null)}/>
-      ))}
+      {points.map((p,i)=>{
+        const dotCol=i===0?'#94a3b8':p.pnl>0?'#16a34a':p.pnl<0?'#ef4444':'#94a3b8';
+        return(
+          <circle key={i} cx={toX(i)} cy={toY(p.bal)} r={hi===i?6:4}
+            style={{fill:dotCol,stroke:'var(--surface)',strokeWidth:1.5,cursor:'crosshair'}}
+            onMouseEnter={()=>setHi(i)} onMouseLeave={()=>setHi(null)}/>
+        );
+      })}
       {points.map((p,i)=>p.date?(
         <text key={p.date} x={toX(i)} y={H-2} textAnchor="middle" fontSize="9" fill="var(--text-muted)" fontFamily="var(--font)">{fmtDateLabel(p.date)}</text>
       ):null)}
