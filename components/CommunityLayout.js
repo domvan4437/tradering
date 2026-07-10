@@ -139,7 +139,7 @@ function GroupChatRoom({ group, activeRoom, myName }) {
   const send = () => {
     if (!msg.trim() && !attachment) return;
     const displayName = myName || 'you';
-    const m = { id:Date.now(), user:displayName, text:msg.trim(), time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), attachment: attachment||null };
+    const m = { id:Date.now(), user:displayName, avatar: myAvatar||null, text:msg.trim(), time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), attachment: attachment||null };
     const updated = [...messages, m];
     setMessages(updated);
     try { localStorage.setItem('tr_chat_'+group.id+'_'+activeRoom, JSON.stringify(updated)); } catch {}
@@ -172,8 +172,8 @@ function GroupChatRoom({ group, activeRoom, myName }) {
           return (
             <div key={m.id} onMouseEnter={() => setHoveredMsg(m.id)} onMouseLeave={() => setHoveredMsg(null)}
               style={{ display:'flex', gap:10, alignItems:'flex-start', position:'relative', padding:'2px 4px', borderRadius:8, background: isHovered ? 'var(--surface2)' : 'transparent' }}>
-              <div style={{ width:32, height:32, borderRadius:'50%', background: isOwn && myAvatar ? 'transparent' : getColor(m.user), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
-                {isOwn && myAvatar ? <img src={myAvatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.user||'?')[0].toUpperCase()}
+              <div style={{ width:32, height:32, borderRadius:'50%', background: m.avatar ? 'transparent' : getColor(m.user), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                {m.avatar ? <img src={m.avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.user||'?')[0].toUpperCase()}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
