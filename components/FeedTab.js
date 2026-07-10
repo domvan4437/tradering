@@ -140,7 +140,13 @@ function PollBlock({ postId, initialPoll, initialVoted }) {
 function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
   const myAvatar = useContext(UserAvatarContext);
   const [now, setNow] = useState(Date.now());
+  const [myName, setMyName] = useState('');
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    fetch('/api/auth/session').then(r=>r.json()).then(d=>{
+      setMyName(d?.user?.name || d?.user?.email || '');
+    }).catch(()=>{});
+  }, []);
   const displayTime = post.createdAt ? timeAgo(post.createdAt) : post.time;
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState('');
@@ -169,7 +175,7 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
   const addComment = async () => {
     if (!comment.trim()) return;
     const text = comment;
-    setLocalComments(prev => [...prev, { id: Date.now(), text, user: 'You' }]);
+    setLocalComments(prev => [...prev, { id: Date.now(), text, user: myName || 'You' }]);
     setCommentCount(c => c + 1); setComment('');
     try { await fetch('/api/social/posts/comment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: post.id, content: text }) }); } catch(e) {}
   };

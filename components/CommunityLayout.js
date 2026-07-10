@@ -893,7 +893,7 @@ function ThreadPoll({ postId, initialPoll, initialVoted }) {
   );
 }
 
-function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
+function ThreadCard({ thread: t, myUserId, onDelete, onVote, myName }) {
   const myAvatar = useContext(UserAvatarContext);
   const [showComments, setShowComments] = React.useState(false);
   const [comments, setComments] = React.useState([]);
@@ -922,7 +922,7 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
   const addComment = async () => {
     if (!commentText.trim()) return;
     const text = commentText;
-    setComments(prev => [...prev, { id: Date.now(), text, user: 'You' }]);
+    setComments(prev => [...prev, { id: Date.now(), text, user: myName || 'You' }]);
     setCommentCount(c => c + 1);
     setCommentText('');
     try {
@@ -1008,6 +1008,13 @@ function ThreadCard({ thread: t, myUserId, onDelete, onVote }) {
 function ThreadsFeed({ onNewPost, currentUserId }) {
   const [threads, setThreads] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [myName, setMyName] = React.useState('');
+
+  React.useEffect(() => {
+    fetch('/api/auth/session').then(r=>r.json()).then(d=>{
+      setMyName(d?.user?.name || d?.user?.email || '');
+    }).catch(()=>{});
+  }, []);
 
   const fetchThreads = React.useCallback(async () => {
     try {
@@ -1067,7 +1074,7 @@ function ThreadsFeed({ onNewPost, currentUserId }) {
           </div>
         ) : (
           threads.map(t => (
-            <ThreadCard key={t.id} thread={t} myUserId={myUserId} onDelete={handleDelete} onVote={handleVote} />
+            <ThreadCard key={t.id} thread={t} myUserId={myUserId} onDelete={handleDelete} onVote={handleVote} myName={myName} />
           ))
         )}
       </div>
