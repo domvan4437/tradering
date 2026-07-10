@@ -469,9 +469,12 @@ function GroupsView({ currentUserId }) {
 
   const handleIconClick = (e, g) => {
     e.stopPropagation();
-    switchGroup(g);
     const rect = e.currentTarget.getBoundingClientRect();
     setDropdownPos({ top: rect.bottom + 8, left: rect.left });
+    if (!openGroup || openGroup.id !== g.id) {
+      // Actually switching groups — reset room
+      switchGroup(g);
+    }
     setDropdownOpen(true);
   };
 
