@@ -272,10 +272,10 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-function ModalFooter({ onCancel, onSubmit, submitLabel, disabled }) {
+function ModalFooter({ onCancel, onSubmit, submitLabel, disabled, cancelLabel = 'Cancel' }) {
   return (
     <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-      <button onClick={onCancel} style={{ ...S.ghostBtn, flex: 1 }}>Cancel</button>
+      <button onClick={onCancel} style={{ ...S.ghostBtn, flex: 1 }}>{cancelLabel}</button>
       <button
         onClick={onSubmit}
         disabled={disabled}
@@ -1433,7 +1433,6 @@ function CreateGroupModal({ onClose, onSuccess }) {
     durationCustom: '',
     durationUnit: 'days',
     fee: '',
-    maxGroups: 10,
     structure: 'Top 3 Split',
     minTrades: 10,
     desc: '',
@@ -1444,8 +1443,44 @@ function CreateGroupModal({ onClose, onSuccess }) {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Invite step state
+  const [step, setStep] = useState('form'); // 'form' | 'invite'
+  const [createdContest, setCreatedContest] = useState(null); // { id, name, asset, buyIn }
+  const [inviteMode, setInviteMode] = useState('group'); // 'group' | 'person'
+  const [inviteGroups, setInviteGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [groupChannels, setGroupChannels] = useState({});
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteSent, setInviteSent] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [personQuery, setPersonQuery] = useState('');
+  const [personResults, setPersonResults] = useState([]);
+  const [personSearching, setPersonSearching] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState(null);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setDur = (patch) => setForm(p => ({ ...p, ...patch }));
+
+  // Load groups when invite step opens
+  useEffect(() => {
+    if (step === 'invite') {
+      fetch('/api/groups?mine=true').then(r => r.json()).then(d => setInviteGroups(d.groups || [])).catch(() => {});
+    }
+  }, [step]);
+
+  // Debounced person search for invite
+  useEffect(() => {
+    if (step !== 'invite' || inviteMode !== 'person' || !personQuery.trim()) { setPersonResults([]); return; }
+    setPersonSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/social/leaderboard?search=${encodeURIComponent(personQuery)}&limit=8`);
+        const d = await res.json();
+        setPersonResults(d.leaderboard || []);
+      } catch {}
+      setPersonSearching(false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [personQuery, step, inviteMode]);
 
   const TEAM_FORMAT_OPTS = [
     { v: 'none', l: 'None (free-for-all)' },
@@ -1460,7 +1495,33 @@ function CreateGroupModal({ onClose, onSuccess }) {
   const finalTeamFormat = parsedTeamSize ? `${parsedTeamSize}v${parsedTeamSize}` : null;
 
   const feeNum = parseInt(form.fee) || 0;
-  const estimatedPool = feeNum * form.maxGroups;
+
+  const getGeneralChannel = async (groupId) => {
+    if (groupChannels[groupId]) return groupChannels[groupId];
+    const res = await fetch(`/api/groups/channels?groupId=${groupId}`);
+    const d = await res.json();
+    const ch = (d.channels || []).find(c => c.name === 'general') || (d.channels || [])[0];
+    if (ch) { setGroupChannels(prev => ({ ...prev, [groupId]: ch.id })); return ch.id; }
+    return null;
+  };
+
+  const sendInvite = async (groupId, mentionUser = null) => {
+    setInviteSending(true); setInviteError('');
+    try {
+      const channelId = await getGeneralChannel(groupId);
+      if (!channelId) { setInviteError('Could not find a channel in that group'); setInviteSending(false); return; }
+      const c = createdContest;
+      const msg = mentionUser
+        ? `@${mentionUser} — you've been invited to a contest!\n\n🏆 ${c.name}\nAsset: ${c.asset || 'Any'} · ${c.buyIn > 0 ? `$${c.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`
+        : `🏆 Contest invite: ${c.name}\nAsset: ${c.asset || 'Any'} · ${c.buyIn > 0 ? `$${c.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
+      await fetch('/api/groups/messages', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId, content: msg }),
+      });
+      setInviteSent(true);
+    } catch { setInviteError('Failed to send — try again'); }
+    setInviteSending(false);
+  };
 
   const handleSubmit = async () => {
     if (!form.name.trim()) { setError('Contest name is required'); return; }
@@ -1478,7 +1539,6 @@ function CreateGroupModal({ onClose, onSuccess }) {
         allowedSymbols: form.allowedSymbols.length > 0 ? form.allowedSymbols : null,
         duration,
         buyIn: type === 'paid' ? form.fee : '0',
-        maxParticipants: form.maxGroups || null,
         teamFormat: finalTeamFormat,
         teamSize: parsedTeamSize,
         teamNameA: form.teamNameA,
@@ -1499,8 +1559,10 @@ function CreateGroupModal({ onClose, onSuccess }) {
         setLoading(false);
         return;
       }
+      // Contest created — notify parent and move to invite step
       onSuccess?.();
-      onClose();
+      setCreatedContest({ id: data.contestId, name: form.name.trim(), asset: form.asset, buyIn: type === 'paid' ? (parseFloat(form.fee) || 0) : 0 });
+      setStep('invite');
     } catch (err) {
       console.error('[CreateGroupModal] network error:', err);
       setError('Network error — check your connection and try again');
@@ -1509,6 +1571,124 @@ function CreateGroupModal({ onClose, onSuccess }) {
   };
 
   const valid = form.name.trim().length > 0 && !loading;
+
+  // ── Invite step (shown after contest is created) ──
+  if (step === 'invite') {
+    if (inviteSent) {
+      return (
+        <Modal title="Invite sent!" onClose={onClose}>
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Invite posted</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Members will see it in their group chat and can join from Browse.</div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => { setInviteSent(false); setSelectedGroupId(''); setSelectedPerson(null); setPersonQuery(''); }} style={{ ...S.ghostBtn }}>Send another</button>
+              <button onClick={onClose} style={{ ...S.primaryBtn }}>Done</button>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+    return (
+      <Modal title={`Invite others to: ${createdContest?.name}`} onClose={onClose}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#059669', background: '#d1fae5', border: '1px solid #6ee7b7', borderRadius: 8, padding: '8px 12px', marginBottom: 16 }}>
+          🎉 Contest created! Invite people to join, or skip for now.
+        </div>
+        {/* Mode tabs */}
+        <div style={{ display: 'flex', gap: 0, marginBottom: 18, border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
+          {[{ key: 'group', label: '👥 Send to a group' }, { key: 'person', label: '👤 Invite a person' }].map((m, i) => (
+            <button key={m.key} onClick={() => { setInviteMode(m.key); setInviteError(''); setSelectedPerson(null); setPersonQuery(''); setSelectedGroupId(''); }}
+              style={{ flex: 1, padding: '9px 0', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: inviteMode === m.key ? '#534AB7' : 'var(--surface2)', color: inviteMode === m.key ? '#fff' : 'var(--text-muted)' }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {inviteMode === 'group' ? (
+          <div>
+            <label style={S.label}>Choose a group</label>
+            {inviteGroups.length === 0
+              ? <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', padding: '12px 0' }}>You're not in any groups yet.</div>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                {inviteGroups.map(g => (
+                  <button key={g.id} onClick={() => setSelectedGroupId(g.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${selectedGroupId === g.id ? '#534AB7' : 'var(--border)'}`, background: selectedGroupId === g.id ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 8, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#fff', flexShrink: 0 }}>{g.emoji || '👥'}</div>
+                    <div>
+                      <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: selectedGroupId === g.id ? '#534AB7' : 'var(--text)' }}>{g.name}</div>
+                      <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{g._count?.members || 0} members</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            }
+            <WarnBox>The invite will be posted in the group's general channel.</WarnBox>
+            {inviteError && <div style={{ margin: '8px 0', padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{inviteError}</div>}
+            <ModalFooter onCancel={onClose} cancelLabel="Skip" onSubmit={() => sendInvite(selectedGroupId)} submitLabel={inviteSending ? 'Sending…' : 'Send invite'} disabled={!selectedGroupId || inviteSending} />
+          </div>
+        ) : (
+          <div>
+            {!selectedPerson ? (
+              <>
+                <label style={S.label}>Search for a trader</label>
+                <div style={{ position: 'relative', marginBottom: 12 }}>
+                  <input value={personQuery} onChange={e => setPersonQuery(e.target.value)}
+                    placeholder="Name or @username…"
+                    style={{ ...S.input, width: '100%', boxSizing: 'border-box' }}
+                    autoFocus />
+                  {(personResults.length > 0 || personSearching) && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 999, maxHeight: 220, overflowY: 'auto', marginTop: 4 }}>
+                      {personSearching
+                        ? <div style={{ padding: 12, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Searching…</div>
+                        : personResults.map((u, i) => (
+                          <div key={u.id} onClick={() => { setSelectedPerson(u); setPersonQuery(''); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', borderBottom: i < personResults.length - 1 ? '1px solid var(--border)' : 'none' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                            <H2HAvatar userId={u.id} name={u.name} size={30} />
+                            <div>
+                              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>{u.name}</div>
+                              {u.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{u.username}</div>}
+                            </div>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', marginBottom: 14 }}>
+                  <H2HAvatar userId={selectedPerson.id} name={selectedPerson.name} size={32} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>{selectedPerson.name}</div>
+                    {selectedPerson.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{selectedPerson.username}</div>}
+                  </div>
+                  <button onClick={() => setSelectedPerson(null)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' }}>Change</button>
+                </div>
+                <label style={S.label}>Send via group</label>
+                {inviteGroups.length === 0
+                  ? <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>You're not in any shared groups.</div>
+                  : <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                    {inviteGroups.map(g => (
+                      <button key={g.id} onClick={() => setSelectedGroupId(g.id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: `1.5px solid ${selectedGroupId === g.id ? '#534AB7' : 'var(--border)'}`, background: selectedGroupId === g.id ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 6, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#fff', flexShrink: 0 }}>{g.emoji || '👥'}</div>
+                        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: selectedGroupId === g.id ? '#534AB7' : 'var(--text)' }}>{g.name}</div>
+                      </button>
+                    ))}
+                  </div>
+                }
+              </>
+            )}
+            {inviteError && <div style={{ margin: '8px 0', padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{inviteError}</div>}
+            <ModalFooter onCancel={onClose} cancelLabel="Skip" onSubmit={() => sendInvite(selectedGroupId, selectedPerson?.username || selectedPerson?.name)} submitLabel={inviteSending ? 'Sending…' : 'Send invite'} disabled={!selectedPerson || !selectedGroupId || inviteSending} />
+          </div>
+        )}
+      </Modal>
+    );
+  }
 
   return (
     <Modal title="Create a group contest" onClose={onClose}>
@@ -1582,10 +1762,6 @@ function CreateGroupModal({ onClose, onSuccess }) {
           </div>
         )}
         <div>
-          <label style={S.label}>Max groups</label>
-          <input type="number" min="2" value={form.maxGroups} onChange={e => set('maxGroups', parseInt(e.target.value) || 2)} style={S.input} />
-        </div>
-        <div>
           <label style={S.label}>Min trades required</label>
           <input type="number" min="1" value={form.minTrades} onChange={e => set('minTrades', parseInt(e.target.value) || 1)} style={S.input} />
         </div>
@@ -1637,12 +1813,6 @@ function CreateGroupModal({ onClose, onSuccess }) {
           />
         </div>
       </div>
-
-      {type === 'paid' && (
-        <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>
-          Estimated prize pool: <strong style={{ color: 'var(--text)' }}>${estimatedPool.toLocaleString()}</strong> ({form.maxGroups} groups × ${feeNum})
-        </div>
-      )}
 
       {error && <div style={{ marginBottom: 10, padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{error}</div>}
 
