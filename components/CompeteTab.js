@@ -866,11 +866,10 @@ function contestTiming(contest) {
   if (diff <= 0) return 'Ended';
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
-  if (contest.status === 'active') return d > 0 ? `Ends in ${d}d ${h}h` : `Ends in ${h}h`;
   return d > 0 ? `Ends in ${d}d ${h}h` : `Ends in ${h}h`;
 }
 
-// team avatar — rounded square, matches screenshot design
+// team avatar circle used in cards
 function TeamAvatar({ name, color, size = 44 }) {
   const colors = ['#534AB7','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#db2777'];
   const bg = color || colors[(name || '').charCodeAt(0) % colors.length];
@@ -2592,7 +2591,6 @@ function ContestDetailView({ contest, onBack, onDelete, currentUserId }) {
 }
 
 // ─── Group avatar helper ──────────────────────────────────────────────────────
-const _GAV_COLORS = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
 function GroupAvatar({ group, size = 36 }) {
   const [imgOk, setImgOk] = useState(true);
   const src = group.ownerId ? `/api/avatar/${group.ownerId}` : null;
@@ -2602,8 +2600,9 @@ function GroupAvatar({ group, size = 36 }) {
         style={{ width: size, height: size, borderRadius: size * 0.25, objectFit: 'cover', flexShrink: 0 }} />
     );
   }
+  const _colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
   const letter = (group.name || '?')[0].toUpperCase();
-  const bg = _GAV_COLORS[letter.charCodeAt(0) % _GAV_COLORS.length];
+  const bg = _colors[letter.charCodeAt(0) % _colors.length];
   return (
     <div style={{ width: size, height: size, borderRadius: size * 0.25, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
       {letter}
@@ -3183,4 +3182,19 @@ export default function CompeteTab({ currentUserId, externalTab }) {
         {meta && resolvedTab !== 'h2h' && resolvedTab !== 'group' && (
           <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--
+            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
+          </div>
+        )}
+
+        {/* Tab content */}
+        <div style={{ flex: 1, overflow: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'hidden' : 'auto', display: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'flex' : 'block' }}>
+          {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
+          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+          {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+          {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
+        </div>
+      </div>
+    </div>
+  );
+}

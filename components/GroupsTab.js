@@ -193,7 +193,7 @@ function ContestInviteCard({ invite }) {
 }
 
 function ChatMessage({ m, onJoinCall, myAvatar }) {
-  // Contest invite — check first, regardless of type
+  // Contest invite — check first, before all other type checks
   const contestInvite = parseContestInvite(m.text);
   if (contestInvite) return <ContestInviteCard invite={contestInvite} />;
 
@@ -247,8 +247,6 @@ function ChatMessage({ m, onJoinCall, myAvatar }) {
   }
 
   const isMe = m.user === 'you';
-  const invite = parseContestInvite(m.text);
-  if (invite) return <ContestInviteCard invite={invite} />;
   return (
     <div style={{ display:'flex', gap:8, flexDirection: isMe?'row-reverse':'row', alignItems:'flex-end', marginBottom:2 }}>
       <Av letter={m.avatar} grad={m.grad} size={28} imageUrl={isMe ? myAvatar : null} />
@@ -951,4 +949,13 @@ function GroupRow({ g, onSelect }) {
             <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{'members: '+memberStr}</span>
             {g.country ? <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{'location: '+g.country}</span> : null}
             {g.price > 0
-              ? <span style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:700, color:'var
+              ? <span style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:700, color:'var(--accent)' }}>{'$'+g.price+'/mo'}</span>
+              : <span style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--green)' }}>Free</span>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
