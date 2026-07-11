@@ -1014,6 +1014,23 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
                 </div>
               )}
             </div>
+          ) : (
+            /* ── Individual contest: member list ── */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {(preview?.members || []).slice(0, 4).map((m, i) => (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(m.name || '?')[0].toUpperCase()}</div>
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{m.name}</span>
+                  {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(m.pnl) }}>{pnlFmt(m.pnl)}</span>}
+                </div>
+              ))}
+              {!(preview?.members?.length) && (
+                <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>
+                  {contest.memberCount > 0 ? `${contest.memberCount} trader${contest.memberCount !== 1 ? 's' : ''} joined` : 'No members yet — be the first!'}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Footer meta */}
@@ -1461,10 +1478,19 @@ function CreateGroupModal({ onClose, onSuccess }) {
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setDur = (patch) => setForm(p => ({ ...p, ...patch }));
 
-  // Load groups when invite step opens
+  // Load groups when invite step opens (DB groups + local groups merged)
   useEffect(() => {
     if (step === 'invite') {
-      fetch('/api/groups?mine=true').then(r => r.json()).then(d => setInviteGroups(d.groups || [])).catch(() => {});
+      fetch('/api/groups?mine=true').then(r => r.json()).then(d => {
+        const dbGroups = d.groups || [];
+        try {
+          const local = JSON.parse(localStorage.getItem('tr_groups') || '[]');
+          const localOnly = local.filter(lg => !dbGroups.find(dg => dg.id === lg.id));
+          setInviteGroups([...dbGroups, ...localOnly]);
+        } catch { setInviteGroups(dbGroups); }
+      }).catch(() => {
+        try { setInviteGroups(JSON.parse(localStorage.getItem('tr_groups') || '[]')); } catch {}
+      });
     }
   }, [step]);
 
@@ -1510,11 +1536,20 @@ function CreateGroupModal({ onClose, onSuccess }) {
     if (!selectedGroupId) return;
     setInviteSending(true); setInviteError('');
     try {
-      const channelId = await getGeneralChannel(selectedGroupId);
-      if (!channelId) { setInviteError('Could not find a channel in that group'); setInviteSending(false); return; }
       const c = createdContest;
       const msg = `__CONTEST_INVITE__${JSON.stringify({ id: c.id, name: c.name, asset: c.asset || 'Any', buyIn: c.buyIn || 0, memberCount: c.memberCount || 1 })}`;
-      await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+      const isLocalGroup = inviteGroups.find(g => g.id === selectedGroupId && !g.slug);
+      if (isLocalGroup) {
+        // Write directly to localStorage chat for local groups
+        const chatKey = `tr_chat_${selectedGroupId}`;
+        const existing = JSON.parse(localStorage.getItem(chatKey) || '[]');
+        const newMsg = { id: Date.now(), user: 'you', avatar: 'Y', grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: msg, type: 'contest_invite' };
+        localStorage.setItem(chatKey, JSON.stringify([...existing, newMsg]));
+      } else {
+        const channelId = await getGeneralChannel(selectedGroupId);
+        if (!channelId) { setInviteError('Could not find a channel in that group'); setInviteSending(false); return; }
+        await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+      }
       setInviteSent(true);
     } catch { setInviteError('Failed to send — try again'); }
     setInviteSending(false);
@@ -2593,7 +2628,7 @@ function ContestDetailView({ contest, onBack, onDelete, currentUserId }) {
 // ─── Group avatar helper ──────────────────────────────────────────────────────
 function GroupAvatar({ group, size = 36 }) {
   const [imgOk, setImgOk] = useState(true);
-  const src = group.ownerId ? `/api/avatar/${group.ownerId}` : null;
+  const src = group.imageUrl || (group.ownerId ? `/api/avatar/${group.ownerId}` : null);
   if (src && imgOk) {
     return (
       <img src={src} onError={() => setImgOk(false)} alt=""
@@ -2626,7 +2661,16 @@ function ContestInviteModal({ contest, onClose }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/groups?mine=true').then(r => r.json()).then(d => setGroups(d.groups || [])).catch(() => {});
+    fetch('/api/groups?mine=true').then(r => r.json()).then(d => {
+      const dbGroups = d.groups || [];
+      try {
+        const local = JSON.parse(localStorage.getItem('tr_groups') || '[]');
+        const localOnly = local.filter(lg => !dbGroups.find(dg => dg.id === lg.id));
+        setGroups([...dbGroups, ...localOnly]);
+      } catch { setGroups(dbGroups); }
+    }).catch(() => {
+      try { setGroups(JSON.parse(localStorage.getItem('tr_groups') || '[]')); } catch {}
+    });
   }, []);
 
   useEffect(() => {
@@ -2656,10 +2700,18 @@ function ContestInviteModal({ contest, onClose }) {
     if (!selectedGroupId) return;
     setSending(true); setError('');
     try {
-      const channelId = await getGeneralChannel(selectedGroupId);
-      if (!channelId) { setError('Could not find a channel in that group'); setSending(false); return; }
       const msg = `__CONTEST_INVITE__${JSON.stringify({ id: contest.id, name: contest.name, asset: contest.asset || 'Any', buyIn: contest.buyIn || 0, memberCount: contest.memberCount || 1 })}`;
-      await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+      const isLocalGroup = groups.find(g => g.id === selectedGroupId && !g.slug);
+      if (isLocalGroup) {
+        const chatKey = `tr_chat_${selectedGroupId}`;
+        const existing = JSON.parse(localStorage.getItem(chatKey) || '[]');
+        const newMsg = { id: Date.now(), user: 'you', avatar: 'Y', grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: msg, type: 'contest_invite' };
+        localStorage.setItem(chatKey, JSON.stringify([...existing, newMsg]));
+      } else {
+        const channelId = await getGeneralChannel(selectedGroupId);
+        if (!channelId) { setError('Could not find a channel in that group'); setSending(false); return; }
+        await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+      }
       setSentMode('group'); setSent(true);
     } catch { setError('Failed to send — try again'); }
     setSending(false);
