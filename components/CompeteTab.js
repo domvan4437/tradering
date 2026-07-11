@@ -1514,7 +1514,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
       const channelId = await getGeneralChannel(selectedGroupId);
       if (!channelId) { setInviteError('Could not find a channel in that group'); setInviteSending(false); return; }
       const c = createdContest;
-      const msg = `🏆 Contest invite: ${c.name}\nAsset: ${c.asset || 'Any'} · ${c.buyIn > 0 ? `$${c.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
+      const msg = `__CONTEST_INVITE__${JSON.stringify({ id: c.id, name: c.name, asset: c.asset || 'Any', buyIn: c.buyIn || 0, memberCount: c.memberCount || 1 })}`;
       await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
       setInviteSent(true);
     } catch { setInviteError('Failed to send — try again'); }
@@ -1526,7 +1526,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
     setInviteSending(true); setInviteError('');
     try {
       const c = createdContest;
-      const msg = `🏆 Contest invite: ${c.name}\nAsset: ${c.asset || 'Any'} · ${c.buyIn > 0 ? `$${c.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
+      const msg = `__CONTEST_INVITE__${JSON.stringify({ id: c.id, name: c.name, asset: c.asset || 'Any', buyIn: c.buyIn || 0, memberCount: c.memberCount || 1 })}`;
       const res = await fetch('/api/social/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiverId: selectedPerson.id, content: msg }) });
       if (!res.ok) { const d = await res.json(); setInviteError(d.error || 'Failed to send'); setInviteSending(false); return; }
       setInviteSent(true);
@@ -2181,6 +2181,7 @@ function TeamsView({ contestId, currentUserId }) {
   if (loading) return <div style={{ textAlign: 'center', padding: 40, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading teams…</div>;
 
   return (
+     return (
     <div style={{ padding: '14px 18px' }}>
       {(showCreate || editTeam) && (
         <CreateTeamModal
@@ -2645,7 +2646,7 @@ function ContestInviteModal({ contest, onClose }) {
     try {
       const channelId = await getGeneralChannel(selectedGroupId);
       if (!channelId) { setError('Could not find a channel in that group'); setSending(false); return; }
-      const msg = `🏆 Contest invite: ${contest.name}${contest.description ? `\n${contest.description}` : ''}\nAsset: ${contest.asset || 'Any'} · ${contest.buyIn > 0 ? `$${contest.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
+      const msg = `__CONTEST_INVITE__${JSON.stringify({ id: contest.id, name: contest.name, asset: contest.asset || 'Any', buyIn: contest.buyIn || 0, memberCount: contest.memberCount || 1 })}`;
       await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
       setSentMode('group'); setSent(true);
     } catch { setError('Failed to send — try again'); }
@@ -2656,7 +2657,7 @@ function ContestInviteModal({ contest, onClose }) {
     if (!selectedPerson) return;
     setSending(true); setError('');
     try {
-      const msg = `🏆 Contest invite: ${contest.name}${contest.description ? `\n${contest.description}` : ''}\nAsset: ${contest.asset || 'Any'} · ${contest.buyIn > 0 ? `$${contest.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
+      const msg = `__CONTEST_INVITE__${JSON.stringify({ id: contest.id, name: contest.name, asset: contest.asset || 'Any', buyIn: contest.buyIn || 0, memberCount: contest.memberCount || 1 })}`;
       const res = await fetch('/api/social/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiverId: selectedPerson.id, content: msg }) });
       if (!res.ok) { const d = await res.json(); setError(d.error || 'Failed to send'); setSending(false); return; }
       setSentMode('person'); setSent(true);
@@ -3184,4 +3185,3 @@ export default function CompeteTab({ currentUserId, externalTab }) {
       </div>
     </div>
   );
-}

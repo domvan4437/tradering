@@ -134,6 +134,64 @@ function CallOverlay({ callType, groupName, targetName, onEnd }) {
 }
 
 // ── Chat Message ──────────────────────────────────────────────
+const INVITE_PREFIX = '__CONTEST_INVITE__';
+function parseContestInvite(text) {
+  if (!text?.startsWith(INVITE_PREFIX)) return null;
+  try { return JSON.parse(text.slice(INVITE_PREFIX.length)); } catch { return null; }
+}
+
+function ContestInviteCard({ invite }) {
+  const [joined, setJoined] = React.useState(false);
+  const [joining, setJoining] = React.useState(false);
+
+  const handleJoin = async () => {
+    if (joined || joining) return;
+    setJoining(true);
+    try {
+      const res = await fetch('/api/group-contests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId: invite.id }) });
+      if (res.ok) setJoined(true);
+    } catch {}
+    setJoining(false);
+  };
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0' }}>
+      <div style={{ maxWidth: 300, width: '100%', background: 'var(--surface)', border: '1.5px solid #534AB7', borderRadius: 14, overflow: 'hidden', boxShadow: '0 4px 16px rgba(83,74,183,0.15)' }}>
+        <div style={{ background: 'linear-gradient(135deg, #534AB7, #7c3aed)', padding: '12px 14px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 20 }}>🏆</span>
+          <div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Contest Invite</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{invite.name}</div>
+          </div>
+        </div>
+        <div style={{ padding: '10px 14px 12px' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Asset</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{invite.asset || 'Any'}</div>
+            </div>
+            <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Entry</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{invite.buyIn > 0 ? `$${invite.buyIn}` : 'Free'}</div>
+            </div>
+            <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Members</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{invite.memberCount || 1}</div>
+            </div>
+          </div>
+          <button
+            onClick={handleJoin}
+            disabled={joined || joining}
+            style={{ width: '100%', padding: '9px', border: 'none', borderRadius: 9, background: joined ? '#16a34a' : joining ? 'var(--surface3)' : '#534AB7', color: joined || joining ? (joined ? '#fff' : 'var(--text-muted)') : '#fff', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, cursor: joined || joining ? 'default' : 'pointer' }}
+          >
+            {joined ? '✓ Joined!' : joining ? 'Joining…' : 'Join Contest'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChatMessage({ m, onJoinCall, myAvatar }) {
   if (m.type === 'call_invite') {
     return (
@@ -185,12 +243,14 @@ function ChatMessage({ m, onJoinCall, myAvatar }) {
   }
 
   const isMe = m.user === 'you';
+  const invite = parseContestInvite(m.text);
+  if (invite) return <ContestInviteCard invite={invite} />;
   return (
     <div style={{ display:'flex', gap:8, flexDirection: isMe?'row-reverse':'row', alignItems:'flex-end', marginBottom:2 }}>
       <Av letter={m.avatar} grad={m.grad} size={28} imageUrl={isMe ? myAvatar : null} />
       <div style={{ maxWidth:'75%' }}>
         {!isMe && <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:600, color:'var(--text-muted)', marginBottom:2 }}>{m.user}</div>}
-        <div style={{ background: isMe?'var(--accent)':'var(--surface2)', color: isMe?'#fff':'var(--text)', padding:'9px 13px', borderRadius: isMe?'16px 4px 16px 16px':'4px 16px 16px 16px', fontFamily:'var(--font)', fontSize:13, lineHeight:1.5 }}>{m.text}</div>
+        <div style={{ background: isMe?'var(--accent)':'var(--surface2)', color: isMe?'#fff':'var(--text)', padding:'9px 13px', borderRadius: isMe?'16px 4px 16px 16px':'4px 16px 16px 16px', fontFamily:'var(--font)', fontSize:13, lineHeight:1.5, whiteSpace:'pre-wrap' }}>{m.text}</div>
         <div style={{ fontFamily:'var(--font)', fontSize:9, color:'var(--text-muted)', marginTop:2, textAlign: isMe?'right':'left' }}>{m.time}</div>
       </div>
     </div>
@@ -346,6 +406,40 @@ function GroupRoom({ group, onBack, onUpdateGroup }) {
   // Save chat whenever messages change
   useEffect(() => { saveChat(group.id, messages); }, [messages, group.id]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
+
+  // Load real API messages for API-backed groups (UUID IDs)
+  useEffect(() => {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(group.id);
+    if (!isUUID) return;
+    fetch(`/api/groups/channels?groupId=${group.id}`)
+      .then(r => r.json())
+      .then(d => {
+        const ch = (d.channels || []).find(c => c.name === 'general') || (d.channels || [])[0];
+        if (!ch) return;
+        return fetch(`/api/groups/messages?channelId=${ch.id}`).then(r => r.json());
+      })
+      .then(d => {
+        if (!d?.messages?.length) return;
+        const apiMsgs = d.messages.map(m => ({
+          id: `api_${m.id}`,
+          user: m.authorName || 'Trader',
+          avatar: (m.authorName || 'T')[0].toUpperCase(),
+          grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+          time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          text: m.content,
+          type: 'text',
+          fromApi: true,
+        }));
+        setMessages(prev => {
+          const existingApiIds = new Set(prev.filter(m => m.fromApi).map(m => m.id));
+          const newMsgs = apiMsgs.filter(m => !existingApiIds.has(m.id));
+          if (!newMsgs.length) return prev;
+          const localMsgs = prev.filter(m => !m.fromApi);
+          return [...newMsgs, ...localMsgs].sort((a, b) => a.id < b.id ? -1 : 1);
+        });
+      })
+      .catch(() => {});
+  }, [group.id]);
 
   const addMsg = (m) => setMessages(p => [...p, m]);
 

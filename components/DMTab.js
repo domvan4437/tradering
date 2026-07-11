@@ -10,6 +10,73 @@ const PURPLE = '#4f46e5';
 const COLORS = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
 function getColor(name) { return COLORS[(name||'?').charCodeAt(0) % COLORS.length]; }
 
+const INVITE_PREFIX = '__CONTEST_INVITE__';
+function parseContestInvite(content) {
+  if (!content?.startsWith(INVITE_PREFIX)) return null;
+  try { return JSON.parse(content.slice(INVITE_PREFIX.length)); } catch { return null; }
+}
+
+function ContestInviteCard({ invite, isMe }) {
+  const [joined, setJoined] = React.useState(false);
+  const [joining, setJoining] = React.useState(false);
+
+  const handleJoin = async () => {
+    if (joined || joining) return;
+    setJoining(true);
+    try {
+      const res = await fetch('/api/group-contests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId: invite.id }) });
+      if (res.ok) setJoined(true);
+    } catch {}
+    setJoining(false);
+  };
+
+  return (
+    <div style={{ maxWidth: 280, width: '100%' }}>
+      <div style={{
+        background: 'var(--surface)', border: '1.5px solid #534AB7', borderRadius: 14,
+        overflow: 'hidden', boxShadow: '0 4px 16px rgba(83,74,183,0.15)',
+      }}>
+        <div style={{ background: 'linear-gradient(135deg, #534AB7, #7c3aed)', padding: '12px 14px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 20 }}>🏆</span>
+          <div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Contest Invite</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{invite.name}</div>
+          </div>
+        </div>
+        <div style={{ padding: '10px 14px 12px' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Asset</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{invite.asset || 'Any'}</div>
+            </div>
+            <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Entry</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{invite.buyIn > 0 ? `$${invite.buyIn}` : 'Free'}</div>
+            </div>
+            <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Members</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{invite.memberCount || 1}</div>
+            </div>
+          </div>
+          <button
+            onClick={handleJoin}
+            disabled={joined || joining}
+            style={{
+              width: '100%', padding: '9px', border: 'none', borderRadius: 9,
+              background: joined ? '#16a34a' : joining ? 'var(--surface3)' : '#534AB7',
+              color: joined || joining ? (joined ? '#fff' : 'var(--text-muted)') : '#fff',
+              fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, cursor: joined || joining ? 'default' : 'pointer',
+              transition: 'background 0.2s',
+            }}
+          >
+            {joined ? '✓ Joined!' : joining ? 'Joining…' : 'Join Contest'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Avatar({ letter, size=36, imageUrl }) {
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', background:imageUrl?'transparent':getColor(letter||'?'), display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font)', fontSize:size*0.38, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
@@ -230,18 +297,24 @@ export default function DMTab({ initialUser }) {
           {convo.messages.map((m, i) => {
             const isMe = m.fromUserId === myId;
             const showName = !isMe && (i === 0 || convo.messages[i-1]?.fromUserId !== m.fromUserId);
+            const invite = parseContestInvite(m.content);
             return (
               <div key={m.id} style={{ display:'flex', flexDirection:'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginBottom:2 }}>
                 {showName && <span style={{ fontSize:11, color:'var(--text-muted)', marginBottom:2, marginLeft:4 }}>{convo.displayName}</span>}
-                <div style={{
-                  maxWidth:'72%', padding:'9px 13px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                  background: isMe ? PURPLE : 'var(--surface2)',
-                  color: isMe ? '#fff' : 'var(--text)',
-                  fontFamily:'var(--font)', fontSize:13, lineHeight:1.5,
-                  border: isMe ? 'none' : '1px solid var(--border)',
-                }}>
-                  {m.content}
-                </div>
+                {invite ? (
+                  <ContestInviteCard invite={invite} isMe={isMe} />
+                ) : (
+                  <div style={{
+                    maxWidth:'72%', padding:'9px 13px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    background: isMe ? PURPLE : 'var(--surface2)',
+                    color: isMe ? '#fff' : 'var(--text)',
+                    fontFamily:'var(--font)', fontSize:13, lineHeight:1.5,
+                    border: isMe ? 'none' : '1px solid var(--border)',
+                    whiteSpace: 'pre-wrap',
+                  }}>
+                    {m.content}
+                  </div>
+                )}
                 <span style={{ fontSize:10, color:'var(--text-muted)', marginTop:2, marginLeft:4, marginRight:4 }}>{fmt(m.createdAt)}</span>
               </div>
             );
