@@ -15,6 +15,60 @@ function getColor(name) {
   const colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
   return colors[(name||'?').charCodeAt(0) % colors.length];
 }
+
+const INVITE_PREFIX = '__CONTEST_INVITE__';
+function parseContestInvite(content) {
+  if (!content?.startsWith(INVITE_PREFIX)) return null;
+  try { return JSON.parse(content.slice(INVITE_PREFIX.length)); } catch { return null; }
+}
+
+function ContestInviteCard({ invite }) {
+  const [joined, setJoined] = React.useState(false);
+  const [joining, setJoining] = React.useState(false);
+  const handleJoin = async () => {
+    if (joined || joining) return;
+    setJoining(true);
+    try {
+      const res = await fetch('/api/group-contests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId: invite.id }) });
+      if (res.ok) setJoined(true);
+    } catch {}
+    setJoining(false);
+  };
+  return (
+    <div style={{ maxWidth: 280, width: '100%' }}>
+      <div style={{ background: 'var(--surface)', border: '1.5px solid #534AB7', borderRadius: 14, overflow: 'hidden', boxShadow: '0 4px 16px rgba(83,74,183,0.15)' }}>
+        <div style={{ background: 'linear-gradient(135deg, #534AB7, #7c3aed)', padding: '12px 14px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 20 }}>🏆</span>
+          <div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Contest Invite</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>{invite.name}</div>
+          </div>
+        </div>
+        <div style={{ padding: '10px 14px 12px' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Asset</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{invite.asset || 'Any'}</div>
+            </div>
+            <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Entry</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{invite.buyIn > 0 ? `$${invite.buyIn}` : 'Free'}</div>
+            </div>
+            <div style={{ flex: 1, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Members</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{invite.memberCount || 1}</div>
+            </div>
+          </div>
+          <button onClick={handleJoin} disabled={joined || joining}
+            style={{ width: '100%', padding: '9px', border: 'none', borderRadius: 9, background: joined ? '#16a34a' : joining ? 'var(--surface3)' : '#534AB7', color: joined || joining ? (joined ? '#fff' : 'var(--text-muted)') : '#fff', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, cursor: joined || joining ? 'default' : 'pointer', transition: 'background 0.2s' }}>
+            {joined ? '✓ Joined!' : joining ? 'Joining…' : 'Join Contest'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function loadGroups() {
   if (typeof window === 'undefined') return [];
   try { const d = localStorage.getItem('tr_groups'); if (!d) return []; return JSON.parse(d).map(g => ({ type:'club', visibility:'open', country:'', desc:'', profileImg:null, ...g })); } catch(e) { return []; }
@@ -224,7 +278,7 @@ function GroupChatRoom({ group, activeRoom, channelId, myName }) {
                     <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{m.user}</span>
                     <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.time}</span>
                   </div>
-                  {m.text && <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text)', lineHeight:1.5 }}>{m.text}</div>}
+                  {m.text && (() => { const _inv = parseContestInvite(m.text); return _inv ? <ContestInviteCard invite={_inv} /> : <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text)', lineHeight:1.5 }}>{m.text}</div>; })()}
                   {m.attachment?.type==="image" && <div style={{ marginTop:6, borderRadius:10, overflow:'hidden', maxWidth:280 }}><img src={m.attachment.url} alt="" style={{ width:'100%', display:'block', borderRadius:10 }} /></div>}
                   {m.attachment?.type==="link" && <a href={m.attachment.url} target="_blank" rel="noreferrer" style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', maxWidth:280, textDecoration:'none' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--accent)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.attachment.url}</span></a>}
                 </div>
