@@ -666,11 +666,22 @@ function GroupPreviewModal({ contest, onJoin, onClose, onOpenProfile, onDelete }
 
 
 // ─── Data cards ───────────────────────────────────────────────────────────────
+function H2HAvatar({ userId, name, size = 52 }) {
+  const [failed, setFailed] = useState(false);
+  const colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
+  const bg = colors[(name || '?').charCodeAt(0) % colors.length];
+  const showImg = userId && !failed;
+  return (
+    <div style={{ width:size, height:size, borderRadius:'50%', background: showImg ? '#e5e7eb' : bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize: size * 0.38, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0 }}>
+      {showImg
+        ? <img src={`/api/avatar/${userId}`} alt={name} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setFailed(true)} />
+        : (name || '?')[0].toUpperCase()}
+    </div>
+  );
+}
+
 function ChallengeCard({ match, onAccept, onOpenProfile }) {
   const [preview, setPreview] = useState(false);
-  const initials = (match.challengerName || '?')[0].toUpperCase();
-  const colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
-  const bg = colors[(match.challengerName || '').charCodeAt(0) % colors.length];
   // timeLeft is time until the match ends — show as duration info
   const durationLabel = match.timeLeft && match.timeLeft !== 'Ended' ? `${match.timeLeft} match` : timeAgo(match.createdAt);
   return (
@@ -691,9 +702,7 @@ function ChallengeCard({ match, onAccept, onOpenProfile }) {
         {/* VS row */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, flex:1 }}>
-            <div style={{ width:52, height:52, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
-              {initials}
-            </div>
+            <H2HAvatar userId={match.challengerId} name={match.challengerName} />
             <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{match.challengerName}</span>
           </div>
           <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text-muted)', flex:'0 0 auto', padding:'0 12px' }}>VS</span>
@@ -724,12 +733,11 @@ function MatchCard({ match, currentUserId, onClick, onDelete }) {
   const oppScore = Number(isChallenger ? match.opponentScore : match.challengerScore) || 0;
   const myName = isChallenger ? match.challengerName : match.opponentName;
   const oppName = isChallenger ? match.opponentName : match.challengerName;
+  const myId = isChallenger ? match.challengerId : match.opponentId;
+  const oppId = isChallenger ? match.opponentId : match.challengerId;
   const canDelete = isChallenger && match.status === 'waiting';
   const isLive = match.status === 'active';
   const isWaiting = match.status === 'waiting';
-  const colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
-  const myBg = colors[(myName || '').charCodeAt(0) % colors.length];
-  const oppBg = colors[(oppName || '?').charCodeAt(0) % colors.length];
   const fmtPnl = (v) => `${v >= 0 ? '+' : ''}$${Math.abs(v).toFixed(2)}`;
 
   return (
@@ -757,9 +765,7 @@ function MatchCard({ match, currentUserId, onClick, onDelete }) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
         {/* Me */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, flex:1 }}>
-          <div style={{ width:52, height:52, borderRadius:'50%', background:myBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
-            {(myName||'?')[0].toUpperCase()}
-          </div>
+          <H2HAvatar userId={myId} name={myName} />
           <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{myName}</span>
           {isLive && (
             <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: myScore >= 0 ? '#059669' : '#dc2626' }}>
@@ -781,9 +787,7 @@ function MatchCard({ match, currentUserId, onClick, onDelete }) {
             </>
           ) : (
             <>
-              <div style={{ width:52, height:52, borderRadius:'50%', background:oppBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
-                {(oppName||'?')[0].toUpperCase()}
-              </div>
+              <H2HAvatar userId={oppId} name={oppName} />
               <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{oppName}</span>
               {isLive && (
                 <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: oppScore >= 0 ? '#059669' : '#dc2626' }}>
