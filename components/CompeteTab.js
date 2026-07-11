@@ -253,13 +253,15 @@ function WarnBox({ children }) {
   );
 }
 
-function Modal({ title, onClose, children }) {
+function Modal({ title, onClose, children, size = 'md' }) {
+  const widths = { sm: 420, md: 500, lg: 640, xl: 720 };
+  const w = widths[size] || 500;
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: 500, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: w, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1505,19 +1507,28 @@ function CreateGroupModal({ onClose, onSuccess }) {
     return null;
   };
 
-  const sendInvite = async (groupId, mentionUser = null) => {
+  const sendInviteToGroup = async () => {
+    if (!selectedGroupId) return;
     setInviteSending(true); setInviteError('');
     try {
-      const channelId = await getGeneralChannel(groupId);
+      const channelId = await getGeneralChannel(selectedGroupId);
       if (!channelId) { setInviteError('Could not find a channel in that group'); setInviteSending(false); return; }
       const c = createdContest;
-      const msg = mentionUser
-        ? `@${mentionUser} — you've been invited to a contest!\n\n🏆 ${c.name}\nAsset: ${c.asset || 'Any'} · ${c.buyIn > 0 ? `$${c.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`
-        : `🏆 Contest invite: ${c.name}\nAsset: ${c.asset || 'Any'} · ${c.buyIn > 0 ? `$${c.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
-      await fetch('/api/groups/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelId, content: msg }),
-      });
+      const msg = `🏆 Contest invite: ${c.name}\nAsset: ${c.asset || 'Any'} · ${c.buyIn > 0 ? `$${c.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
+      await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+      setInviteSent(true);
+    } catch { setInviteError('Failed to send — try again'); }
+    setInviteSending(false);
+  };
+
+  const sendInviteToPerson = async () => {
+    if (!selectedPerson) return;
+    setInviteSending(true); setInviteError('');
+    try {
+      const c = createdContest;
+      const msg = `🏆 Contest invite: ${c.name}\nAsset: ${c.asset || 'Any'} · ${c.buyIn > 0 ? `$${c.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
+      const res = await fetch('/api/social/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiverId: selectedPerson.id, content: msg }) });
+      if (!res.ok) { const d = await res.json(); setInviteError(d.error || 'Failed to send'); setInviteSending(false); return; }
       setInviteSent(true);
     } catch { setInviteError('Failed to send — try again'); }
     setInviteSending(false);
@@ -1576,11 +1587,15 @@ function CreateGroupModal({ onClose, onSuccess }) {
   if (step === 'invite') {
     if (inviteSent) {
       return (
-        <Modal title="Invite sent!" onClose={onClose}>
-          <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Invite posted</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Members will see it in their group chat and can join from Browse.</div>
+        <Modal title="Invite sent!" onClose={onClose} size="lg">
+          <div style={{ textAlign: 'center', padding: '28px 0' }}>
+            <div style={{ fontSize: 44, marginBottom: 12 }}>✅</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
+              {inviteMode === 'person' ? `DM sent to ${selectedPerson?.name}` : 'Invite posted to group'}
+            </div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+              {inviteMode === 'person' ? 'They'll see it in their direct messages.' : 'Members will see it in their group chat and can join from Browse.'}
+            </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button onClick={() => { setInviteSent(false); setSelectedGroupId(''); setSelectedPerson(null); setPersonQuery(''); }} style={{ ...S.ghostBtn }}>Send another</button>
               <button onClick={onClose} style={{ ...S.primaryBtn }}>Done</button>
@@ -1590,15 +1605,14 @@ function CreateGroupModal({ onClose, onSuccess }) {
       );
     }
     return (
-      <Modal title={`Invite others to: ${createdContest?.name}`} onClose={onClose}>
+      <Modal title={`Invite others to: ${createdContest?.name}`} onClose={onClose} size="lg">
         <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#059669', background: '#d1fae5', border: '1px solid #6ee7b7', borderRadius: 8, padding: '8px 12px', marginBottom: 16 }}>
           🎉 Contest created! Invite people to join, or skip for now.
         </div>
-        {/* Mode tabs */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: 18, border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 0, marginBottom: 20, border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
           {[{ key: 'group', label: '👥 Send to a group' }, { key: 'person', label: '👤 Invite a person' }].map((m, i) => (
             <button key={m.key} onClick={() => { setInviteMode(m.key); setInviteError(''); setSelectedPerson(null); setPersonQuery(''); setSelectedGroupId(''); }}
-              style={{ flex: 1, padding: '9px 0', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: inviteMode === m.key ? '#534AB7' : 'var(--surface2)', color: inviteMode === m.key ? '#fff' : 'var(--text-muted)' }}>
+              style={{ flex: 1, padding: '10px 0', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: inviteMode === m.key ? '#534AB7' : 'var(--surface2)', color: inviteMode === m.key ? '#fff' : 'var(--text-muted)' }}>
               {m.label}
             </button>
           ))}
@@ -1609,81 +1623,68 @@ function CreateGroupModal({ onClose, onSuccess }) {
             <label style={S.label}>Choose a group</label>
             {inviteGroups.length === 0
               ? <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', padding: '12px 0' }}>You're not in any groups yet.</div>
-              : <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, maxHeight: 280, overflowY: 'auto' }}>
                 {inviteGroups.map(g => (
                   <button key={g.id} onClick={() => setSelectedGroupId(g.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${selectedGroupId === g.id ? '#534AB7' : 'var(--border)'}`, background: selectedGroupId === g.id ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 8, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#fff', flexShrink: 0 }}>{g.emoji || '👥'}</div>
-                    <div>
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${selectedGroupId === g.id ? '#534AB7' : 'var(--border)'}`, background: selectedGroupId === g.id ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
+                    <GroupAvatar group={g} size={38} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: selectedGroupId === g.id ? '#534AB7' : 'var(--text)' }}>{g.name}</div>
                       <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{g._count?.members || 0} members</div>
                     </div>
+                    {selectedGroupId === g.id && <i className="ti ti-check" style={{ color: '#534AB7', fontSize: 16 }} />}
                   </button>
                 ))}
               </div>
             }
             <WarnBox>The invite will be posted in the group's general channel.</WarnBox>
             {inviteError && <div style={{ margin: '8px 0', padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{inviteError}</div>}
-            <ModalFooter onCancel={onClose} cancelLabel="Skip" onSubmit={() => sendInvite(selectedGroupId)} submitLabel={inviteSending ? 'Sending…' : 'Send invite'} disabled={!selectedGroupId || inviteSending} />
+            <ModalFooter onCancel={onClose} cancelLabel="Skip" onSubmit={sendInviteToGroup} submitLabel={inviteSending ? 'Sending…' : 'Send invite'} disabled={!selectedGroupId || inviteSending} />
           </div>
         ) : (
           <div>
+            <label style={S.label}>Search for a trader</label>
             {!selectedPerson ? (
-              <>
-                <label style={S.label}>Search for a trader</label>
-                <div style={{ position: 'relative', marginBottom: 12 }}>
-                  <input value={personQuery} onChange={e => setPersonQuery(e.target.value)}
-                    placeholder="Name or @username…"
-                    style={{ ...S.input, width: '100%', boxSizing: 'border-box' }}
-                    autoFocus />
-                  {(personResults.length > 0 || personSearching) && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 999, maxHeight: 220, overflowY: 'auto', marginTop: 4 }}>
-                      {personSearching
-                        ? <div style={{ padding: 12, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Searching…</div>
-                        : personResults.map((u, i) => (
-                          <div key={u.id} onClick={() => { setSelectedPerson(u); setPersonQuery(''); }}
-                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', borderBottom: i < personResults.length - 1 ? '1px solid var(--border)' : 'none' }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                            <H2HAvatar userId={u.id} name={u.name} size={30} />
-                            <div>
-                              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>{u.name}</div>
-                              {u.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{u.username}</div>}
-                            </div>
+              <div style={{ position: 'relative', marginBottom: 16 }}>
+                <input value={personQuery} onChange={e => setPersonQuery(e.target.value)}
+                  placeholder="Name or @username…"
+                  style={{ ...S.input, width: '100%', boxSizing: 'border-box' }}
+                  autoFocus />
+                {(personResults.length > 0 || personSearching) && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 999, marginTop: 4 }}>
+                    {personSearching
+                      ? <div style={{ padding: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Searching…</div>
+                      : personResults.map((u, i) => (
+                        <div key={u.id} onClick={() => { setSelectedPerson(u); setPersonQuery(''); }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', cursor: 'pointer', borderBottom: i < personResults.length - 1 ? '1px solid var(--border)' : 'none' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <H2HAvatar userId={u.id} name={u.name} size={36} />
+                          <div>
+                            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>{u.name}</div>
+                            {u.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{u.username}</div>}
                           </div>
-                        ))
-                      }
-                    </div>
-                  )}
-                </div>
-              </>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+              </div>
             ) : (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--surface2)', marginBottom: 14 }}>
-                  <H2HAvatar userId={selectedPerson.id} name={selectedPerson.name} size={32} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>{selectedPerson.name}</div>
-                    {selectedPerson.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{selectedPerson.username}</div>}
-                  </div>
-                  <button onClick={() => setSelectedPerson(null)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' }}>Change</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #534AB7', background: '#EEEDFE', marginBottom: 20 }}>
+                <H2HAvatar userId={selectedPerson.id} name={selectedPerson.name} size={38} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: '#534AB7' }}>{selectedPerson.name}</div>
+                  {selectedPerson.username && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#7c3aed' }}>@{selectedPerson.username}</div>}
                 </div>
-                <label style={S.label}>Send via group</label>
-                {inviteGroups.length === 0
-                  ? <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>You're not in any shared groups.</div>
-                  : <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                    {inviteGroups.map(g => (
-                      <button key={g.id} onClick={() => setSelectedGroupId(g.id)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: `1.5px solid ${selectedGroupId === g.id ? '#534AB7' : 'var(--border)'}`, background: selectedGroupId === g.id ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 6, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#fff', flexShrink: 0 }}>{g.emoji || '👥'}</div>
-                        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: selectedGroupId === g.id ? '#534AB7' : 'var(--text)' }}>{g.name}</div>
-                      </button>
-                    ))}
-                  </div>
-                }
-              </>
+                <button onClick={() => setSelectedPerson(null)} style={{ background: 'none', border: '1px solid #534AB7', borderRadius: 6, cursor: 'pointer', color: '#534AB7', fontSize: 12, fontFamily: 'var(--font)', padding: '4px 10px' }}>Change</button>
+              </div>
             )}
+            {selectedPerson && <WarnBox>A direct message with the contest details will be sent to {selectedPerson.name}.</WarnBox>}
             {inviteError && <div style={{ margin: '8px 0', padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{inviteError}</div>}
-            <ModalFooter onCancel={onClose} cancelLabel="Skip" onSubmit={() => sendInvite(selectedGroupId, selectedPerson?.username || selectedPerson?.name)} submitLabel={inviteSending ? 'Sending…' : 'Send invite'} disabled={!selectedPerson || !selectedGroupId || inviteSending} />
+            {selectedPerson && (
+              <ModalFooter onCancel={onClose} cancelLabel="Skip" onSubmit={sendInviteToPerson} submitLabel={inviteSending ? 'Sending…' : 'Send DM invite'} disabled={!selectedPerson || inviteSending} />
+            )}
           </div>
         )}
       </Modal>
@@ -2579,30 +2580,44 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
   );
 }
 
+// ─── Group avatar helper ──────────────────────────────────────────────────────
+function GroupAvatar({ group, size = 36 }) {
+  const [imgOk, setImgOk] = useState(true);
+  const src = group.ownerId ? `/api/avatar/${group.ownerId}` : null;
+  if (src && imgOk) {
+    return (
+      <img src={src} onError={() => setImgOk(false)} alt=""
+        style={{ width: size, height: size, borderRadius: size * 0.25, objectFit: 'cover', flexShrink: 0 }} />
+    );
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: size * 0.25, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.45, flexShrink: 0 }}>
+      {group.emoji || '👥'}
+    </div>
+  );
+}
+
 // ─── Contest Invite Modal ─────────────────────────────────────────────────────
 function ContestInviteModal({ contest, onClose }) {
   const [mode, setMode] = useState('group'); // 'group' | 'person'
-  // Group invite
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [groupChannels, setGroupChannels] = useState({});
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  // Person invite
+  const [sentMode, setSentMode] = useState('group');
   const [personQuery, setPersonQuery] = useState('');
   const [personResults, setPersonResults] = useState([]);
   const [personSearching, setPersonSearching] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
-  const [sharedGroups, setSharedGroups] = useState([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetch('/api/groups?mine=true').then(r => r.json()).then(d => setGroups(d.groups || [])).catch(() => {});
   }, []);
 
-  // Debounced person search
   useEffect(() => {
-    if (!personQuery.trim()) { setPersonResults([]); return; }
+    if (mode !== 'person' || !personQuery.trim()) { setPersonResults([]); return; }
     setPersonSearching(true);
     const t = setTimeout(async () => {
       try {
@@ -2613,99 +2628,89 @@ function ContestInviteModal({ contest, onClose }) {
       setPersonSearching(false);
     }, 300);
     return () => clearTimeout(t);
-  }, [personQuery]);
-
-  // When person selected, find shared groups to send via
-  useEffect(() => {
-    if (!selectedPerson) { setSharedGroups([]); return; }
-    // Find groups both are in by fetching person's groups and intersecting with our groups
-    fetch(`/api/groups?mine=true`).then(r => r.json()).then(d => {
-      setSharedGroups(d.groups || []);
-    }).catch(() => {});
-  }, [selectedPerson]);
+  }, [personQuery, mode]);
 
   const getGeneralChannel = async (groupId) => {
     if (groupChannels[groupId]) return groupChannels[groupId];
     const res = await fetch(`/api/groups/channels?groupId=${groupId}`);
     const d = await res.json();
     const ch = (d.channels || []).find(c => c.name === 'general') || (d.channels || [])[0];
-    if (ch) {
-      setGroupChannels(prev => ({ ...prev, [groupId]: ch.id }));
-      return ch.id;
-    }
+    if (ch) { setGroupChannels(prev => ({ ...prev, [groupId]: ch.id })); return ch.id; }
     return null;
   };
 
-  const sendToGroup = async (groupId, mentionUser = null) => {
+  const handleSendToGroup = async () => {
+    if (!selectedGroupId) return;
     setSending(true); setError('');
     try {
-      const channelId = await getGeneralChannel(groupId);
+      const channelId = await getGeneralChannel(selectedGroupId);
       if (!channelId) { setError('Could not find a channel in that group'); setSending(false); return; }
-      const msg = mentionUser
-        ? `@${mentionUser} — you've been invited to a contest!\n\n🏆 ${contest.name}${contest.description ? `\n${contest.description}` : ''}\nAsset: ${contest.asset || 'Any'} · ${contest.buyIn > 0 ? `$${contest.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`
-        : `🏆 Contest invite: ${contest.name}${contest.description ? `\n${contest.description}` : ''}\nAsset: ${contest.asset || 'Any'} · ${contest.buyIn > 0 ? `$${contest.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
-      await fetch('/api/groups/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelId, content: msg }),
-      });
-      setSent(true);
+      const msg = `🏆 Contest invite: ${contest.name}${contest.description ? `\n${contest.description}` : ''}\nAsset: ${contest.asset || 'Any'} · ${contest.buyIn > 0 ? `$${contest.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
+      await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+      setSentMode('group'); setSent(true);
     } catch { setError('Failed to send — try again'); }
     setSending(false);
   };
 
-  const handleSendToGroup = () => {
-    if (!selectedGroupId) return;
-    sendToGroup(selectedGroupId);
-  };
-
-  const handleSendToPerson = () => {
-    if (!selectedPerson || !selectedGroupId) return;
-    sendToGroup(selectedGroupId, selectedPerson.username || selectedPerson.name);
+  const handleSendToPerson = async () => {
+    if (!selectedPerson) return;
+    setSending(true); setError('');
+    try {
+      const msg = `🏆 Contest invite: ${contest.name}${contest.description ? `\n${contest.description}` : ''}\nAsset: ${contest.asset || 'Any'} · ${contest.buyIn > 0 ? `$${contest.buyIn} entry` : 'Free'}\n\nJoin via Compete → Group Contest → Browse`;
+      const res = await fetch('/api/social/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiverId: selectedPerson.id, content: msg }) });
+      if (!res.ok) { const d = await res.json(); setError(d.error || 'Failed to send'); setSending(false); return; }
+      setSentMode('person'); setSent(true);
+    } catch { setError('Failed to send — try again'); }
+    setSending(false);
   };
 
   if (sent) {
     return (
-      <Modal title="Invite sent!" onClose={onClose}>
-        <div style={{ textAlign: 'center', padding: '24px 0' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Invite posted to group</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Members will see it in their group chat and can join from Browse.</div>
-          <button onClick={onClose} style={{ padding: '9px 24px', borderRadius: 9, background: '#534AB7', color: '#fff', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Done</button>
+      <Modal title="Invite sent!" onClose={onClose} size="lg">
+        <div style={{ textAlign: 'center', padding: '28px 0' }}>
+          <div style={{ fontSize: 44, marginBottom: 12 }}>✅</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
+            {sentMode === 'person' ? `DM sent to ${selectedPerson?.name}` : 'Invite posted to group'}
+          </div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+            {sentMode === 'person' ? 'They'll see it in their direct messages.' : 'Members will see it in their group chat and can join from Browse.'}
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            <button onClick={() => { setSent(false); setSelectedPerson(null); setPersonQuery(''); setSelectedGroupId(''); }} style={{ ...S.ghostBtn }}>Send another</button>
+            <button onClick={onClose} style={{ ...S.primaryBtn }}>Done</button>
+          </div>
         </div>
       </Modal>
     );
   }
 
   return (
-    <Modal title={`Invite to: ${contest.name}`} onClose={onClose}>
+    <Modal title={`Invite to: ${contest.name}`} onClose={onClose} size="lg">
       {/* Mode tabs */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 18, border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 20, border: '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
         {[{ key: 'group', label: '👥 Send to a group' }, { key: 'person', label: '👤 Invite a person' }].map((m, i) => (
-          <button key={m.key} onClick={() => { setMode(m.key); setSent(false); setError(''); setSelectedPerson(null); setPersonQuery(''); setSelectedGroupId(''); }}
-            style={{ flex: 1, padding: '9px 0', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: mode === m.key ? '#534AB7' : 'var(--surface2)', color: mode === m.key ? '#fff' : 'var(--text-muted)' }}>
+          <button key={m.key} onClick={() => { setMode(m.key); setError(''); setSelectedPerson(null); setPersonQuery(''); setSelectedGroupId(''); }}
+            style={{ flex: 1, padding: '10px 0', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: mode === m.key ? '#534AB7' : 'var(--surface2)', color: mode === m.key ? '#fff' : 'var(--text-muted)' }}>
             {m.label}
           </button>
         ))}
       </div>
 
       {mode === 'group' ? (
-        /* ── Send to a group ── */
         <div>
           <label style={S.label}>Choose a group</label>
           {groups.length === 0
             ? <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', padding: '12px 0' }}>You're not in any groups yet.</div>
-            : <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+            : <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, maxHeight: 300, overflowY: 'auto' }}>
               {groups.map(g => (
                 <button key={g.id} onClick={() => setSelectedGroupId(g.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${selectedGroupId === g.id ? '#534AB7' : 'var(--border)'}`, background: selectedGroupId === g.id ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 8, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#fff', flexShrink: 0 }}>
-                    {g.emoji || '👥'}
-                  </div>
-                  <div>
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${selectedGroupId === g.id ? '#534AB7' : 'var(--border)'}`, background: selectedGroupId === g.id ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
+                  <GroupAvatar group={g} size={38} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: selectedGroupId === g.id ? '#534AB7' : 'var(--text)' }}>{g.name}</div>
                     <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{g._count?.members || 0} members</div>
                   </div>
+                  {selectedGroupId === g.id && <i className="ti ti-check" style={{ color: '#534AB7', fontSize: 16 }} />}
                 </button>
               ))}
             </div>
@@ -2715,67 +2720,51 @@ function ContestInviteModal({ contest, onClose }) {
           <ModalFooter onCancel={onClose} onSubmit={handleSendToGroup} submitLabel={sending ? 'Sending…' : 'Send invite'} disabled={!selectedGroupId || sending} />
         </div>
       ) : (
-        /* ── Invite a person ── */
         <div>
+          <label style={S.label}>Search for a trader</label>
           {!selectedPerson ? (
-            <>
-              <label style={S.label}>Search for a trader</label>
-              <div style={{ position: 'relative', marginBottom: 12 }}>
-                <input value={personQuery} onChange={e => setPersonQuery(e.target.value)}
-                  placeholder="Name or @username…"
-                  style={{ ...S.input, width: '100%', boxSizing: 'border-box' }}
-                  autoFocus />
-                {(personResults.length > 0 || personSearching) && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 999, maxHeight: 220, overflowY: 'auto', marginTop: 4 }}>
-                    {personSearching
-                      ? <div style={{ padding: 12, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Searching…</div>
-                      : personResults.map((u, i) => (
-                        <div key={u.id} onClick={() => { setSelectedPerson(u); setPersonQuery(''); }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', borderBottom: i < personResults.length - 1 ? '1px solid var(--border)' : 'none' }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <H2HAvatar userId={u.id} name={u.name} size={30} />
-                          <div>
-                            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>{u.name}</div>
-                            {u.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{u.username}</div>}
-                          </div>
+            <div style={{ position: 'relative', marginBottom: 16 }}>
+              <input value={personQuery} onChange={e => setPersonQuery(e.target.value)}
+                placeholder="Name or @username…"
+                style={{ ...S.input, width: '100%', boxSizing: 'border-box' }}
+                autoFocus />
+              {(personResults.length > 0 || personSearching) && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 999, marginTop: 4 }}>
+                  {personSearching
+                    ? <div style={{ padding: 14, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Searching…</div>
+                    : personResults.map((u, i) => (
+                      <div key={u.id} onClick={() => { setSelectedPerson(u); setPersonQuery(''); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', cursor: 'pointer', borderBottom: i < personResults.length - 1 ? '1px solid var(--border)' : 'none' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <H2HAvatar userId={u.id} name={u.name} size={36} />
+                        <div>
+                          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 }}>{u.name}</div>
+                          {u.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{u.username}</div>}
                         </div>
-                      ))
-                    }
-                  </div>
-                )}
-              </div>
-            </>
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
+            </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #534AB7', background: '#EEEDFE', marginBottom: 14 }}>
-              <H2HAvatar userId={selectedPerson.id} name={selectedPerson.name} size={32} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #534AB7', background: '#EEEDFE', marginBottom: 20 }}>
+              <H2HAvatar userId={selectedPerson.id} name={selectedPerson.name} size={38} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: '#534AB7' }}>{selectedPerson.name}</div>
-                {selectedPerson.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: '#7c3aed' }}>@{selectedPerson.username}</div>}
+                <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: '#534AB7' }}>{selectedPerson.name}</div>
+                {selectedPerson.username && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: '#7c3aed' }}>@{selectedPerson.username}</div>}
               </div>
-              <button onClick={() => setSelectedPerson(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontSize: 20 }}>×</button>
+              <button onClick={() => setSelectedPerson(null)} style={{ background: 'none', border: '1px solid #534AB7', borderRadius: 6, cursor: 'pointer', color: '#534AB7', fontSize: 12, fontFamily: 'var(--font)', padding: '4px 10px' }}>Change</button>
             </div>
           )}
 
           {selectedPerson && (
-            <>
-              <label style={S.label}>Send via a shared group</label>
-              {groups.length === 0
-                ? <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', padding: '8px 0 14px' }}>You need to share a group with this person to send them an invite.</div>
-                : <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                  {groups.map(g => (
-                    <button key={g.id} onClick={() => setSelectedGroupId(g.id)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${selectedGroupId === g.id ? '#534AB7' : 'var(--border)'}`, background: selectedGroupId === g.id ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#fff', flexShrink: 0 }}>{g.emoji || '👥'}</div>
-                      <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: selectedGroupId === g.id ? '#534AB7' : 'var(--text)' }}>{g.name}</div>
-                    </button>
-                  ))}
-                </div>
-              }
-              <WarnBox>A message mentioning @{selectedPerson.username || selectedPerson.name} will be posted in that group's general channel.</WarnBox>
-              {error && <div style={{ margin: '8px 0', padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{error}</div>}
-              <ModalFooter onCancel={onClose} onSubmit={handleSendToPerson} submitLabel={sending ? 'Sending…' : 'Send invite'} disabled={!selectedGroupId || !selectedPerson || sending} />
-            </>
+            <WarnBox>A direct message with the contest details will be sent to {selectedPerson.name}.</WarnBox>
+          )}
+          {error && <div style={{ margin: '8px 0', padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{error}</div>}
+          {selectedPerson && (
+            <ModalFooter onCancel={onClose} onSubmit={handleSendToPerson} submitLabel={sending ? 'Sending…' : 'Send DM invite'} disabled={!selectedPerson || sending} />
           )}
         </div>
       )}
