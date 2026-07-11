@@ -671,26 +671,25 @@ function ChallengeCard({ match, onAccept, onOpenProfile }) {
   const initials = (match.challengerName || '?')[0].toUpperCase();
   const colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
   const bg = colors[(match.challengerName || '').charCodeAt(0) % colors.length];
+  // timeLeft is time until the match ends — show as duration info
+  const durationLabel = match.timeLeft && match.timeLeft !== 'Ended' ? `${match.timeLeft} match` : timeAgo(match.createdAt);
   return (
     <>
       {preview && <H2HPreviewModal match={match} onAccept={onAccept} onClose={() => setPreview(false)} onOpenProfile={onOpenProfile} />}
-      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'18px 20px', cursor:'pointer', display:'flex', flexDirection:'column', gap:0, transition:'box-shadow 0.15s, border-color 0.15s' }}
+      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'18px 20px', cursor:'pointer', display:'flex', flexDirection:'column', transition:'box-shadow 0.15s, border-color 0.15s' }}
         onClick={() => setPreview(true)}
         onMouseEnter={e => { e.currentTarget.style.borderColor='#534AB7'; e.currentTarget.style.boxShadow='0 2px 12px rgba(83,74,183,0.10)'; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.boxShadow='none'; }}
       >
-        {/* Top row: market badge + timing */}
+        {/* Top row: market badge + duration */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
           <span style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:6, padding:'3px 8px' }}>
             {(match.asset || 'ANY').toUpperCase()}
           </span>
-          <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>
-            {match.timeLeft ? `Starts in ${match.timeLeft}` : timeAgo(match.createdAt)}
-          </span>
+          <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{durationLabel}</span>
         </div>
         {/* VS row */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-          {/* Challenger */}
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, flex:1 }}>
             <div style={{ width:52, height:52, borderRadius:'50%', background:bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
               {initials}
@@ -698,22 +697,20 @@ function ChallengeCard({ match, onAccept, onOpenProfile }) {
             <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{match.challengerName}</span>
           </div>
           <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text-muted)', flex:'0 0 auto', padding:'0 12px' }}>VS</span>
-          {/* Open slot */}
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, flex:1 }}>
-            <div style={{ width:52, height:52, borderRadius:'50%', border:'2px dashed #d1d5db', display:'flex', alignItems:'center', justifyContent:'center', background:'transparent' }}>
-              <span style={{ fontFamily:'var(--font)', fontSize:22, color:'#d1d5db', fontWeight:400 }}>?</span>
+            <div style={{ width:52, height:52, borderRadius:'50%', border:'2px dashed #d1d5db', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ fontFamily:'var(--font)', fontSize:22, color:'#d1d5db' }}>?</span>
             </div>
             <span style={{ fontFamily:'var(--font)', fontSize:13, color:'#9ca3af' }}>Open slot</span>
           </div>
         </div>
         {/* Meta row */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{match.timeLeft ? `${match.timeLeft} P&L %` : 'P&L %'}</span>
+          <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>P&L %</span>
           <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{match.buyIn > 0 ? `$${match.buyIn.toLocaleString()} stake` : 'Free'}</span>
         </div>
-        {/* Accept button */}
         <button onClick={e => { e.stopPropagation(); setPreview(true); }}
-          style={{ width:'100%', padding:'11px', borderRadius:10, background:'#111827', color:'#fff', border:'none', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer', letterSpacing:'0.01em' }}>
+          style={{ width:'100%', padding:'11px', borderRadius:10, background:'#111827', color:'#fff', border:'none', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
           Accept challenge
         </button>
       </div>
@@ -723,19 +720,20 @@ function ChallengeCard({ match, onAccept, onOpenProfile }) {
 
 function MatchCard({ match, currentUserId, onClick, onDelete }) {
   const isChallenger = match.challengerId === currentUserId;
-  const myScore = isChallenger ? match.challengerScore : match.opponentScore;
-  const oppScore = isChallenger ? match.opponentScore : match.challengerScore;
+  const myScore = Number(isChallenger ? match.challengerScore : match.opponentScore) || 0;
+  const oppScore = Number(isChallenger ? match.opponentScore : match.challengerScore) || 0;
   const myName = isChallenger ? match.challengerName : match.opponentName;
   const oppName = isChallenger ? match.opponentName : match.challengerName;
-  const canDelete = isChallenger && match.status !== 'active';
+  const canDelete = isChallenger && match.status === 'waiting';
   const isLive = match.status === 'active';
+  const isWaiting = match.status === 'waiting';
   const colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
   const myBg = colors[(myName || '').charCodeAt(0) % colors.length];
-  const oppBg = colors[(oppName || '').charCodeAt(0) % colors.length];
-  const myPnl = Number(myScore) || 0;
-  const oppPnl = Number(oppScore) || 0;
+  const oppBg = colors[(oppName || '?').charCodeAt(0) % colors.length];
+  const fmtPnl = (v) => `${v >= 0 ? '+' : ''}$${Math.abs(v).toFixed(2)}`;
+
   return (
-    <div onClick={onClick} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'18px 20px', cursor:'pointer', display:'flex', flexDirection:'column', gap:0, transition:'box-shadow 0.15s, border-color 0.15s' }}
+    <div onClick={onClick} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'18px 20px', cursor:'pointer', display:'flex', flexDirection:'column', transition:'box-shadow 0.15s, border-color 0.15s' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor='#534AB7'; e.currentTarget.style.boxShadow='0 2px 12px rgba(83,74,183,0.10)'; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.boxShadow='none'; }}
     >
@@ -744,8 +742,9 @@ function MatchCard({ match, currentUserId, onClick, onDelete }) {
         <span style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:6, padding:'3px 8px' }}>
           {(match.asset || 'ANY').toUpperCase()}
         </span>
-        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           {isLive && <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'#059669' }}>● Live</span>}
+          {isWaiting && <span style={{ fontFamily:'var(--font)', fontSize:12, color:'#d97706', fontWeight:600 }}>⏳ Waiting</span>}
           {canDelete && onDelete && (
             <button onClick={e => { e.stopPropagation(); onDelete(match.id); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:'2px 4px' }} title="Delete">
               <i className="ti ti-trash" style={{ fontSize:14 }} />
@@ -753,6 +752,7 @@ function MatchCard({ match, currentUserId, onClick, onDelete }) {
           )}
         </div>
       </div>
+
       {/* VS row */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
         {/* Me */}
@@ -761,31 +761,54 @@ function MatchCard({ match, currentUserId, onClick, onDelete }) {
             {(myName||'?')[0].toUpperCase()}
           </div>
           <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{myName}</span>
-          <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: myPnl >= 0 ? '#059669' : '#dc2626' }}>
-            {myPnl >= 0 ? '+' : ''}{myPnl.toFixed(1)}%
-          </span>
+          {isLive && (
+            <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: myScore >= 0 ? '#059669' : '#dc2626' }}>
+              {fmtPnl(myScore)}
+            </span>
+          )}
         </div>
+
         <span style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text-muted)', flex:'0 0 auto', padding:'0 12px' }}>VS</span>
+
         {/* Opponent */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, flex:1 }}>
-          <div style={{ width:52, height:52, borderRadius:'50%', background:oppBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
-            {(oppName||'?')[0].toUpperCase()}
-          </div>
-          <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{oppName}</span>
-          <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: oppPnl >= 0 ? '#059669' : '#dc2626' }}>
-            {oppPnl >= 0 ? '+' : ''}{oppPnl.toFixed(1)}%
-          </span>
+          {isWaiting ? (
+            <>
+              <div style={{ width:52, height:52, borderRadius:'50%', border:'2px dashed #d1d5db', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ fontFamily:'var(--font)', fontSize:22, color:'#d1d5db' }}>?</span>
+              </div>
+              <span style={{ fontFamily:'var(--font)', fontSize:13, color:'#9ca3af' }}>Open slot</span>
+            </>
+          ) : (
+            <>
+              <div style={{ width:52, height:52, borderRadius:'50%', background:oppBg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
+                {(oppName||'?')[0].toUpperCase()}
+              </div>
+              <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)' }}>{oppName}</span>
+              {isLive && (
+                <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color: oppScore >= 0 ? '#059669' : '#dc2626' }}>
+                  {fmtPnl(oppScore)}
+                </span>
+              )}
+            </>
+          )}
         </div>
       </div>
+
       {/* Meta */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-        <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{match.timeLeft || 'Ongoing'}</span>
-        <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>{match.buyIn > 0 ? `$${match.buyIn.toLocaleString()} stake` : 'Free'}</span>
+        <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>
+          {match.timeLeft && match.timeLeft !== 'Ended' ? `Ends in ${match.timeLeft}` : (match.timeLeft || 'Ongoing')}
+        </span>
+        <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>
+          {match.buyIn > 0 ? `$${match.buyIn.toLocaleString()} stake` : 'Free'}
+        </span>
       </div>
-      {/* Watch button */}
+
+      {/* Action button */}
       <button onClick={e => { e.stopPropagation(); onClick(); }}
-        style={{ width:'100%', padding:'11px', borderRadius:10, background:'transparent', color:'var(--text)', border:'1px solid var(--border)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-        Watch match
+        style={{ width:'100%', padding:'11px', borderRadius:10, background: isWaiting ? 'transparent' : 'transparent', color:'var(--text)', border:'1px solid var(--border)', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        {isWaiting ? 'View challenge' : 'Watch match'}
       </button>
     </div>
   );
@@ -1335,11 +1358,11 @@ function H2HTab({ currentUserId, onOpenProfile }) {
     { key: 'invites', label: 'Invites', badge: inviteCount > 0 ? inviteCount : null },
   ];
 
-  const renderGrid = (items) => (
+  const renderGrid = (items, emptyTitle = 'No open challenges', emptySub = 'Be the first — post a challenge above') => (
     loading ? (
       <div style={{ textAlign:'center', padding:'60px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading…</div>
     ) : items.length === 0 ? (
-      <EmptyState icon="ti-swords" title="No challenges yet" sub="Post a challenge to get started" btnLabel="Post challenge" onBtnClick={() => setShowModal(true)} />
+      <EmptyState icon="ti-swords" title={emptyTitle} sub={emptySub} btnLabel="Post challenge" onBtnClick={() => setShowModal(true)} />
     ) : (
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
         {items}
@@ -1398,23 +1421,29 @@ function H2HTab({ currentUserId, onOpenProfile }) {
         )}
 
         {inner === 'mymatches' && (() => {
-          const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-          const active = (data.myMatches || []).filter(m => !m.endDate || new Date(m.endDate).getTime() > cutoff);
-          const recentlyEnded = (data.myMatches || []).filter(m => m.endDate && new Date(m.endDate).getTime() <= cutoff);
           if (loading) return <div style={{ textAlign:'center', padding:'60px 0', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>Loading…</div>;
-          if (active.length === 0 && recentlyEnded.length === 0) return <EmptyState icon="ti-shield" title="No active matches" sub="Accept or post a challenge to get started" />;
+          const live    = (data.myMatches || []).filter(m => m.status === 'active');
+          const pending = (data.myMatches || []).filter(m => m.status === 'waiting');
+          if (live.length === 0 && pending.length === 0)
+            return <EmptyState icon="ti-shield" title="No matches yet" sub="Post or accept a challenge to get started" btnLabel="Post challenge" onBtnClick={() => setShowModal(true)} />;
+          const SectionLabel = ({ text }) => (
+            <div style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', padding:'4px 0 12px' }}>{text}</div>
+          );
           return (
             <>
-              {active.length > 0 && (
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-                  {active.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
-                </div>
-              )}
-              {recentlyEnded.length > 0 && (
+              {live.length > 0 && (
                 <>
-                  <div style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', padding:'20px 0 10px' }}>Recently ended</div>
+                  <SectionLabel text="Live matches" />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom: pending.length > 0 ? 24 : 0 }}>
+                    {live.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
+                  </div>
+                </>
+              )}
+              {pending.length > 0 && (
+                <>
+                  <SectionLabel text="Pending challenges" />
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-                    {recentlyEnded.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
+                    {pending.map(m => <MatchCard key={m.id} match={m} currentUserId={currentUserId} onClick={() => setSelectedMatchId(m.id)} onDelete={handleDeleteMatch} />)}
                   </div>
                 </>
               )}
