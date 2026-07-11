@@ -1014,8 +1014,9 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
                 </div>
               )}
             </div>
-          ) : (
-            /* ── Individual contest: member list ── */
+          )}
+          {/* ── Individual (non-team) contest: member list ── */}
+          {!isTeam && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
               {(preview?.members || []).slice(0, 4).map((m, i) => (
                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
