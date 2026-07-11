@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import MatchDetailView from './MatchDetailView';
 import CompetitionTradingView from './CompetitionTradingView';
 
@@ -1322,10 +1323,17 @@ function H2HTab({ currentUserId, onOpenProfile }) {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Show match detail view if one is selected
-  if (selectedMatchId) {
-    return <MatchDetailView matchId={selectedMatchId} onBack={() => { setSelectedMatchId(null); fetchData(); }} onDelete={() => { setSelectedMatchId(null); fetchData(); }} />;
-  }
+  // Full-screen overlay when a match is open
+  const matchOverlay = selectedMatchId && typeof document !== 'undefined' ? ReactDOM.createPortal(
+    <div style={{ position:'fixed', inset:0, zIndex:99000, background:'var(--surface)', overflowY:'auto', display:'flex', flexDirection:'column' }}>
+      <MatchDetailView
+        matchId={selectedMatchId}
+        onBack={() => { setSelectedMatchId(null); fetchData(); }}
+        onDelete={() => { setSelectedMatchId(null); fetchData(); }}
+      />
+    </div>,
+    document.body
+  ) : null;
 
   const handleAccept = async (matchId) => {
     await fetch('/api/challenges', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId, action: 'accept' }) });
@@ -1372,6 +1380,7 @@ function H2HTab({ currentUserId, onOpenProfile }) {
 
   return (
     <div style={{ display:'flex', flex:1, minHeight:0, width:'100%' }}>
+      {matchOverlay}
       {showModal && <PostChallengeModal onClose={() => setShowModal(false)} onSuccess={fetchData} />}
 
       {/* ── Sidebar ── */}
@@ -2209,9 +2218,12 @@ function HistoryTab({ currentUserId }) {
       .catch(() => setLoading(false));
   }, []);
 
-  if (selectedMatchId) {
-    return <MatchDetailView matchId={selectedMatchId} onBack={() => setSelectedMatchId(null)} />;
-  }
+  const historyMatchOverlay = selectedMatchId && typeof document !== 'undefined' ? ReactDOM.createPortal(
+    <div style={{ position:'fixed', inset:0, zIndex:99000, background:'var(--surface)', overflowY:'auto', display:'flex', flexDirection:'column' }}>
+      <MatchDetailView matchId={selectedMatchId} onBack={() => setSelectedMatchId(null)} />
+    </div>,
+    document.body
+  ) : null;
 
   const filtered = history.filter(m => {
     if (outcomeFilter === 'win' && !m.won) return false;
@@ -2226,6 +2238,7 @@ function HistoryTab({ currentUserId }) {
 
   return (
     <div style={{ padding: 18 }}>
+      {historyMatchOverlay}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ ...S.input, width: 'auto', cursor: 'pointer' }}>
           <option value="all">All types</option>

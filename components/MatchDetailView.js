@@ -372,7 +372,7 @@ export default function MatchDetailView({ matchId, onBack, onDelete }) {
   const theirPnL = opponent?.analytics?.totalPnL ?? 0
 
   return (
-    <div style={{ paddingBottom: 32 }}>
+    <div style={{ paddingBottom: 32, maxWidth: 860, margin: '0 auto', width: '100%' }}>
       {/* Back + refresh */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px 10px' }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontFamily: 'var(--font)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 5, padding: 0 }}>
