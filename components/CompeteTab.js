@@ -1594,7 +1594,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
               {inviteMode === 'person' ? `DM sent to ${selectedPerson?.name}` : 'Invite posted to group'}
             </div>
             <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
-              {inviteMode === 'person' ? 'They'll see it in their direct messages.' : 'Members will see it in their group chat and can join from Browse.'}
+              {inviteMode === 'person' ? "They'll see it in their direct messages." : 'Members will see it in their group chat and can join from Browse.'}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button onClick={() => { setInviteSent(false); setSelectedGroupId(''); setSelectedPerson(null); setPersonQuery(''); }} style={{ ...S.ghostBtn }}>Send another</button>
@@ -2673,7 +2673,7 @@ function ContestInviteModal({ contest, onClose }) {
             {sentMode === 'person' ? `DM sent to ${selectedPerson?.name}` : 'Invite posted to group'}
           </div>
           <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
-            {sentMode === 'person' ? 'They'll see it in their direct messages.' : 'Members will see it in their group chat and can join from Browse.'}
+            {sentMode === 'person' ? "They'll see it in their direct messages." : 'Members will see it in their group chat and can join from Browse.'}
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
             <button onClick={() => { setSent(false); setSelectedPerson(null); setPersonQuery(''); setSelectedGroupId(''); }} style={{ ...S.ghostBtn }}>Send another</button>
