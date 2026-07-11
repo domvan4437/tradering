@@ -67,22 +67,17 @@ export async function GET(request) {
     // Filter out full contests from browse
     const allContests = allContestsRaw.filter(c => {
       const count = c._count?.entries ?? 0
-      if (c.teamSize) {
-        // Team contest: full when both teams have all slots (teamSize * 2 total)
-        return count < c.teamSize * 2
-      }
-      if (c.maxTeams) {
-        // Non-team contest: full when max participants reached
-        return count < c.maxTeams
-      }
-      return true // no cap set — always show
+      if (c.teamSize) return count < c.teamSize * 2
+      if (c.maxTeams) return count < c.maxTeams
+      return true
     })
 
-    const CATEGORY_NAMES = new Set(['Any', 'Forex', 'Crypto', 'Stocks', 'Futures', 'Commodities']);
-    const fmtContest = (c) => {
-      const assetClasses = c.assetClasses || ['Any'];
-      const category = assetClasses[0] || 'Any';
-      const specificSymbols = assetClasses.slice(1).filter(s => !CATEGORY_NAMES.has(s));
+    const CATEGORY_NAMES = new Set(['Any', 'Forex', 'Crypto', 'Stocks', 'Futures', 'Commodities'])
+    const fmtContest = (c, overrideJoined) => {
+      const assetClasses = c.assetClasses || ['Any']
+      const category = assetClasses[0] || 'Any'
+      const specificSymbols = assetClasses.slice(1).filter(s => !CATEGORY_NAMES.has(s))
+      const joined = overrideJoined !== undefined ? overrideJoined : (c.entries?.length ?? 0) > 0
       return {
         id: c.id,
         name: c.name,
@@ -93,17 +88,23 @@ export async function GET(request) {
         status: c.status,
         endDate: c.endDate,
         memberCount: c._count?.entries ?? 0,
-        joined: (c.entries?.length ?? 0) > 0,
+        joined,
         creatorName: c.creator?.displayName || c.creator?.name || c.creator?.username || 'Trader',
         creatorImage: c.creator?.id ? `/api/avatar/${c.creator.id}` : null,
         creatorSlug: c.creator?.profileSlug || c.creator?.id,
         isCreator: c.creatorId === uid,
         teamFormat: c.teamFormat || null,
         teamSize: c.teamSize || null,
-      };
+      }
     }
 
-    return Response.json({ contests: allContests.map(fmtContest), myContests: myContests.map(fmtContest) })
+    // For myContests, check if the current user has an entry
+    const myContestsFmt = myContests.map(c => {
+      const iJoined = c.entries?.some(e => e.userId === uid)
+      return fmtContest(c, iJoined)
+    })
+
+    return Response.json({ contests: allContests.map(c => fmtContest(c)), myContests: myContestsFmt })
   } catch (e) {
     console.error('[GET /api/group-contests]', e)
     return Response.json({ error: e.message }, { status: 500 })
@@ -118,7 +119,7 @@ export async function POST(request) {
 
     if (action === 'join') {
       const existing = await prisma.tournamentEntry.findFirst({ where: { tournamentId: contestId, userId: session.user.id } })
-      if (existing) return Response.json({ success: true }) // already joined — silently succeed
+      if (existing) return Response.json({ success: true })
       await prisma.tournamentEntry.create({ data: { tournamentId: contestId, userId: session.user.id, score: 0 } })
       return Response.json({ success: true })
     }
@@ -147,12 +148,12 @@ export async function POST(request) {
         },
       })
 
-      // Auto-create 2 teams when a team format is set
       if (teamFormat && parsedTeamSize) {
+        // Team contest: auto-create the two teams
         await prisma.contestTeam.createMany({
           data: [
             { contestId: tournament.id, captainId: session.user.id, name: teamNameA?.trim() || 'Team Alpha', emoji: '🔵', color: '#3B82F6' },
-            { contestId: tournament.id, captainId: session.user.id, name: teamNameB?.trim() || 'Team Beta', emoji: '🔴', color: '#EF4444' },
+            { contestId: tournament.id, captainId: session.user.id, name: teamNameB?.trim() || 'Team Beta',  emoji: '🔴', color: '#EF4444' },
           ],
         })
       } else {
@@ -182,7 +183,6 @@ export async function DELETE(request) {
     if (!contest) return Response.json({ error: 'Not found' }, { status: 404 })
     if (contest.creatorId !== uid) return Response.json({ error: 'Only the creator can delete this contest' }, { status: 403 })
 
-    // Delete related data then the tournament
     await prisma.tradeCall.deleteMany({ where: { tournamentId: contestId } })
     await prisma.competitionPosition.deleteMany({ where: { competitionId: contestId } })
     await prisma.competitionOrder.deleteMany({ where: { competitionId: contestId } })
