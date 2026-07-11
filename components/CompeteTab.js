@@ -1488,7 +1488,11 @@ function CreateGroupModal({ onClose, onSuccess }) {
         try {
           const local = JSON.parse(localStorage.getItem('tr_groups') || '[]');
           const localOnly = local.filter(lg => !dbGroups.find(dg => dg.id === lg.id));
-          setInviteGroups([...dbGroups, ...localOnly]);
+          const merged = dbGroups.map(dg => {
+            const match = local.find(l => l.id === dg.id);
+            return (match?.profileImg || match?.grad) ? { ...dg, profileImg: match.profileImg, grad: match.grad } : dg;
+          });
+          setInviteGroups([...merged, ...localOnly]);
         } catch { setInviteGroups(dbGroups); }
       }).catch(() => {
         try { setInviteGroups(JSON.parse(localStorage.getItem('tr_groups') || '[]')); } catch {}
@@ -2644,7 +2648,7 @@ function ContestDetailView({ contest, onBack, onDelete, currentUserId }) {
 // ─── Group avatar helper ──────────────────────────────────────────────────────
 function GroupAvatar({ group, size = 36 }) {
   const [imgOk, setImgOk] = useState(true);
-  const src = group.imageUrl || group.profileImg || (group.ownerId ? `/api/avatar/${group.ownerId}` : null);
+  const src = group.imageUrl || group.profileImg || null;
   if (src && imgOk) {
     return (
       <img src={src} onError={() => setImgOk(false)} alt=""
@@ -2653,7 +2657,7 @@ function GroupAvatar({ group, size = 36 }) {
   }
   const _colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
   const letter = (group.name || '?')[0].toUpperCase();
-  const bg = _colors[letter.charCodeAt(0) % _colors.length];
+  const bg = group.grad || _colors[letter.charCodeAt(0) % _colors.length];
   return (
     <div style={{ width: size, height: size, borderRadius: size * 0.25, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
       {letter}
@@ -2682,7 +2686,11 @@ function ContestInviteModal({ contest, onClose }) {
       try {
         const local = JSON.parse(localStorage.getItem('tr_groups') || '[]');
         const localOnly = local.filter(lg => !dbGroups.find(dg => dg.id === lg.id));
-        setGroups([...dbGroups, ...localOnly]);
+        const merged = dbGroups.map(dg => {
+          const match = local.find(l => l.id === dg.id);
+          return (match?.profileImg || match?.grad) ? { ...dg, profileImg: match.profileImg, grad: match.grad } : dg;
+        });
+        setGroups([...merged, ...localOnly]);
       } catch { setGroups(dbGroups); }
     }).catch(() => {
       try { setGroups(JSON.parse(localStorage.getItem('tr_groups') || '[]')); } catch {}
