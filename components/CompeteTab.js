@@ -1459,6 +1459,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
     teamNameA: 'Team Alpha',
     teamNameB: 'Team Beta',
     teamSizeCustom: '10',
+    maxTeams: '2',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1549,7 +1550,8 @@ function CreateGroupModal({ onClose, onSuccess }) {
       } else {
         const channelId = await getGeneralChannel(selectedGroupId);
         if (!channelId) { setInviteError('Could not find a channel in that group'); setInviteSending(false); return; }
-        await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+        const postRes = await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+        if (!postRes.ok) { const d = await postRes.json().catch(() => ({})); setInviteError(d.error || 'Failed to post invite to group'); setInviteSending(false); return; }
       }
       setInviteSent(true);
     } catch { setInviteError('Failed to send — try again'); }
@@ -1587,6 +1589,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
         buyIn: type === 'paid' ? form.fee : '0',
         teamFormat: finalTeamFormat,
         teamSize: parsedTeamSize,
+        maxTeams: parsedTeamSize ? (parseInt(form.maxTeams) || 2) : null,
         teamNameA: form.teamNameA,
         teamNameB: form.teamNameB,
       };
@@ -1826,15 +1829,27 @@ function CreateGroupModal({ onClose, onSuccess }) {
                 <input type="number" min={2} max={50} value={form.teamSizeCustom} onChange={e => set('teamSizeCustom', e.target.value)} style={S.input} />
               </div>
             )}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={S.label}>Team names</label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input value={form.teamNameA} onChange={e => set('teamNameA', e.target.value)} placeholder="Team Alpha" style={{ ...S.input, flex: 1 }} />
-                <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>VS</span>
-                <input value={form.teamNameB} onChange={e => set('teamNameB', e.target.value)} placeholder="Team Beta" style={{ ...S.input, flex: 1 }} />
-              </div>
-              {parsedTeamSize && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{parsedTeamSize} slots per team — players pick their side when joining</div>}
+            <div>
+              <label style={S.label}>Number of teams</label>
+              <input type="number" min={2} max={16} value={form.maxTeams} onChange={e => set('maxTeams', e.target.value)} style={S.input} placeholder="2" />
+              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>How many teams can join this contest</div>
             </div>
+            {parseInt(form.maxTeams) <= 2 && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={S.label}>Team names</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input value={form.teamNameA} onChange={e => set('teamNameA', e.target.value)} placeholder="Team Alpha" style={{ ...S.input, flex: 1 }} />
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>VS</span>
+                  <input value={form.teamNameB} onChange={e => set('teamNameB', e.target.value)} placeholder="Team Beta" style={{ ...S.input, flex: 1 }} />
+                </div>
+                {parsedTeamSize && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{parsedTeamSize} slots per team — players pick their side when joining</div>}
+              </div>
+            )}
+            {parseInt(form.maxTeams) > 2 && parsedTeamSize && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{parseInt(form.maxTeams)} teams × {parsedTeamSize} players — teams are auto-named Team 1, Team 2, etc.</div>
+              </div>
+            )}
           </>
         )}
 
@@ -2629,7 +2644,7 @@ function ContestDetailView({ contest, onBack, onDelete, currentUserId }) {
 // ─── Group avatar helper ──────────────────────────────────────────────────────
 function GroupAvatar({ group, size = 36 }) {
   const [imgOk, setImgOk] = useState(true);
-  const src = group.imageUrl || (group.ownerId ? `/api/avatar/${group.ownerId}` : null);
+  const src = group.imageUrl || group.profileImg || (group.ownerId ? `/api/avatar/${group.ownerId}` : null);
   if (src && imgOk) {
     return (
       <img src={src} onError={() => setImgOk(false)} alt=""
@@ -2711,7 +2726,8 @@ function ContestInviteModal({ contest, onClose }) {
       } else {
         const channelId = await getGeneralChannel(selectedGroupId);
         if (!channelId) { setError('Could not find a channel in that group'); setSending(false); return; }
-        await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+        const postRes = await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+        if (!postRes.ok) { const d = await postRes.json().catch(() => ({})); setError(d.error || 'Failed to post invite to group'); setSending(false); return; }
       }
       setSentMode('group'); setSent(true);
     } catch { setError('Failed to send — try again'); }
@@ -3231,23 +3247,4 @@ export default function CompeteTab({ currentUserId, externalTab }) {
 
       {/* Main content */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Header — hidden for H2H and Group which have their own sidebar title */}
-        {meta && resolvedTab !== 'h2h' && resolvedTab !== 'group' && (
-          <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
-          </div>
-        )}
-
-        {/* Tab content */}
-        <div style={{ flex: 1, overflow: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'hidden' : 'auto', display: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'flex' : 'block' }}>
-          {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
-          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
-        </div>
-      </div>
-    </div>
-  );
-}
+        {/* Header — hidden for H2H and G
