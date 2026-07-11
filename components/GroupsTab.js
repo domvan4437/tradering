@@ -193,6 +193,10 @@ function ContestInviteCard({ invite }) {
 }
 
 function ChatMessage({ m, onJoinCall, myAvatar }) {
+  // Contest invite — check first, regardless of type
+  const contestInvite = parseContestInvite(m.text);
+  if (contestInvite) return <ContestInviteCard invite={contestInvite} />;
+
   if (m.type === 'call_invite') {
     return (
       <div style={{ display:'flex', justifyContent:'center', margin:'6px 0' }}>
@@ -427,7 +431,7 @@ function GroupRoom({ group, onBack, onUpdateGroup }) {
           grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
           time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           text: m.content,
-          type: 'text',
+          type: m.content?.startsWith('__CONTEST_INVITE__') ? 'contest_invite' : 'text',
           fromApi: true,
         }));
         setMessages(prev => {
@@ -947,13 +951,4 @@ function GroupRow({ g, onSelect }) {
             <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{'members: '+memberStr}</span>
             {g.country ? <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{'location: '+g.country}</span> : null}
             {g.price > 0
-              ? <span style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:700, color:'var(--accent)' }}>{'$'+g.price+'/mo'}</span>
-              : <span style={{ fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--green)' }}>Free</span>
-            }
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+              ? <span style={{ fontFamily:'var(--font-mono)', fontSize:11, fontWeight:700, color:'var

@@ -861,21 +861,21 @@ function teamInitials(name) {
   return (words[0][0] + (words[1][0] || '')).toUpperCase();
 }
 function contestTiming(contest) {
-  if (contest.status === 'active') return null; // shown separately
   if (!contest.endDate) return 'Open';
   const diff = new Date(contest.endDate) - Date.now();
   if (diff <= 0) return 'Ended';
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
-  return d > 0 ? `${d}d ${h}h left` : `${h}h left`;
+  if (contest.status === 'active') return d > 0 ? `Ends in ${d}d ${h}h` : `Ends in ${h}h`;
+  return d > 0 ? `Ends in ${d}d ${h}h` : `Ends in ${h}h`;
 }
 
-// team avatar circle used in cards
+// team avatar — rounded square, matches screenshot design
 function TeamAvatar({ name, color, size = 44 }) {
   const colors = ['#534AB7','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#db2777'];
   const bg = color || colors[(name || '').charCodeAt(0) % colors.length];
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.33, fontWeight: 700, color: '#fff', flexShrink: 0, letterSpacing: '-0.02em' }}>
+    <div style={{ width: size, height: size, borderRadius: Math.round(size * 0.22), background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.33, fontWeight: 700, color: '#fff', flexShrink: 0, letterSpacing: '-0.02em' }}>
       {teamInitials(name)}
     </div>
   );
@@ -1020,7 +1020,7 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
           {/* Footer meta */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>
-              {contest.description ? contest.description.slice(0, 40) + (contest.description.length > 40 ? '…' : '') : `by ${contest.creatorName}`}
+              {contestTiming(contest) || `by ${contest.creatorName}`}
             </span>
             <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{stakeLabel}</span>
           </div>
@@ -2481,7 +2481,7 @@ function TeamBattleView({ contestId, currentUserId, teamSize: propTeamSize }) {
 }
 
 // ─── CONTEST DETAIL VIEW ───────────────────────────────────────────────────────
-function ContestDetailView({ contest, onBack, currentUserId }) {
+function ContestDetailView({ contest, onBack, onDelete, currentUserId }) {
   const hasTeamFormat = !!(contest.teamFormat);
   const [tab, setTab] = useState(hasTeamFormat ? 'battle' : 'leaderboard');
   const [detail, setDetail] = useState(null);
@@ -2514,6 +2514,17 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
           <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
             {new Date(endDate) > Date.now() ? `ends ${new Date(endDate).toLocaleDateString()}` : 'Ended'}
           </div>
+        )}
+        {contest.isCreator && (
+          <button
+            onClick={async () => {
+              if (!confirm('Delete this contest? All entries and trades will be permanently removed.')) return;
+              await onDelete?.(contest.id);
+              onBack();
+            }}
+            style={{ background: 'none', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', color: '#dc2626', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <i className="ti ti-trash" style={{ fontSize: 14 }} /> Delete
+          </button>
         )}
       </div>
 
@@ -2581,6 +2592,7 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
 }
 
 // ─── Group avatar helper ──────────────────────────────────────────────────────
+const _GAV_COLORS = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
 function GroupAvatar({ group, size = 36 }) {
   const [imgOk, setImgOk] = useState(true);
   const src = group.ownerId ? `/api/avatar/${group.ownerId}` : null;
@@ -2590,9 +2602,11 @@ function GroupAvatar({ group, size = 36 }) {
         style={{ width: size, height: size, borderRadius: size * 0.25, objectFit: 'cover', flexShrink: 0 }} />
     );
   }
+  const letter = (group.name || '?')[0].toUpperCase();
+  const bg = _GAV_COLORS[letter.charCodeAt(0) % _GAV_COLORS.length];
   return (
-    <div style={{ width: size, height: size, borderRadius: size * 0.25, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.45, flexShrink: 0 }}>
-      {group.emoji || '👥'}
+    <div style={{ width: size, height: size, borderRadius: size * 0.25, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+      {letter}
     </div>
   );
 }
@@ -2796,7 +2810,7 @@ function GroupTab({ currentUserId, onOpenProfile }) {
   if (selectedContest) {
     return (
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} currentUserId={currentUserId} />
+        <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} onDelete={handleDeleteContest} currentUserId={currentUserId} />
       </div>
     );
   }
@@ -3169,19 +3183,4 @@ export default function CompeteTab({ currentUserId, externalTab }) {
         {meta && resolvedTab !== 'h2h' && resolvedTab !== 'group' && (
           <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
-          </div>
-        )}
-
-        {/* Tab content */}
-        <div style={{ flex: 1, overflow: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'hidden' : 'auto', display: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'flex' : 'block' }}>
-          {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
-          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
-        </div>
-      </div>
-    </div>
-  );
-}
+            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--
