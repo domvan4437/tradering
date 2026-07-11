@@ -2181,7 +2181,6 @@ function TeamsView({ contestId, currentUserId }) {
   if (loading) return <div style={{ textAlign: 'center', padding: 40, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading teams…</div>;
 
   return (
-     return (
     <div style={{ padding: '14px 18px' }}>
       {(showCreate || editTeam) && (
         <CreateTeamModal
