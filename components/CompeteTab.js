@@ -2805,15 +2805,6 @@ function GroupTab({ currentUserId, onOpenProfile }) {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Show ContestDetailView (paper trading) if a joined contest is selected
-  if (selectedContest) {
-    return (
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} onDelete={handleDeleteContest} currentUserId={currentUserId} />
-      </div>
-    );
-  }
-
   const handleJoin = async (contestId) => {
     await fetch('/api/group-contests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId }) });
     fetchData();
@@ -2824,6 +2815,15 @@ function GroupTab({ currentUserId, onOpenProfile }) {
     await fetch('/api/group-contests', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contestId }) });
     fetchData();
   };
+
+  // Show ContestDetailView (paper trading) if a joined contest is selected
+  if (selectedContest) {
+    return (
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} onDelete={handleDeleteContest} currentUserId={currentUserId} />
+      </div>
+    );
+  }
 
   const ASSETS = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
   const myContestCount = (data.myContests || []).length;
