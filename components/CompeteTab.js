@@ -915,6 +915,7 @@ function HistoryCard({ match, currentUserId, onClick }) {
 // ─── Post Challenge Modal ─────────────────────────────────────────────────────
 function PostChallengeModal({ onClose, onSuccess }) {
   const [type, setType] = useState('free');
+  const [visibility, setVisibility] = useState('public'); // 'public' | 'private'
   const [form, setForm] = useState({
     asset: 'Any',
     durationType: 'preset',
@@ -925,10 +926,38 @@ function PostChallengeModal({ onClose, onSuccess }) {
     maxAccepts: 1,
     description: '',
   });
+  // Invite by username
+  const [inviteQuery, setInviteQuery] = useState('');
+  const [inviteResults, setInviteResults] = useState([]);
+  const [inviteSearching, setInviteSearching] = useState(false);
+  const [invitedUser, setInvitedUser] = useState(null); // { id, name, username }
+  // Invite via group
+  const [groups, setGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setDur = (patch) => setForm(p => ({ ...p, ...patch }));
+
+  // Load groups on mount for the group invite option
+  useEffect(() => {
+    fetch('/api/groups?mine=true').then(r => r.json()).then(d => setGroups(d.groups || [])).catch(() => {});
+  }, []);
+
+  // Debounced user search
+  useEffect(() => {
+    if (!inviteQuery.trim()) { setInviteResults([]); return; }
+    setInviteSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/social/leaderboard?search=${encodeURIComponent(inviteQuery)}&limit=6`);
+        const d = await res.json();
+        setInviteResults(d.users || []);
+      } catch {}
+      setInviteSearching(false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [inviteQuery]);
 
   const handleSubmit = async () => {
     setLoading(true); setError('');
@@ -937,32 +966,104 @@ function PostChallengeModal({ onClose, onSuccess }) {
         ? `${form.durationCustom} ${form.durationUnit}`
         : form.durationPreset;
 
+      const body = {
+        type,
+        asset: form.asset,
+        duration,
+        stake: form.stake,
+        description: form.description,
+        isPublic: visibility === 'public',
+      };
+      if (visibility === 'private' && invitedUser) body.inviteUserId = invitedUser.id;
+
       const res = await fetch('/api/challenges', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          asset: form.asset,
-          duration,
-          stake: form.stake,
-          description: form.description,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Failed to post challenge'); setLoading(false); return; }
       onSuccess?.();
       onClose();
-    } catch (err) {
-      setError('Network error — try again');
-    }
+    } catch { setError('Network error — try again'); }
     setLoading(false);
   };
 
-  const valid = form.description.trim().length > 0 && !loading;
+  const valid = form.description.trim().length > 0 && !loading &&
+    (visibility === 'public' || (visibility === 'private' && invitedUser));
+
+  const visOpts = [
+    { key: 'public',  icon: 'ti-world',  label: 'Public',  sub: 'Anyone can find & accept in Browse' },
+    { key: 'private', icon: 'ti-lock',   label: 'Private', sub: 'Only the person you invite can accept' },
+  ];
 
   return (
     <Modal title="Post a challenge" onClose={onClose}>
       <TypeToggle value={type} onChange={setType} />
+
+      {/* Visibility toggle */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={S.label}>Visibility</label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {visOpts.map(v => (
+            <button key={v.key} onClick={() => { setVisibility(v.key); setInvitedUser(null); setInviteQuery(''); }}
+              style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${visibility === v.key ? '#534AB7' : 'var(--border)'}`, background: visibility === v.key ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <i className={`ti ${v.icon}`} style={{ fontSize: 13, color: visibility === v.key ? '#534AB7' : 'var(--text-muted)' }} />
+                <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: visibility === v.key ? '#534AB7' : 'var(--text)' }}>{v.label}</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.3 }}>{v.sub}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Private: invite a specific user */}
+      {visibility === 'private' && (
+        <div style={{ marginBottom: 14 }}>
+          <label style={S.label}>Invite a trader *</label>
+          {invitedUser ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #534AB7', background: '#EEEDFE' }}>
+              <H2HAvatar userId={invitedUser.id} name={invitedUser.name} size={32} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: '#534AB7' }}>{invitedUser.name}</div>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: '#7c3aed' }}>@{invitedUser.username}</div>
+              </div>
+              <button onClick={() => { setInvitedUser(null); setInviteQuery(''); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontSize: 18, lineHeight: 1 }}>×</button>
+            </div>
+          ) : (
+            <div style={{ position: 'relative' }}>
+              <input
+                value={inviteQuery}
+                onChange={e => setInviteQuery(e.target.value)}
+                placeholder="Search by name or @username..."
+                style={{ ...S.input, width: '100%', boxSizing: 'border-box' }}
+                autoFocus
+              />
+              {(inviteResults.length > 0 || inviteSearching) && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 999, maxHeight: 220, overflowY: 'auto', marginTop: 4 }}>
+                  {inviteSearching
+                    ? <div style={{ padding: 12, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Searching…</div>
+                    : inviteResults.map(u => (
+                      <div key={u.id} onClick={() => { setInvitedUser({ id: u.id, name: u.displayName || u.name || 'Trader', username: u.username || '' }); setInviteQuery(''); setInviteResults([]); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <H2HAvatar userId={u.id} name={u.displayName || u.name} size={32} />
+                        <div>
+                          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{u.displayName || u.name}</div>
+                          {u.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{u.username}</div>}
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
@@ -992,10 +1093,12 @@ function PostChallengeModal({ onClose, onSuccess }) {
             <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Held in escrow until match ends</div>
           </div>
         )}
-        <div>
-          <label style={S.label}>Max challengers</label>
-          <input type="number" min="1" max="10" value={form.maxAccepts} onChange={e => set('maxAccepts', parseInt(e.target.value) || 1)} style={S.input} />
-        </div>
+        {visibility === 'public' && (
+          <div>
+            <label style={S.label}>Max challengers</label>
+            <input type="number" min="1" max="10" value={form.maxAccepts} onChange={e => set('maxAccepts', parseInt(e.target.value) || 1)} style={S.input} />
+          </div>
+        )}
       </div>
 
       <div style={{ marginBottom: 12 }}>
@@ -1012,12 +1115,19 @@ function PostChallengeModal({ onClose, onSuccess }) {
       {error && <div style={{ marginBottom: 10, padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{error}</div>}
 
       <WarnBox>
-        {type === 'paid'
+        {visibility === 'private'
+          ? 'Private challenge — only the invited trader can see and accept it. It won\'t appear in Browse.'
+          : type === 'paid'
           ? 'Matched to your league tier (±1 league). Entry stakes held in escrow until match completion. Verified broker required.'
-          : 'Matched to your league tier (±1 league). Results count toward the free leaderboard.'}
+          : 'Posted publicly to Browse. Anyone in your league tier (±1) can accept.'}
       </WarnBox>
 
-      <ModalFooter onCancel={onClose} onSubmit={handleSubmit} submitLabel={loading ? 'Posting…' : 'Post challenge'} disabled={!valid} />
+      <ModalFooter
+        onCancel={onClose}
+        onSubmit={handleSubmit}
+        submitLabel={loading ? 'Posting…' : visibility === 'private' ? 'Send invite' : 'Post challenge'}
+        disabled={!valid}
+      />
     </Modal>
   );
 }
