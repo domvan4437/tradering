@@ -64,7 +64,6 @@ export async function GET(request) {
       }),
     ])
 
-    // Filter out full contests from browse
     const allContests = allContestsRaw.filter(c => {
       const count = c._count?.entries ?? 0
       if (c.teamSize) return count < c.teamSize * 2
@@ -98,7 +97,6 @@ export async function GET(request) {
       }
     }
 
-    // For myContests, check if the current user has an entry
     const myContestsFmt = myContests.map(c => {
       const iJoined = c.entries?.some(e => e.userId === uid)
       return fmtContest(c, iJoined)
@@ -115,7 +113,7 @@ export async function POST(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const { action, contestId, name, description, asset, allowedSymbols, duration, buyIn, maxParticipants, teamFormat, teamSize, teamNameA, teamNameB } = await request.json()
+    const { action, contestId, name, description, asset, allowedSymbols, duration, buyIn, teamFormat, teamSize, teamNameA, teamNameB } = await request.json()
 
     if (action === 'join') {
       const existing = await prisma.tournamentEntry.findFirst({ where: { tournamentId: contestId, userId: session.user.id } })
@@ -144,20 +142,18 @@ export async function POST(request) {
           prizePool: 0,
           teamFormat: teamFormat || null,
           teamSize: parsedTeamSize,
-          maxTeams: maxParticipants ? parseInt(maxParticipants) : null,
+          maxTeams: null,
         },
       })
 
       if (teamFormat && parsedTeamSize) {
-        // Team contest: auto-create the two teams
         await prisma.contestTeam.createMany({
           data: [
             { contestId: tournament.id, captainId: session.user.id, name: teamNameA?.trim() || 'Team Alpha', emoji: '🔵', color: '#3B82F6' },
-            { contestId: tournament.id, captainId: session.user.id, name: teamNameB?.trim() || 'Team Beta',  emoji: '🔴', color: '#EF4444' },
+            { contestId: tournament.id, captainId: session.user.id, name: teamNameB?.trim() || 'Team Beta', emoji: '🔴', color: '#EF4444' },
           ],
         })
       } else {
-        // Non-team contest: creator auto-joins
         await prisma.tournamentEntry.create({ data: { tournamentId: tournament.id, userId: session.user.id, score: 0 } })
       }
 
