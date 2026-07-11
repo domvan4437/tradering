@@ -3184,3 +3184,4 @@ export default function CompeteTab({ currentUserId, externalTab }) {
       </div>
     </div>
   );
+}
