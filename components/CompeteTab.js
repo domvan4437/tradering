@@ -1563,10 +1563,11 @@ function H2HTab({ currentUserId, onOpenProfile }) {
 
   const ASSETS = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
   const inviteCount = (data.invites || []).length;
+  const myMatchCount = (data.myMatches || []).length;
 
   const sidebarNav = [
     { key: 'browse', label: 'Browse', badge: null },
-    { key: 'mymatches', label: 'My matches', badge: null },
+    { key: 'mymatches', label: 'My matches', badge: myMatchCount > 0 ? myMatchCount : null },
     { key: 'invites', label: 'Invites', badge: inviteCount > 0 ? inviteCount : null },
   ];
 
@@ -1603,7 +1604,7 @@ function H2HTab({ currentUserId, onOpenProfile }) {
               style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:8, border:'none', background: inner===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: inner===item.key ? 600 : 400, color: inner===item.key ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
               {item.label}
               {item.badge && (
-                <span style={{ background:'#111827', color:'#fff', borderRadius:'50%', width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
+                <span style={{ background: item.key === 'invites' ? '#ef4444' : '#534AB7', color:'#fff', borderRadius:20, minWidth:20, height:20, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
               )}
             </button>
           ))}
