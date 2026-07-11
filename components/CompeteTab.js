@@ -916,6 +916,7 @@ function HistoryCard({ match, currentUserId, onClick }) {
 function PostChallengeModal({ onClose, onSuccess }) {
   const [type, setType] = useState('free');
   const [visibility, setVisibility] = useState('public'); // 'public' | 'private'
+  const [privateMode, setPrivateMode] = useState('person'); // 'person' | 'group'
   const [form, setForm] = useState({
     asset: 'Any',
     durationType: 'preset',
@@ -926,38 +927,65 @@ function PostChallengeModal({ onClose, onSuccess }) {
     maxAccepts: 1,
     description: '',
   });
-  // Invite by username
+  // Selected invitee (set by either person-search or group-member pick)
+  const [invitedUser, setInvitedUser] = useState(null); // { id, name, username }
+  // Person search state
   const [inviteQuery, setInviteQuery] = useState('');
   const [inviteResults, setInviteResults] = useState([]);
   const [inviteSearching, setInviteSearching] = useState(false);
-  const [invitedUser, setInvitedUser] = useState(null); // { id, name, username }
-  // Invite via group
+  const [friends, setFriends] = useState([]); // people the user follows
+  // Group state
   const [groups, setGroups] = useState([]);
-  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [expandedGroupId, setExpandedGroupId] = useState(null);
+  const [groupMembers, setGroupMembers] = useState({}); // groupId → members[]
+  const [membersLoading, setMembersLoading] = useState(false);
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setDur = (patch) => setForm(p => ({ ...p, ...patch }));
 
-  // Load groups on mount for the group invite option
+  // Load friends + groups on mount
   useEffect(() => {
+    fetch('/api/social/follow?list=true').then(r => r.json()).then(d => setFriends(d.following || [])).catch(() => {});
     fetch('/api/groups?mine=true').then(r => r.json()).then(d => setGroups(d.groups || [])).catch(() => {});
   }, []);
 
-  // Debounced user search
+  // Debounced user search (leaderboard)
   useEffect(() => {
     if (!inviteQuery.trim()) { setInviteResults([]); return; }
     setInviteSearching(true);
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/social/leaderboard?search=${encodeURIComponent(inviteQuery)}&limit=6`);
+        const res = await fetch(`/api/social/leaderboard?search=${encodeURIComponent(inviteQuery)}&limit=8`);
         const d = await res.json();
-        setInviteResults(d.users || []);
+        const friendIds = new Set(friends.map(f => f.id));
+        const results = (d.leaderboard || []).map(u => ({ ...u, isFriend: friendIds.has(u.id) }));
+        results.sort((a, b) => (b.isFriend ? 1 : 0) - (a.isFriend ? 1 : 0));
+        setInviteResults(results);
       } catch {}
       setInviteSearching(false);
     }, 300);
     return () => clearTimeout(t);
-  }, [inviteQuery]);
+  }, [inviteQuery, friends]);
+
+  const loadGroupMembers = async (groupId) => {
+    if (groupMembers[groupId]) { setExpandedGroupId(groupId); return; }
+    setMembersLoading(true);
+    try {
+      const res = await fetch(`/api/groups/members?groupId=${groupId}`);
+      const d = await res.json();
+      setGroupMembers(prev => ({ ...prev, [groupId]: d.members || [] }));
+    } catch {}
+    setExpandedGroupId(groupId);
+    setMembersLoading(false);
+  };
+
+  const selectUser = (u) => {
+    setInvitedUser({ id: u.id, name: u.name || u.displayName || 'Trader', username: u.username || '' });
+    setInviteQuery('');
+    setInviteResults([]);
+  };
 
   const handleSubmit = async () => {
     setLoading(true); setError('');
@@ -965,7 +993,6 @@ function PostChallengeModal({ onClose, onSuccess }) {
       const duration = form.durationType === 'custom'
         ? `${form.durationCustom} ${form.durationUnit}`
         : form.durationPreset;
-
       const body = {
         type,
         asset: form.asset,
@@ -975,7 +1002,6 @@ function PostChallengeModal({ onClose, onSuccess }) {
         isPublic: visibility === 'public',
       };
       if (visibility === 'private' && invitedUser) body.inviteUserId = invitedUser.id;
-
       const res = await fetch('/api/challenges', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -993,9 +1019,35 @@ function PostChallengeModal({ onClose, onSuccess }) {
     (visibility === 'public' || (visibility === 'private' && invitedUser));
 
   const visOpts = [
-    { key: 'public',  icon: 'ti-world',  label: 'Public',  sub: 'Anyone can find & accept in Browse' },
-    { key: 'private', icon: 'ti-lock',   label: 'Private', sub: 'Only the person you invite can accept' },
+    { key: 'public',  icon: 'ti-world', label: 'Public',  sub: 'Anyone can find & accept in Browse' },
+    { key: 'private', icon: 'ti-lock',  label: 'Private', sub: 'Only the person you invite can accept' },
   ];
+
+  // Shared user row used in both search results and group member list
+  const UserRow = ({ u, isLast }) => (
+    <div onClick={() => selectUser(u)}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', borderBottom: isLast ? 'none' : '1px solid var(--border)', transition: 'background .12s' }}
+      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      <H2HAvatar userId={u.id} name={u.name || u.displayName} size={30} />
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{u.name || u.displayName || 'Trader'}</div>
+        {u.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{u.username}</div>}
+      </div>
+      {u.isFriend && <span style={{ fontSize: 10, fontFamily: 'var(--font)', fontWeight: 600, color: '#059669', background: '#d1fae5', padding: '2px 7px', borderRadius: 20 }}>Following</span>}
+    </div>
+  );
+
+  const SelectedChip = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #534AB7', background: '#EEEDFE' }}>
+      <H2HAvatar userId={invitedUser.id} name={invitedUser.name} size={32} />
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: '#534AB7' }}>{invitedUser.name}</div>
+        {invitedUser.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: '#7c3aed' }}>@{invitedUser.username}</div>}
+      </div>
+      <button onClick={() => setInvitedUser(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontSize: 20, lineHeight: 1, padding: '0 2px' }}>×</button>
+    </div>
+  );
 
   return (
     <Modal title="Post a challenge" onClose={onClose}>
@@ -1006,7 +1058,7 @@ function PostChallengeModal({ onClose, onSuccess }) {
         <label style={S.label}>Visibility</label>
         <div style={{ display: 'flex', gap: 8 }}>
           {visOpts.map(v => (
-            <button key={v.key} onClick={() => { setVisibility(v.key); setInvitedUser(null); setInviteQuery(''); }}
+            <button key={v.key} onClick={() => { setVisibility(v.key); setInvitedUser(null); setInviteQuery(''); setExpandedGroupId(null); }}
               style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${visibility === v.key ? '#534AB7' : 'var(--border)'}`, background: visibility === v.key ? '#EEEDFE' : 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                 <i className={`ti ${v.icon}`} style={{ fontSize: 13, color: visibility === v.key ? '#534AB7' : 'var(--text-muted)' }} />
@@ -1018,48 +1070,86 @@ function PostChallengeModal({ onClose, onSuccess }) {
         </div>
       </div>
 
-      {/* Private: invite a specific user */}
+      {/* Private invite section */}
       {visibility === 'private' && (
         <div style={{ marginBottom: 14 }}>
-          <label style={S.label}>Invite a trader *</label>
+          {/* Sub-mode tabs: By person / By group */}
+          <div style={{ display: 'flex', gap: 0, marginBottom: 10, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            {[{ key: 'person', label: '👤 By person' }, { key: 'group', label: '👥 From a group' }].map((m, i) => (
+              <button key={m.key} onClick={() => { setPrivateMode(m.key); setInvitedUser(null); setInviteQuery(''); setExpandedGroupId(null); }}
+                style={{ flex: 1, padding: '8px 0', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', borderLeft: i > 0 ? '1px solid var(--border)' : 'none', background: privateMode === m.key ? '#534AB7' : 'var(--surface2)', color: privateMode === m.key ? '#fff' : 'var(--text-muted)', transition: 'all .15s' }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Already selected someone */}
           {invitedUser ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #534AB7', background: '#EEEDFE' }}>
-              <H2HAvatar userId={invitedUser.id} name={invitedUser.name} size={32} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: '#534AB7' }}>{invitedUser.name}</div>
-                <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: '#7c3aed' }}>@{invitedUser.username}</div>
-              </div>
-              <button onClick={() => { setInvitedUser(null); setInviteQuery(''); }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontSize: 18, lineHeight: 1 }}>×</button>
-            </div>
-          ) : (
+            <SelectedChip />
+          ) : privateMode === 'person' ? (
+            /* ── By person: search with friends-first default ── */
             <div style={{ position: 'relative' }}>
               <input
                 value={inviteQuery}
                 onChange={e => setInviteQuery(e.target.value)}
-                placeholder="Search by name or @username..."
+                placeholder="Search by name or @username…"
                 style={{ ...S.input, width: '100%', boxSizing: 'border-box' }}
                 autoFocus
               />
-              {(inviteResults.length > 0 || inviteSearching) && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 999, maxHeight: 220, overflowY: 'auto', marginTop: 4 }}>
-                  {inviteSearching
+              {/* Dropdown: search results or friends list */}
+              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginTop: 6, maxHeight: 220, overflowY: 'auto', background: 'var(--surface)' }}>
+                {inviteQuery.trim() ? (
+                  inviteSearching
                     ? <div style={{ padding: 12, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Searching…</div>
-                    : inviteResults.map(u => (
-                      <div key={u.id} onClick={() => { setInvitedUser({ id: u.id, name: u.displayName || u.name || 'Trader', username: u.username || '' }); setInviteQuery(''); setInviteResults([]); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <H2HAvatar userId={u.id} name={u.displayName || u.name} size={32} />
-                        <div>
-                          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{u.displayName || u.name}</div>
-                          {u.username && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>@{u.username}</div>}
+                    : inviteResults.length === 0
+                    ? <div style={{ padding: 12, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>No users found</div>
+                    : inviteResults.map((u, i) => <UserRow key={u.id} u={u} isLast={i === inviteResults.length - 1} />)
+                ) : (
+                  <>
+                    {friends.length > 0 && (
+                      <div style={{ padding: '6px 14px 4px', fontFamily: 'var(--font)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', background: 'var(--surface2)' }}>Following</div>
+                    )}
+                    {friends.length === 0
+                      ? <div style={{ padding: 12, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Search for a trader above, or follow people to see them here</div>
+                      : friends.map((u, i) => <UserRow key={u.id} u={{ ...u, isFriend: true }} isLast={i === friends.length - 1} />)
+                    }
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* ── By group: pick a group → pick a member ── */
+            <div>
+              {groups.length === 0
+                ? <div style={{ padding: '12px 0', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>You're not in any groups yet.</div>
+                : groups.map(g => {
+                  const isOpen = expandedGroupId === g.id;
+                  const members = groupMembers[g.id] || [];
+                  return (
+                    <div key={g.id} style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: 6, overflow: 'hidden' }}>
+                      <button onClick={() => isOpen ? setExpandedGroupId(null) : loadGroupMembers(g.id)}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: isOpen ? '#EEEDFE' : 'var(--surface)', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
+                          {g.emoji || '👥'}
                         </div>
-                      </div>
-                    ))
-                  }
-                </div>
-              )}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: isOpen ? '#534AB7' : 'var(--text)' }}>{g.name}</div>
+                          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{g._count?.members || 0} members</div>
+                        </div>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform .15s' }}>▼</span>
+                      </button>
+                      {isOpen && (
+                        <div style={{ maxHeight: 180, overflowY: 'auto', borderTop: '1px solid var(--border)' }}>
+                          {membersLoading && !members.length
+                            ? <div style={{ padding: 12, fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading members…</div>
+                            : members.map((m, i) => <UserRow key={m.id} u={m} isLast={i === members.length - 1} />)
+                          }
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              }
             </div>
           )}
         </div>
@@ -1116,7 +1206,7 @@ function PostChallengeModal({ onClose, onSuccess }) {
 
       <WarnBox>
         {visibility === 'private'
-          ? 'Private challenge — only the invited trader can see and accept it. It won\'t appear in Browse.'
+          ? "Private challenge — only the invited trader can see and accept it. Won't appear in Browse."
           : type === 'paid'
           ? 'Matched to your league tier (±1 league). Entry stakes held in escrow until match completion. Verified broker required.'
           : 'Posted publicly to Browse. Anyone in your league tier (±1) can accept.'}

@@ -29,14 +29,31 @@ export async function POST(request) {
   }
 }
 
+// GET ?list=true → list of users the current user follows
 // GET ?userId=id → follower/following counts + isFollowing for current user
 export async function GET(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId') || session.user.id
 
+    // Return the list of users the current user follows
+    if (searchParams.get('list')) {
+      const rows = await prisma.userFollow.findMany({
+        where: { followerId: session.user.id },
+        include: { following: { select: { id: true, name: true, username: true, displayName: true } } },
+        orderBy: { createdAt: 'desc' },
+      })
+      return Response.json({
+        following: rows.map(r => ({
+          id: r.following.id,
+          name: r.following.displayName || r.following.name || 'Trader',
+          username: r.following.username || '',
+        }))
+      })
+    }
+
+    const userId = searchParams.get('userId') || session.user.id
     const [followers, following, isFollowingRow] = await Promise.all([
       prisma.userFollow.count({ where: { followingId: userId } }),
       prisma.userFollow.count({ where: { followerId: userId } }),
