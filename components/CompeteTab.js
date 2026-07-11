@@ -3247,4 +3247,23 @@ export default function CompeteTab({ currentUserId, externalTab }) {
 
       {/* Main content */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Header — hidden for H2H and G
+        {/* Header — hidden for H2H and Group which have their own sidebar title */}
+        {meta && resolvedTab !== 'h2h' && resolvedTab !== 'group' && (
+          <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
+          </div>
+        )}
+
+        {/* Tab content */}
+        <div style={{ flex: 1, overflow: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'hidden' : 'auto', display: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'flex' : 'block' }}>
+          {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
+          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+          {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+          {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
+        </div>
+      </div>
+    </div>
+  );
+}

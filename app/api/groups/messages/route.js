@@ -47,4 +47,8 @@ export async function POST(request) {
       channelId: message.channelId,
       content: message.content,
       createdAt: message.createdAt,
-      authorName: message.user?.dis
+      authorName: message.user?.displayName || message.user?.username || message.user?.name || 'Trader',
+      authorImage: `/api/avatar/${message.userId}`,
+    }
+  })
+}

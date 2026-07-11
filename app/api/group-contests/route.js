@@ -149,7 +149,7 @@ export async function POST(request) {
 
       if (teamFormat && parsedTeamSize) {
         const TEAM_COLORS = ['#3B82F6','#EF4444','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#84CC16']
-        const TEAM_EMOJIS = ['🔵','🔴','🟢','🟡','🟣','🩷','🩵','🟩']
+        const TEAM_EMOJIS = ['🔵','🔴','🟢','🟡','🟣','🪧','🪦','🟩']
         const teamCount = parsedMaxTeams || 2
         const teamData = teamCount === 2
           ? [
@@ -190,4 +190,18 @@ export async function DELETE(request) {
     if (!contest) return Response.json({ error: 'Not found' }, { status: 404 })
     if (contest.creatorId !== uid) return Response.json({ error: 'Only the creator can delete this contest' }, { status: 403 })
 
-    await prisma.tradeCall.deleteMany({ where: { tournamentId: contestId
+    await prisma.tradeCall.deleteMany({ where: { tournamentId: contestId } })
+    await prisma.competitionPosition.deleteMany({ where: { competitionId: contestId } })
+    await prisma.competitionOrder.deleteMany({ where: { competitionId: contestId } })
+    await prisma.competitionPortfolio.deleteMany({ where: { competitionId: contestId } })
+    await prisma.tournamentEntry.deleteMany({ where: { tournamentId: contestId } })
+    await prisma.contestTeam.deleteMany({ where: { contestId } })
+    await prisma.tournament.delete({ where: { id: contestId } })
+
+    return Response.json({ success: true })
+  } catch (e) {
+    console.error('[DELETE /api/group-contests]', e)
+    return Response.json({ error: e.message }, { status: 500 })
+  }
+}
+                                                          
