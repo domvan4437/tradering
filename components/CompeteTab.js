@@ -851,6 +851,195 @@ function InviteCard({ match, onAccept, onDecline, onOpenProfile }) {
   );
 }
 
+// ─── helpers used by GroupContestCard ────────────────────────────────────────
+function teamInitials(name) {
+  if (!name) return '?';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + (words[1][0] || '')).toUpperCase();
+}
+function contestTiming(contest) {
+  if (contest.status === 'active') return null; // shown separately
+  if (!contest.endDate) return 'Open';
+  const diff = new Date(contest.endDate) - Date.now();
+  if (diff <= 0) return 'Ended';
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  return d > 0 ? `${d}d ${h}h left` : `${h}h left`;
+}
+
+// team avatar circle used in cards
+function TeamAvatar({ name, color, size = 44 }) {
+  const colors = ['#534AB7','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#db2777'];
+  const bg = color || colors[(name || '').charCodeAt(0) % colors.length];
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.33, fontWeight: 700, color: '#fff', flexShrink: 0, letterSpacing: '-0.02em' }}>
+      {teamInitials(name)}
+    </div>
+  );
+}
+
+function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter }) {
+  const [showModal, setShowModal] = useState(false);
+  const [preview, setPreview] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/group-contests/preview?id=${contest.id}`)
+      .then(r => r.json())
+      .then(d => setPreview(d))
+      .catch(() => {});
+  }, [contest.id]);
+
+  const isLive    = contest.status === 'active';
+  const isTeam    = !!contest.teamFormat && contest.teamFormat !== 'none';
+  const teams     = preview?.teams || [];
+  const members   = preview?.members || [];
+  const timing    = contestTiming(contest);
+
+  // For non-team contests: group members by their teamName field (or treat all as flat list)
+  // For team contests: use teams array from preview
+
+  // Determine display mode: 2-slot (≤2 teams expected) vs ranked list (3+)
+  const maxTeams  = contest.maxTeams || (isTeam ? 2 : null);
+  const is2Slot   = isTeam && (!maxTeams || maxTeams === 2);
+  const teamA     = teams[0] || null;
+  const teamB     = teams[1] || null;
+  const hasOpenSlot = isTeam && teams.length < (maxTeams || 2);
+
+  const canJoin   = !contest.joined && (isTeam ? hasOpenSlot : true);
+  const stakeLabel = contest.buyIn > 0
+    ? `$${(contest.buyIn).toLocaleString()} stake${isTeam ? ' / team' : ''}`
+    : 'Free entry';
+
+  const pnlColor = v => v > 0 ? '#22c55e' : v < 0 ? '#ef4444' : 'var(--text-muted)';
+  const pnlFmt   = v => v === null || v === undefined ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+
+  const openPreview = () => setShowModal(true);
+
+  return (
+    <>
+      {showModal && (
+        <GroupPreviewModal
+          contest={contest}
+          onJoin={onJoin}
+          onClose={() => setShowModal(false)}
+          onOpenProfile={onOpenProfile}
+          onDelete={onDelete}
+        />
+      )}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {/* Card top */}
+        <div style={{ padding: '16px 18px 14px' }}>
+          {/* Row 1: asset badge + status */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'var(--font)', color: 'var(--text-muted)', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '3px 9px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {contest.asset || 'Any'}
+            </span>
+            {isLive ? (
+              <span style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: '#22c55e' }}>
+                ● Live{teams.length > 0 && !is2Slot ? ` · ${teams.length} teams` : ''}
+              </span>
+            ) : (
+              <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>
+                {timing}{teams.length > 1 && !is2Slot ? ` · ${teams.length} teams` : ''}
+              </span>
+            )}
+          </div>
+
+          {/* Card body */}
+          {is2Slot ? (
+            /* ── 2-slot: avatar VS avatar ── */
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              {/* Team A */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 90 }}>
+                {teamA
+                  ? <TeamAvatar name={teamA.name} color={teamA.color} size={52} />
+                  : <div style={{ width: 52, height: 52, borderRadius: '50%', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 20 }}>?</div>
+                }
+                {teamA ? (
+                  <>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamA.name}</div>
+                    {teamA.memberCount > 0 && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{teamA.memberCount} member{teamA.memberCount !== 1 ? 's' : ''}</div>}
+                    {isLive && <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(teamA.pnl) }}>{pnlFmt(teamA.pnl)}</div>}
+                  </>
+                ) : (
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>Open slot</div>
+                )}
+              </div>
+
+              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>VS</div>
+
+              {/* Team B */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 90 }}>
+                {teamB
+                  ? <TeamAvatar name={teamB.name} color={teamB.color} size={52} />
+                  : <div style={{ width: 52, height: 52, borderRadius: '50%', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 20 }}>?</div>
+                }
+                {teamB ? (
+                  <>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamB.name}</div>
+                    {teamB.memberCount > 0 && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{teamB.memberCount} member{teamB.memberCount !== 1 ? 's' : ''}</div>}
+                    {isLive && <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(teamB.pnl) }}>{pnlFmt(teamB.pnl)}</div>}
+                  </>
+                ) : (
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>Open slot</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* ── Multi-team: ranked list ── */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {teams.slice(0, 4).map((t, i) => (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                  <TeamAvatar name={t.name} color={t.color} size={28} />
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{t.name}</span>
+                  {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(t.pnl) }}>{pnlFmt(t.pnl)}</span>}
+                </div>
+              ))}
+              {hasOpenSlot && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 14, flexShrink: 0 }} />
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>?</div>
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Open slot</span>
+                </div>
+              )}
+              {/* No teams yet — show placeholder */}
+              {teams.length === 0 && !preview && (
+                <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>
+                  {contest.memberCount > 0 ? `${contest.memberCount} member${contest.memberCount !== 1 ? 's' : ''} joined` : 'No teams yet — be the first'}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Footer meta */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>
+              {contest.description ? contest.description.slice(0, 40) + (contest.description.length > 40 ? '…' : '') : `by ${contest.creatorName}`}
+            </span>
+            <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{stakeLabel}</span>
+          </div>
+        </div>
+
+        {/* Action button */}
+        <div style={{ borderTop: '1px solid var(--border)', padding: '12px 18px' }}>
+          {contest.joined ? (
+            <button onClick={() => onEnter?.(contest)} style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>
+              Watch contest
+            </button>
+          ) : (
+            <button onClick={openPreview} style={{ width: '100%', padding: '11px', borderRadius: 10, border: 'none', background: '#111827', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
+              Join with your team
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Keep old ContestCard name as alias (used in GroupPreviewModal etc.)
 function ContestCard({ contest, onJoin, onOpenProfile, onDelete }) {
   const [preview, setPreview] = useState(false);
   return (
@@ -2221,7 +2410,11 @@ function GroupTab({ currentUserId, onOpenProfile }) {
 
   // Show ContestDetailView (paper trading) if a joined contest is selected
   if (selectedContest) {
-    return <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} currentUserId={currentUserId} />;
+    return (
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} currentUserId={currentUserId} />
+      </div>
+    );
   }
 
   const handleJoin = async (contestId) => {
@@ -2235,74 +2428,134 @@ function GroupTab({ currentUserId, onOpenProfile }) {
     fetchData();
   };
 
-  const filteredContests = (data.contests || []).filter(c => {
+  const ASSETS = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
+  const myContestCount = (data.myContests || []).length;
+
+  const filteredBrowse = (data.contests || []).filter(c => {
     const matchAsset = assetFilter === 'Any' || c.asset === assetFilter || c.asset === 'Any';
     const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.creatorName.toLowerCase().includes(search.toLowerCase());
     return matchAsset && matchSearch;
   });
 
+  const filteredMine = (() => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const assetOk = c => assetFilter === 'Any' || c.asset === assetFilter || c.asset === 'Any';
+    const searchOk = c => !search || c.name.toLowerCase().includes(search.toLowerCase());
+    return {
+      active: (data.myContests || []).filter(c => (!c.endDate || new Date(c.endDate).getTime() > cutoff) && assetOk(c) && searchOk(c)),
+      ended:  (data.myContests || []).filter(c => c.endDate && new Date(c.endDate).getTime() <= cutoff && assetOk(c) && searchOk(c)),
+    };
+  })();
+
+  const sidebarNav = [
+    { key: 'browse',     label: 'Browse',      badge: null },
+    { key: 'mycontests', label: 'My contests',  badge: myContestCount > 0 ? myContestCount : null },
+    { key: 'invites',    label: 'Invites',      badge: null },
+  ];
+
+  const renderGrid = (items, emptyIcon, emptyTitle, emptySub) => (
+    loading ? (
+      <div style={{ textAlign: 'center', padding: '60px 0', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+    ) : items.length === 0 ? (
+      <EmptyState icon={emptyIcon} title={emptyTitle} sub={emptySub} btnLabel="Create contest" onBtnClick={() => setShowModal(true)} />
+    ) : (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {items.map(c => (
+          <GroupContestCard
+            key={c.id}
+            contest={c}
+            onJoin={handleJoin}
+            onOpenProfile={onOpenProfile}
+            onDelete={handleDeleteContest}
+            onEnter={c.joined ? setSelectedContest : null}
+          />
+        ))}
+      </div>
+    )
+  );
+
   return (
-    <div style={{ padding: 18 }}>
+    <div style={{ display: 'flex', flex: 1, minHeight: 0, width: '100%' }}>
       {showModal && <CreateGroupModal onClose={() => setShowModal(false)} onSuccess={fetchData} />}
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-        <SearchBar placeholder="Search by contest name or @creator..." value={search} onChange={setSearch} />
-        <button onClick={() => setShowModal(true)} style={S.primaryBtn}>
-          <i className="ti ti-plus" aria-hidden="true" /> Create contest
+      {/* ── Sidebar ── */}
+      <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto' }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Group Contest</div>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Compete with a group</div>
+
+        <button onClick={() => setShowModal(true)}
+          style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#111827', color: '#fff', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <i className="ti ti-plus" /> + Create contest
         </button>
+
+        {/* Nav items */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 24 }}>
+          {sidebarNav.map(item => (
+            <button key={item.key} onClick={() => setInner(item.key)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, border: 'none', background: inner === item.key ? 'var(--surface2)' : 'transparent', fontFamily: 'var(--font)', fontSize: 13, fontWeight: inner === item.key ? 600 : 400, color: inner === item.key ? 'var(--text)' : 'var(--text-muted)', cursor: 'pointer', textAlign: 'left' }}>
+              {item.label}
+              {item.badge && (
+                <span style={{ background: '#534AB7', color: '#fff', borderRadius: 20, minWidth: 20, height: 20, padding: '0 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{item.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Market filter */}
+        <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 8 }}>Market</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {ASSETS.map(a => (
+            <button key={a} onClick={() => setAssetFilter(a)}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: 'none', textAlign: 'left', fontFamily: 'var(--font)', fontSize: 13, cursor: 'pointer', background: assetFilter === a ? '#111827' : 'transparent', color: assetFilter === a ? '#fff' : 'var(--text-muted)', fontWeight: assetFilter === a ? 600 : 400 }}>
+              {a}
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>Search by contest name or @creator username</div>
 
-      <InnerTabs
-        tabs={[['browse', `Browse${data.contests?.length ? ` (${data.contests.length})` : ''}`], ['mycontests', `My contests${data.myContests?.length ? ` (${data.myContests.length})` : ''}`]]}
-        active={inner}
-        onChange={setInner}
-      />
+      {/* ── Main content ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+        <div style={{ marginBottom: 20 }}>
+          <SearchBar placeholder="Search by contest name or @creator..." value={search} onChange={setSearch} />
+        </div>
 
-      {inner === 'browse' && (
-        <>
-          <AssetPills active={assetFilter} onChange={setAssetFilter} />
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
-          ) : filteredContests.length === 0 ? (
-            <EmptyState icon="ti-users" title="No open contests" sub="Create one or wait for others to post" btnLabel="Create contest" onBtnClick={() => setShowModal(true)} />
+        {inner === 'browse' && renderGrid(
+          filteredBrowse,
+          'ti-users', 'No open contests', 'Create one or wait for others to post'
+        )}
+
+        {inner === 'mycontests' && (
+          loading ? (
+            <div style={{ textAlign: 'center', padding: '60px 0', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
+          ) : filteredMine.active.length === 0 && filteredMine.ended.length === 0 ? (
+            <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />
           ) : (
-            filteredContests.map(c => (
-              <ContestCard key={c.id} contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} />
-            ))
-          )}
-        </>
-      )}
-
-      {inner === 'mycontests' && (() => {
-        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-        const active = (data.myContests || []).filter(c => !c.endDate || new Date(c.endDate).getTime() > cutoff);
-        const recentlyEnded = (data.myContests || []).filter(c => c.endDate && new Date(c.endDate).getTime() <= cutoff);
-        return loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</div>
-        ) : active.length === 0 && recentlyEnded.length === 0 ? (
-          <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />
-        ) : (
-          <>
-            {active.length === 0 && <EmptyState icon="ti-layout-list" title="No active contests" sub="Join or create a contest to get started" />}
-            {active.map(c => (
-              <div key={c.id} onClick={() => c.joined && setSelectedContest(c)} style={{ cursor: c.joined ? 'pointer' : 'default' }}>
-                <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} />
-              </div>
-            ))}
-            {recentlyEnded.length > 0 && (
-              <>
-                <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '14px 0 6px' }}>Recently ended — moving to history soon</div>
-                {recentlyEnded.map(c => (
-                  <div key={c.id} style={{ opacity: 0.55, pointerEvents: 'none' }}>
-                    <ContestCard contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} />
+            <>
+              {filteredMine.active.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  {filteredMine.active.map(c => (
+                    <GroupContestCard key={c.id} contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} onEnter={c.joined ? setSelectedContest : null} />
+                  ))}
+                </div>
+              )}
+              {filteredMine.ended.length > 0 && (
+                <>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '20px 0 10px' }}>Recently ended</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, opacity: 0.55, pointerEvents: 'none' }}>
+                    {filteredMine.ended.map(c => (
+                      <GroupContestCard key={c.id} contest={c} onJoin={handleJoin} onOpenProfile={onOpenProfile} onDelete={handleDeleteContest} />
+                    ))}
                   </div>
-                ))}
-              </>
-            )}
-          </>
-        );
-      })()}
+                </>
+              )}
+            </>
+          )
+        )}
+
+        {inner === 'invites' && (
+          <EmptyState icon="ti-mail" title="No invites" sub="When someone invites you to a private contest, it'll appear here" />
+        )}
+      </div>
     </div>
   );
 }
@@ -2528,8 +2781,8 @@ export default function CompeteTab({ currentUserId, externalTab }) {
 
       {/* Main content */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Header — hidden for H2H which has its own sidebar title */}
-        {meta && resolvedTab !== 'h2h' && (
+        {/* Header — hidden for H2H and Group which have their own sidebar title */}
+        {meta && resolvedTab !== 'h2h' && resolvedTab !== 'group' && (
           <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
             <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
@@ -2537,7 +2790,7 @@ export default function CompeteTab({ currentUserId, externalTab }) {
         )}
 
         {/* Tab content */}
-        <div style={{ flex: 1, overflow: resolvedTab === 'h2h' ? 'hidden' : 'auto', display: resolvedTab === 'h2h' ? 'flex' : 'block' }}>
+        <div style={{ flex: 1, overflow: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'hidden' : 'auto', display: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'flex' : 'block' }}>
           {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
           {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
           {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
