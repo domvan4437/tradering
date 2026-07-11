@@ -64,17 +64,17 @@ function ScoreBar({ myPnL, theirPnL, theirName }) {
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
         <div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>YOU</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 24, fontWeight: 700, color: pnlColor(myPnL) }}>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>YOU</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 32, fontWeight: 700, color: pnlColor(myPnL) }}>
             {pnlLabel(myPnL)}
           </div>
         </div>
-        <div style={{ alignSelf: 'center', fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>vs</div>
+        <div style={{ alignSelf: 'center', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>vs</div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{theirName || 'Opponent'}</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 24, fontWeight: 700, color: pnlColor(theirPnL) }}>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>{theirName || 'Opponent'}</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 32, fontWeight: 700, color: pnlColor(theirPnL) }}>
             {pnlLabel(theirPnL)}
           </div>
         </div>
@@ -235,14 +235,14 @@ function TradeCard({ trade }) {
     <div style={{
       background: 'var(--surface)',
       border: `1px solid ${isOpen ? 'var(--border)' : won ? '#22c55e33' : '#ef444433'}`,
-      borderRadius: 10,
-      padding: '12px 14px',
-      marginBottom: 8,
+      borderRadius: 12,
+      padding: '14px 18px',
+      marginBottom: 10,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         {/* Direction badge */}
         <span style={{
-          padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, fontFamily: 'var(--font)',
+          padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
           background: trade.direction === 'long' ? '#dcfce7' : '#fee2e2',
           color: trade.direction === 'long' ? '#16a34a' : '#dc2626',
           display: 'flex', alignItems: 'center', gap: 3,
@@ -251,32 +251,32 @@ function TradeCard({ trade }) {
           {trade.direction.toUpperCase()}
         </span>
 
-        <span style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{trade.symbol}</span>
+        <span style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{trade.symbol}</span>
 
         {isOpen ? (
-          <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, fontFamily: 'var(--font)', background: '#ede9fe', color: '#7c3aed' }}>
+          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, fontFamily: 'var(--font)', background: '#ede9fe', color: '#7c3aed' }}>
             OPEN
           </span>
         ) : (
-          <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, fontFamily: 'var(--font)', background: won ? '#dcfce7' : '#fee2e2', color: won ? '#16a34a' : '#dc2626' }}>
+          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, fontFamily: 'var(--font)', background: won ? '#dcfce7' : '#fee2e2', color: won ? '#16a34a' : '#dc2626' }}>
             {won ? '▲ WIN' : '▼ LOSS'}
           </span>
         )}
 
         {/* Platform badge */}
         {trade.connection?.broker && (
-          <span style={{ padding: '2px 7px', borderRadius: 20, fontSize: 10, fontFamily: 'var(--font)', background: 'var(--surface2)', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+          <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontFamily: 'var(--font)', background: 'var(--surface2)', color: 'var(--text-muted)', marginLeft: 'auto' }}>
             <i className={`ti ${brokerIcon(trade.connection.broker)}`} style={{ marginRight: 3 }} />
             {trade.connection.label || trade.connection.broker}
           </span>
         )}
 
-        <span style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: pnlColor(pnl), marginLeft: trade.connection?.broker ? 0 : 'auto' }}>
+        <span style={{ fontFamily: 'var(--font)', fontSize: 17, fontWeight: 700, color: pnlColor(pnl), marginLeft: trade.connection?.broker ? 0 : 'auto' }}>
           {pnlLabel(pnl)}{isOpen ? ' unreal.' : ''}
         </span>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
         {[
           { label: 'Entry', val: trade.entryPrice },
           trade.exitPrice ? { label: 'Exit', val: trade.exitPrice } : null,
@@ -284,15 +284,15 @@ function TradeCard({ trade }) {
           { label: 'Qty', val: trade.quantity },
         ].filter(Boolean).map(({ label, val }) => (
           <div key={label}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{label}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
               {label === 'Qty' ? val : (typeof val === 'number' ? (val < 10 ? val.toFixed(5) : val.toFixed(2)) : val)}
             </div>
           </div>
         ))}
         <div style={{ marginLeft: 'auto' }}>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{isOpen ? 'Opened' : 'Closed'}</div>
-          <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>{timeAgo(isOpen ? trade.openedAt : trade.closedAt)}</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>{isOpen ? 'Opened' : 'Closed'}</div>
+          <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>{timeAgo(isOpen ? trade.openedAt : trade.closedAt)}</div>
         </div>
       </div>
     </div>
@@ -314,13 +314,13 @@ function AnalyticsPanel({ analytics, label }) {
     { l: 'Worst', v: pnlLabel(analytics.worstTrade), c: pnlColor(analytics.worstTrade) },
   ]
   return (
-    <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '12px 16px', marginBottom: 12 }}>
-      {label && <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>{label}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+    <div style={{ background: 'var(--surface2)', borderRadius: 12, padding: '16px 20px', marginBottom: 14 }}>
+      {label && <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>{label}</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
         {stats.map(({ l, v, c }) => (
           <div key={l}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>{l}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: c || 'var(--text)' }}>{v}</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 3 }}>{l}</div>
+            <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: c || 'var(--text)' }}>{v}</div>
           </div>
         ))}
       </div>
@@ -372,9 +372,9 @@ export default function MatchDetailView({ matchId, onBack, onDelete }) {
   const theirPnL = opponent?.analytics?.totalPnL ?? 0
 
   return (
-    <div style={{ paddingBottom: 32, maxWidth: 860, margin: '0 auto', width: '100%' }}>
+    <div style={{ paddingBottom: 32, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
       {/* Back + refresh */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px 10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 28px 12px' }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#534AB7', fontFamily: 'var(--font)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 5, padding: 0 }}>
           <i className="ti ti-arrow-left" /> Back
         </button>
@@ -399,28 +399,28 @@ export default function MatchDetailView({ matchId, onBack, onDelete }) {
         )}
       </div>
 
-      <div style={{ padding: '0 18px' }}>
+      <div style={{ padding: '0 28px' }}>
         {/* Match header */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
             <div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 19, fontWeight: 700, color: 'var(--text)' }}>
                 {match.asset !== 'Any' ? `${match.asset} Challenge` : 'Open Challenge'}
-                {match.buyIn > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: '#f59e0b', fontWeight: 500 }}>${match.buyIn} stake</span>}
+                {match.buyIn > 0 && <span style={{ marginLeft: 10, fontSize: 14, color: '#f59e0b', fontWeight: 500 }}>${match.buyIn} stake</span>}
               </div>
-              {match.description && <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{match.description}</div>}
+              {match.description && <div style={{ fontFamily: 'var(--font)', fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>{match.description}</div>}
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20,
+                display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 20,
                 background: matchActive ? '#dcfce7' : matchWaiting ? '#fef9c3' : 'var(--surface2)',
                 color: matchActive ? '#16a34a' : matchWaiting ? '#ca8a04' : 'var(--text-muted)',
-                fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, marginBottom: 4,
+                fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, marginBottom: 5,
               }}>
                 <i className={`ti ti-${matchActive ? 'player-play' : matchWaiting ? 'clock' : 'check'}`} />
                 {matchActive ? 'LIVE' : matchWaiting ? 'WAITING' : 'ENDED'}
               </div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{timeLeft(match.endDate)}</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>{timeLeft(match.endDate)}</div>
             </div>
           </div>
 
@@ -428,21 +428,21 @@ export default function MatchDetailView({ matchId, onBack, onDelete }) {
             <>
               <ScoreBar myPnL={myPnL} theirPnL={theirPnL} theirName={opponentName} />
               {/* Quick stats */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px' }}>
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>
                     YOU · {me?.analytics?.wins ?? 0}W {me?.analytics?.losses ?? 0}L · {me?.analytics?.winRate ?? 0}% WR
                   </div>
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
                     {me?.analytics?.openTrades > 0 && <span style={{ color: '#7c3aed' }}>{me.analytics.openTrades} open · </span>}
                     {me?.analytics?.closedTrades ?? 0} closed
                   </div>
                 </div>
-                <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px' }}>
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
+                <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>
                     {opponentName} · {opponent?.analytics?.wins ?? 0}W {opponent?.analytics?.losses ?? 0}L · {opponent?.analytics?.winRate ?? 0}% WR
                   </div>
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
                     {opponent?.analytics?.openTrades > 0 && <span style={{ color: '#7c3aed' }}>{opponent.analytics.openTrades} open · </span>}
                     {opponent?.analytics?.closedTrades ?? 0} closed
                   </div>
@@ -454,7 +454,7 @@ export default function MatchDetailView({ matchId, onBack, onDelete }) {
 
         {/* Waiting state notice */}
         {matchWaiting && (
-          <div style={{ padding: '12px 16px', background: '#fef9c3', border: '1px solid #fde047', borderRadius: 10, marginBottom: 14, fontFamily: 'var(--font)', fontSize: 13, color: '#854d0e' }}>
+          <div style={{ padding: '14px 18px', background: '#fef9c3', border: '1px solid #fde047', borderRadius: 10, marginBottom: 16, fontFamily: 'var(--font)', fontSize: 14, color: '#854d0e' }}>
             <i className="ti ti-clock" style={{ marginRight: 6 }} />
             Waiting for an opponent to accept. Once the match goes live, {isPaid ? 'your verified broker trades will count toward the score.' : 'paper trades will count toward the score.'}
           </div>
@@ -475,15 +475,15 @@ export default function MatchDetailView({ matchId, onBack, onDelete }) {
         {isPaid && (
           <>
             {/* Tabs */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 14, overflowX: 'auto' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 16, overflowX: 'auto' }}>
               {[
                 ['mine', `My Trades${myTrades?.length ? ` (${myTrades.length})` : ''}`],
                 ['theirs', opponent ? `${opponentName.split(' ')[0]}'s Trades${theirTrades?.length ? ` (${theirTrades.length})` : ''}` : 'Opponent'],
                 ['analytics', 'Analytics'],
               ].map(([key, label]) => (
                 <button key={key} onClick={() => setTab(key)} style={{
-                  padding: '8px 14px',
-                  fontFamily: 'var(--font)', fontSize: 12,
+                  padding: '10px 18px',
+                  fontFamily: 'var(--font)', fontSize: 14,
                   fontWeight: tab === key ? 600 : 400,
                   color: tab === key ? '#534AB7' : 'var(--text-muted)',
                   background: 'none', border: 'none',
