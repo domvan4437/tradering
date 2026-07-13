@@ -880,6 +880,26 @@ function TeamAvatar({ name, color, size = 44 }) {
   );
 }
 
+// Profile picture with letter fallback
+function MemberAvatar({ name, image, size = 28 }) {
+  const [err, setErr] = React.useState(false);
+  if (image && !err) {
+    return (
+      <img
+        src={image}
+        alt={name}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+        onError={() => setErr(true)}
+      />
+    );
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(size * 0.43), fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+      {(name || '?')[0].toUpperCase()}
+    </div>
+  );
+}
+
 function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter }) {
   const [showModal, setShowModal] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
@@ -903,7 +923,12 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
 
   // Determine display mode: 2-slot (≤2 teams expected) vs ranked list (3+)
   const maxTeams  = contest.maxTeams || (isTeam ? 2 : null);
-  const is2Slot   = isTeam && (!maxTeams || maxTeams === 2);
+  // Use actual team count when preview loaded; fall back to maxTeams config
+  const is2Slot   = isTeam && (
+    teams.length === 2 ||
+    (teams.length === 0 && maxTeams === 2) ||
+    (teams.length === 1 && maxTeams === 2)
+  );
   const teamA     = teams[0] || null;
   const teamB     = teams[1] || null;
   const hasOpenSlot = isTeam && teams.length < (maxTeams || 2);
@@ -988,17 +1013,18 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
                 <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
                   <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{t.name}</span>
-                  {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(t.pnl) }}>{pnlFmt(t.pnl)}</span>}
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{t.memberCount} member{t.memberCount !== 1 ? 's' : ''}</span>
+                  {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(t.teamPnl) }}>{pnlFmt(t.teamPnl)}</span>}
                 </div>
               ))}
+              {teams.length > 4 && (
+                <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', paddingLeft: 24 }}>+{teams.length - 4} more teams</div>
+              )}
               {hasOpenSlot && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 14, flexShrink: 0 }} />
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>?</div>
-                  <span style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Open slot</span>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', paddingLeft: 24, marginTop: 2 }}>
+                  {maxTeams ? `${maxTeams - teams.length} slot${maxTeams - teams.length !== 1 ? 's' : ''} open` : 'Open to join'}
                 </div>
               )}
-              {/* No teams yet — show placeholder */}
               {teams.length === 0 && !preview && (
                 <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>
                   {contest.memberCount > 0 ? `${contest.memberCount} member${contest.memberCount !== 1 ? 's' : ''} joined` : 'No teams yet — be the first'}
@@ -1012,10 +1038,7 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
               {(preview?.members || []).slice(0, 4).map((m, i) => (
                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
-                  {m.avatar_url
-                    ? <img src={m.avatar_url} alt={m.name} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                    : null}
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#534AB7', display: m.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(m.name || '?')[0].toUpperCase()}</div>
+                  <MemberAvatar name={m.name} image={m.image} size={28} />
                   <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{m.name}</span>
                   {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(m.pnl) }}>{pnlFmt(m.pnl)}</span>}
                 </div>
