@@ -1884,7 +1884,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
 
 // ─── HOME TAB ─────────────────────────────────────────────────────────────────
 // ─── H2H TAB ──────────────────────────────────────────────────────────────────
-function H2HTab({ currentUserId, onOpenProfile }) {
+function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
   const [inner, setInner] = useState('browse');
   const [search, setSearch] = useState('');
   const [assetFilter, setAssetFilter] = useState('Any');
@@ -1966,7 +1966,7 @@ function H2HTab({ currentUserId, onOpenProfile }) {
 
       {/* ── Sidebar ── */}
       <div style={{ width:220, flexShrink:0, borderRight:'1px solid var(--border)', padding:'20px 16px', display:'flex', flexDirection:'column', gap:0, overflowY:'auto' }}>
-        <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Head to Head</div>
+        <div onClick={onSwitchToGroup} style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2, cursor:'pointer', userSelect:'none' }}>Head to Head <span style={{ fontSize:12, color:'#534AB7', fontWeight:500 }}>→ Group</span></div>
         <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Challenge traders 1v1</div>
 
         <button onClick={() => setShowModal(true)}
@@ -3177,22 +3177,9 @@ function RankingsTab({ currentUserId, onOpenProfile }) {
 function CompeteWrapper({ currentUserId, onOpenProfile }) {
   const [mode, setMode] = useState('h2h');
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        {[['h2h', 'Head to Head'], ['group', 'Group Contest']].map(([key, label]) => (
-          <button key={key} onClick={() => setMode(key)} style={{
-            padding: '11px 16px', background: 'none', border: 'none',
-            borderBottom: mode === key ? '2px solid #534AB7' : '2px solid transparent',
-            color: mode === key ? '#534AB7' : 'var(--text-muted)',
-            fontFamily: 'var(--font)', fontSize: 13, fontWeight: mode === key ? 600 : 400,
-            cursor: 'pointer', whiteSpace: 'nowrap',
-          }}>{label}</button>
-        ))}
-      </div>
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-        {mode === 'h2h'   && <H2HTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
-        {mode === 'group' && <GroupTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
-      </div>
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      {mode === 'h2h'   && <H2HTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} onSwitchToGroup={() => setMode('group')} />}
+      {mode === 'group' && <GroupTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
     </div>
   );
 }
