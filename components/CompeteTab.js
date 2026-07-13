@@ -1966,7 +1966,11 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
 
       {/* ── Sidebar ── */}
       <div style={{ width:220, flexShrink:0, borderRight:'1px solid var(--border)', padding:'20px 16px', display:'flex', flexDirection:'column', gap:0, overflowY:'auto' }}>
-        <div onClick={onSwitchToGroup} style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2, cursor:'pointer', userSelect:'none' }}>Head to Head <span style={{ fontSize:12, color:'#534AB7', fontWeight:500 }}>→ Group</span></div>
+        <div style={{ display:'flex', alignItems:'baseline', gap:5, marginBottom:2, userSelect:'none' }}>
+          <span style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)' }}>Singles</span>
+          <span style={{ fontFamily:'var(--font)', fontSize:16, color:'var(--text-muted)', fontWeight:400 }}>/</span>
+          <span onClick={onSwitchToGroup} style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text-muted)', cursor:'pointer' }} onMouseEnter={e=>e.target.style.color='#534AB7'} onMouseLeave={e=>e.target.style.color='var(--text-muted)'}>Group</span>
+        </div>
         <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Challenge traders 1v1</div>
 
         <button onClick={() => setShowModal(true)}
@@ -2747,7 +2751,7 @@ function ContestInviteModal({ contest, onClose }) {
               ))}
             </div>
           }
-          <WarnBox>The invite will be posted in the group's general channel. Members can join from Compete → Group Contest → Browse.</WarnBox>
+          <WarnBox>The invite will be posted in the group's general channel. Members can join from Compete → Group → Browse.</WarnBox>
           {error && <div style={{ margin: '8px 0', padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{error}</div>}
           <ModalFooter onCancel={onClose} onSubmit={handleSendToGroup} submitLabel={sending ? 'Sending…' : 'Send invite'} disabled={!selectedGroupId || sending} />
         </div>
@@ -2805,7 +2809,7 @@ function ContestInviteModal({ contest, onClose }) {
 }
 
 // ─── GROUP TAB ────────────────────────────────────────────────────────────────
-function GroupTab({ currentUserId, onOpenProfile }) {
+function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
   const [inner, setInner] = useState('browse');
   const [search, setSearch] = useState('');
   const [assetFilter, setAssetFilter] = useState('Any');
@@ -2896,7 +2900,11 @@ function GroupTab({ currentUserId, onOpenProfile }) {
 
       {/* ── Sidebar ── */}
       <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto' }}>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Group Contest</div>
+        <div style={{ display:'flex', alignItems:'baseline', gap:5, marginBottom:2, userSelect:'none' }}>
+          <span onClick={onSwitchToSingles} style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text-muted)', cursor:'pointer' }} onMouseEnter={e=>e.target.style.color='#534AB7'} onMouseLeave={e=>e.target.style.color='var(--text-muted)'}>Singles</span>
+          <span style={{ fontFamily:'var(--font)', fontSize:16, color:'var(--text-muted)', fontWeight:400 }}>/</span>
+          <span style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)' }}>Group</span>
+        </div>
         <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Compete with a group</div>
 
         <button onClick={() => setShowModal(true)}
@@ -3179,7 +3187,7 @@ function CompeteWrapper({ currentUserId, onOpenProfile }) {
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       {mode === 'h2h'   && <H2HTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} onSwitchToGroup={() => setMode('group')} />}
-      {mode === 'group' && <GroupTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
+      {mode === 'group' && <GroupTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} onSwitchToSingles={() => setMode('h2h')} />}
     </div>
   );
 }
@@ -3191,7 +3199,7 @@ const SIDEBAR_TABS = [
 ];
 
 const TAB_META = {
-  compete:  { label: 'Compete',   sub: 'Head to Head & Group Contests' },
+  compete:  { label: 'Compete',   sub: 'Singles & Group Contests' },
   rankings: { label: 'Rankings',  sub: 'Leaderboard & match history' },
 };
 
