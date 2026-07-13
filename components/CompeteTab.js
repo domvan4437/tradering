@@ -1883,64 +1883,6 @@ function CreateGroupModal({ onClose, onSuccess }) {
 }
 
 // ─── HOME TAB ─────────────────────────────────────────────────────────────────
-function HomeTab({ setActiveTab, currentUserId }) {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/challenges')
-      .then(r => r.json())
-      .then(d => setData(d))
-      .catch(() => {});
-  }, []);
-
-  const activeMatches = data?.myMatches?.length ?? 0;
-  const history = data?.history ?? [];
-  const wins = history.filter(m => m.won).length;
-  const winRate = history.length ? Math.round(wins / history.length * 100) : null;
-
-  return (
-    <div style={{ padding: 18 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
-        <StatCard label="Active matches" value={activeMatches} sub={activeMatches === 0 ? 'Start your first challenge' : `${activeMatches} ongoing`} />
-        <StatCard label="Win rate" value={winRate !== null ? `${winRate}%` : '—'} sub={history.length ? `${wins}W / ${history.length - wins}L` : 'No matches yet'} />
-        <StatCard label="Total matches" value={history.length || '—'} sub={history.length ? 'All time' : 'Connect broker to track'} />
-      </div>
-
-      <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 10 }}>Quick actions</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
-        {[
-          ['ti-swords',  'Challenge someone',   'Start a 1v1 match',       'h2h'],
-          ['ti-users',   'Join a group contest', 'Compete with a group',    'group'],
-          ['ti-trophy',  'View leaderboard',     'See top traders',         'leaderboard'],
-          ['ti-history', 'Match history',        'Review past trades',      'history'],
-        ].map(([icon, title, sub, tab]) => (
-          <div
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'border-color .15s' }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#7F77DD'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-          >
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <i className={`ti ${icon}`} style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{title}</div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 10 }}>Recent activity</div>
-      {history.length === 0
-        ? <EmptyState icon="ti-activity" title="No activity yet" sub="Your matches and results will appear here" />
-        : history.slice(0, 3).map(m => <HistoryCard key={m.id} match={m} currentUserId={currentUserId} />)
-      }
-    </div>
-  );
-}
-
 // ─── H2H TAB ──────────────────────────────────────────────────────────────────
 function H2HTab({ currentUserId, onOpenProfile }) {
   const [inner, setInner] = useState('browse');
@@ -3205,21 +3147,42 @@ function HistoryTab({ currentUserId }) {
   );
 }
 
+// ─── RANKINGS TAB ─────────────────────────────────────────────────────────────
+function RankingsTab({ currentUserId, onOpenProfile }) {
+  const [view, setView] = useState('leaderboard');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ display: 'flex', padding: '0 18px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        {[['leaderboard', '🏆 Leaderboard'], ['history', '🕐 History']].map(([key, label]) => (
+          <button key={key} onClick={() => setView(key)} style={{
+            padding: '11px 14px', background: 'none', border: 'none',
+            borderBottom: view === key ? '2px solid #534AB7' : '2px solid transparent',
+            color: view === key ? '#534AB7' : 'var(--text-muted)',
+            fontFamily: 'var(--font)', fontSize: 13, fontWeight: view === key ? 600 : 400,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>{label}</button>
+        ))}
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {view === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
+        {view === 'history'     && <HistoryTab currentUserId={currentUserId} />}
+      </div>
+    </div>
+  );
+}
+
+
 // ─── SIDEBAR ICONS ────────────────────────────────────────────────────────────
 const SIDEBAR_TABS = [
-  { key: 'home',        icon: 'ti-home',    label: 'Home' },
-  { key: 'h2h',         icon: 'ti-swords',  label: 'Head to Head' },
-  { key: 'group',       icon: 'ti-users',   label: 'Group Contest' },
-  { key: 'leaderboard', icon: 'ti-trophy',  label: 'Leaderboard' },
-  { key: 'history',     icon: 'ti-history', label: 'History' },
+  { key: 'h2h',      icon: 'ti-swords',  label: 'Head to Head' },
+  { key: 'group',    icon: 'ti-users',   label: 'Group Contest' },
+  { key: 'rankings', icon: 'ti-trophy',  label: 'Rankings' },
 ];
 
 const TAB_META = {
-  home:        { label: 'Home',          sub: 'Your competitive overview' },
-  h2h:         { label: 'Head to Head',  sub: 'Challenge traders 1v1' },
-  group:       { label: 'Group Contest', sub: 'Compete with a group' },
-  leaderboard: { label: 'Leaderboard',   sub: 'Top performers' },
-  history:     { label: 'History',       sub: 'Your past matches' },
+  h2h:      { label: 'Head to Head',  sub: 'Challenge traders 1v1' },
+  group:    { label: 'Group Contest', sub: 'Compete with a group' },
+  rankings: { label: 'Rankings',      sub: 'Leaderboard & match history' },
 };
 
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
@@ -3228,7 +3191,7 @@ function openProfile(slug) {
 }
 
 export default function CompeteTab({ currentUserId, externalTab }) {
-  const [activeTab, setActiveTab] = useState(externalTab || 'home');
+  const [activeTab, setActiveTab] = useState(externalTab || 'h2h');
   const resolvedTab = externalTab || activeTab;
   const meta = TAB_META[resolvedTab];
 
@@ -3264,12 +3227,10 @@ export default function CompeteTab({ currentUserId, externalTab }) {
         )}
 
         {/* Tab content */}
-        <div style={{ flex: 1, overflow: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'hidden' : 'auto', display: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'flex' : 'block' }}>
-          {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
-          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
+        <div style={{ flex: 1, overflow: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'hidden' : 'auto', display: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'flex' : (resolvedTab === 'rankings' ? 'flex' : 'block'), flexDirection: resolvedTab === 'rankings' ? 'column' : undefined }}>
+          {resolvedTab === 'h2h'      && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+          {resolvedTab === 'group'    && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+          {resolvedTab === 'rankings' && <RankingsTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
         </div>
       </div>
     </div>
