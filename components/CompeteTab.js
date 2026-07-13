@@ -951,41 +951,33 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
 
           {/* Card body */}
           {is2Slot ? (
-            /* ── 2-slot: avatar VS avatar ── */
+            /* ── 2-slot: name VS name (no avatars) ── */
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               {/* Team A */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 90 }}>
-                {teamA
-                  ? <TeamAvatar name={teamA.name} color={teamA.color} size={52} />
-                  : <div style={{ width: 52, height: 52, borderRadius: '50%', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 20 }}>?</div>
-                }
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1 }}>
                 {teamA ? (
                   <>
-                    <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamA.name}</div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamA.name}</div>
                     {teamA.memberCount > 0 && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{teamA.memberCount} member{teamA.memberCount !== 1 ? 's' : ''}</div>}
                     {isLive && <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(teamA.pnl) }}>{pnlFmt(teamA.pnl)}</div>}
                   </>
                 ) : (
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>Open slot</div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Open slot</div>
                 )}
               </div>
 
-              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>VS</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, padding: '0 12px', flexShrink: 0 }}>VS</div>
 
               {/* Team B */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 90 }}>
-                {teamB
-                  ? <TeamAvatar name={teamB.name} color={teamB.color} size={52} />
-                  : <div style={{ width: 52, height: 52, borderRadius: '50%', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 20 }}>?</div>
-                }
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1 }}>
                 {teamB ? (
                   <>
-                    <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamB.name}</div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamB.name}</div>
                     {teamB.memberCount > 0 && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{teamB.memberCount} member{teamB.memberCount !== 1 ? 's' : ''}</div>}
                     {isLive && <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(teamB.pnl) }}>{pnlFmt(teamB.pnl)}</div>}
                   </>
                 ) : (
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>Open slot</div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Open slot</div>
                 )}
               </div>
             </div>
@@ -995,7 +987,6 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
               {teams.slice(0, 4).map((t, i) => (
                 <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
-                  <TeamAvatar name={t.name} color={t.color} size={28} />
                   <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{t.name}</span>
                   {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(t.pnl) }}>{pnlFmt(t.pnl)}</span>}
                 </div>
@@ -1021,7 +1012,10 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
               {(preview?.members || []).slice(0, 4).map((m, i) => (
                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(m.name || '?')[0].toUpperCase()}</div>
+                  {m.avatar_url
+                    ? <img src={m.avatar_url} alt={m.name} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                    : null}
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#534AB7', display: m.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(m.name || '?')[0].toUpperCase()}</div>
                   <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{m.name}</span>
                   {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(m.pnl) }}>{pnlFmt(m.pnl)}</span>}
                 </div>
