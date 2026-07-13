@@ -882,7 +882,7 @@ function TeamAvatar({ name, color, size = 44 }) {
 
 // Profile picture with letter fallback
 function MemberAvatar({ name, image, size = 28 }) {
-  const [err, setErr] = React.useState(false);
+  const [err, setErr] = useState(false);
   if (image && !err) {
     return (
       <img
