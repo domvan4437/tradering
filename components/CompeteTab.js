@@ -1946,6 +1946,9 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
     { key: 'browse', label: 'Browse', badge: null },
     { key: 'mymatches', label: 'My matches', badge: myMatchCount > 0 ? myMatchCount : null },
     { key: 'invites', label: 'Invites', badge: inviteCount > 0 ? inviteCount : null },
+    null,
+    { key: 'leaderboard', label: 'Leaderboard', badge: null },
+    { key: 'history', label: 'History', badge: null },
   ];
 
   const renderGrid = (items, emptyTitle = 'No open challenges', emptySub = 'Be the first — post a challenge above') => (
@@ -1966,11 +1969,12 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
 
       {/* ── Sidebar ── */}
       <div style={{ width:220, flexShrink:0, borderRight:'1px solid var(--border)', padding:'20px 16px', display:'flex', flexDirection:'column', gap:0, overflowY:'auto' }}>
-        <div style={{ display:'flex', alignItems:'baseline', gap:5, marginBottom:2, userSelect:'none' }}>
-          <span style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)' }}>Singles</span>
-          <span style={{ fontFamily:'var(--font)', fontSize:16, color:'var(--text-muted)', fontWeight:400 }}>/</span>
-          <span onClick={onSwitchToGroup} style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text-muted)', cursor:'pointer' }} onMouseEnter={e=>e.target.style.color='#534AB7'} onMouseLeave={e=>e.target.style.color='var(--text-muted)'}>Group</span>
+        {/* Mode pill */}
+        <div style={{ display:'flex', background:'var(--surface2)', borderRadius:8, padding:3, gap:2, marginBottom:16 }}>
+          <button style={{ flex:1, padding:'5px 0', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'default' }}>Singles</button>
+          <button onClick={onSwitchToGroup} style={{ flex:1, padding:'5px 0', borderRadius:6, border:'none', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:400, cursor:'pointer' }}>Group</button>
         </div>
+        <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Singles</div>
         <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Challenge traders 1v1</div>
 
         <button onClick={() => setShowModal(true)}
@@ -1979,36 +1983,39 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
         </button>
 
         {/* Nav items */}
-        <div style={{ display:'flex', flexDirection:'column', gap:2, marginBottom:24 }}>
-          {sidebarNav.map(item => (
-            <button key={item.key} onClick={() => setInner(item.key)}
-              style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:8, border:'none', background: inner===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: inner===item.key ? 600 : 400, color: inner===item.key ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
-              {item.label}
-              {item.badge && (
-                <span style={{ background: item.key === 'invites' ? '#ef4444' : '#534AB7', color:'#fff', borderRadius:20, minWidth:20, height:20, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
-              )}
-            </button>
-          ))}
+        <div style={{ display:'flex', flexDirection:'column', gap:2, marginBottom:8 }}>
+          {sidebarNav.map((item, idx) => item === null
+            ? <div key={idx} style={{ height:1, background:'var(--border)', margin:'6px 0' }} />
+            : <button key={item.key} onClick={() => setInner(item.key)}
+                style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:8, border:'none', background: inner===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: inner===item.key ? 600 : 400, color: inner===item.key ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
+                {item.label}
+                {item.badge && (
+                  <span style={{ background: item.key === 'invites' ? '#ef4444' : '#534AB7', color:'#fff', borderRadius:20, minWidth:20, height:20, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
+                )}
+              </button>
+          )}
         </div>
 
-        {/* Market filter */}
-        <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:8 }}>Market</div>
-        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          {ASSETS.map(a => (
-            <button key={a} onClick={() => setAssetFilter(a)}
-              style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'none', background: assetFilter===a ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 600 : 400, color: assetFilter===a ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
-              {a}
-            </button>
-          ))}
-        </div>
+        {inner !== 'leaderboard' && inner !== 'history' && (<>
+          <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:8, marginTop:8 }}>Market</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            {ASSETS.map(a => (
+              <button key={a} onClick={() => setAssetFilter(a)}
+                style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'none', background: assetFilter===a ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 600 : 400, color: assetFilter===a ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
+                {a}
+              </button>
+            ))}
+          </div>
+        </>)}
       </div>
 
       {/* ── Main content ── */}
-      <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
-        {/* Search bar */}
-        <div style={{ marginBottom:20 }}>
-          <SearchBar placeholder="Search by trader name or @username..." value={search} onChange={setSearch} />
-        </div>
+      <div style={{ flex:1, overflowY:'auto', padding: (inner==='leaderboard'||inner==='history') ? 0 : '20px 24px' }}>
+        {inner !== 'leaderboard' && inner !== 'history' && (
+          <div style={{ marginBottom:20 }}>
+            <SearchBar placeholder="Search by trader name or @username..." value={search} onChange={setSearch} />
+          </div>
+        )}
 
         {inner === 'browse' && renderGrid(
           filteredOpen.map(m => <ChallengeCard key={m.id} match={m} onAccept={handleAccept} onOpenProfile={onOpenProfile} />)
@@ -2056,6 +2063,8 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
             </div>
           )
         )}
+        {inner === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
+        {inner === 'history' && <HistoryTab currentUserId={currentUserId} />}
       </div>
     </div>
   );
@@ -2871,6 +2880,9 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
     { key: 'browse',     label: 'Browse',      badge: null },
     { key: 'mycontests', label: 'My contests',  badge: myContestCount > 0 ? myContestCount : null },
     { key: 'invites',    label: 'Invites',      badge: null },
+    null,
+    { key: 'leaderboard', label: 'Leaderboard', badge: null },
+    { key: 'history',     label: 'History',     badge: null },
   ];
 
   const renderGrid = (items, emptyIcon, emptyTitle, emptySub) => (
@@ -2900,11 +2912,12 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
 
       {/* ── Sidebar ── */}
       <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto' }}>
-        <div style={{ display:'flex', alignItems:'baseline', gap:5, marginBottom:2, userSelect:'none' }}>
-          <span onClick={onSwitchToSingles} style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text-muted)', cursor:'pointer' }} onMouseEnter={e=>e.target.style.color='#534AB7'} onMouseLeave={e=>e.target.style.color='var(--text-muted)'}>Singles</span>
-          <span style={{ fontFamily:'var(--font)', fontSize:16, color:'var(--text-muted)', fontWeight:400 }}>/</span>
-          <span style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)' }}>Group</span>
+        {/* Mode pill */}
+        <div style={{ display:'flex', background:'var(--surface2)', borderRadius:8, padding:3, gap:2, marginBottom:16 }}>
+          <button onClick={onSwitchToSingles} style={{ flex:1, padding:'5px 0', borderRadius:6, border:'none', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:400, cursor:'pointer' }}>Singles</button>
+          <button style={{ flex:1, padding:'5px 0', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'default' }}>Group</button>
         </div>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Group Contest</div>
         <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Compete with a group</div>
 
         <button onClick={() => setShowModal(true)}
@@ -2914,15 +2927,16 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
 
         {/* Nav items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 24 }}>
-          {sidebarNav.map(item => (
-            <button key={item.key} onClick={() => setInner(item.key)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, border: 'none', background: inner === item.key ? 'var(--surface2)' : 'transparent', fontFamily: 'var(--font)', fontSize: 13, fontWeight: inner === item.key ? 600 : 400, color: inner === item.key ? 'var(--text)' : 'var(--text-muted)', cursor: 'pointer', textAlign: 'left' }}>
-              {item.label}
-              {item.badge && (
-                <span style={{ background: '#534AB7', color: '#fff', borderRadius: 20, minWidth: 20, height: 20, padding: '0 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{item.badge}</span>
-              )}
-            </button>
-          ))}
+          {sidebarNav.map((item, idx) => item === null
+            ? <div key={idx} style={{ height:1, background:'var(--border)', margin:'6px 0' }} />
+            : <button key={item.key} onClick={() => setInner(item.key)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, border: 'none', background: inner === item.key ? 'var(--surface2)' : 'transparent', fontFamily: 'var(--font)', fontSize: 13, fontWeight: inner === item.key ? 600 : 400, color: inner === item.key ? 'var(--text)' : 'var(--text-muted)', cursor: 'pointer', textAlign: 'left' }}>
+                {item.label}
+                {item.badge && (
+                  <span style={{ background: '#534AB7', color: '#fff', borderRadius: 20, minWidth: 20, height: 20, padding: '0 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{item.badge}</span>
+                )}
+              </button>
+          )}
         </div>
 
         {/* Market filter */}
@@ -2938,10 +2952,12 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
       </div>
 
       {/* ── Main content ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-        <div style={{ marginBottom: 20 }}>
-          <SearchBar placeholder="Search by contest name or @creator..." value={search} onChange={setSearch} />
-        </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: (inner==='leaderboard'||inner==='history') ? 0 : '20px 24px' }}>
+        {inner !== 'leaderboard' && inner !== 'history' && (
+          <div style={{ marginBottom: 20 }}>
+            <SearchBar placeholder="Search by contest name or @creator..." value={search} onChange={setSearch} />
+          </div>
+        )}
 
         {inner === 'browse' && renderGrid(
           filteredBrowse,
@@ -2979,6 +2995,8 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
         {inner === 'invites' && (
           <EmptyState icon="ti-mail" title="No invites" sub="When someone invites you to a private contest, it'll appear here" />
         )}
+        {inner === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
+        {inner === 'history' && <HistoryTab currentUserId={currentUserId} />}
       </div>
     </div>
   );
@@ -3209,47 +3227,9 @@ function openProfile(slug) {
 }
 
 export default function CompeteTab({ currentUserId, externalTab }) {
-  const [activeTab, setActiveTab] = useState(externalTab || 'compete');
-  const resolvedTab = externalTab || activeTab;
-  const meta = TAB_META[resolvedTab];
-
   return (
     <div style={{ display: 'flex', height: '100%', fontFamily: 'var(--font)' }}>
-      {/* Sidebar */}
-      <div style={{ width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 4, borderRight: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
-        {SIDEBAR_TABS.map(t => (
-          <div
-            key={t.key}
-            title={t.label}
-            onClick={() => setActiveTab(t.key)}
-            style={{
-              width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'background 0.15s',
-              background: resolvedTab === t.key ? '#EEEDFE' : 'transparent',
-              color: resolvedTab === t.key ? '#534AB7' : 'var(--text-muted)',
-            }}
-          >
-            <i className={`ti ${t.icon}`} style={{ fontSize: 20 }} aria-hidden="true" />
-          </div>
-        ))}
-      </div>
-
-      {/* Main content */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Header — hidden for H2H and Group which have their own sidebar title */}
-        {meta && resolvedTab !== 'compete' && (
-          <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
-          </div>
-        )}
-
-        {/* Tab content */}
-        <div style={{ flex: 1, overflow: resolvedTab === 'compete' ? 'hidden' : 'auto', display: resolvedTab === 'compete' ? 'flex' : (resolvedTab === 'rankings' ? 'flex' : 'block'), flexDirection: resolvedTab === 'rankings' ? 'column' : undefined }}>
-          {resolvedTab === 'compete'  && <CompeteWrapper currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'rankings' && <RankingsTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-        </div>
-      </div>
+      <CompeteWrapper currentUserId={currentUserId} onOpenProfile={openProfile} />
     </div>
   );
 }
