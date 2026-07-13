@@ -3173,16 +3173,39 @@ function RankingsTab({ currentUserId, onOpenProfile }) {
 
 
 // ─── SIDEBAR ICONS ────────────────────────────────────────────────────────────
+// ─── COMPETE WRAPPER ──────────────────────────────────────────────────────────
+function CompeteWrapper({ currentUserId, onOpenProfile }) {
+  const [mode, setMode] = useState('h2h');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        {[['h2h', 'Head to Head'], ['group', 'Group Contest']].map(([key, label]) => (
+          <button key={key} onClick={() => setMode(key)} style={{
+            padding: '11px 16px', background: 'none', border: 'none',
+            borderBottom: mode === key ? '2px solid #534AB7' : '2px solid transparent',
+            color: mode === key ? '#534AB7' : 'var(--text-muted)',
+            fontFamily: 'var(--font)', fontSize: 13, fontWeight: mode === key ? 600 : 400,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>{label}</button>
+        ))}
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        {mode === 'h2h'   && <H2HTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
+        {mode === 'group' && <GroupTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
+      </div>
+    </div>
+  );
+}
+
+
 const SIDEBAR_TABS = [
-  { key: 'h2h',      icon: 'ti-swords',  label: 'Head to Head' },
-  { key: 'group',    icon: 'ti-users',   label: 'Group Contest' },
+  { key: 'compete',  icon: 'ti-swords',  label: 'Compete' },
   { key: 'rankings', icon: 'ti-trophy',  label: 'Rankings' },
 ];
 
 const TAB_META = {
-  h2h:      { label: 'Head to Head',  sub: 'Challenge traders 1v1' },
-  group:    { label: 'Group Contest', sub: 'Compete with a group' },
-  rankings: { label: 'Rankings',      sub: 'Leaderboard & match history' },
+  compete:  { label: 'Compete',   sub: 'Head to Head & Group Contests' },
+  rankings: { label: 'Rankings',  sub: 'Leaderboard & match history' },
 };
 
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
@@ -3191,7 +3214,7 @@ function openProfile(slug) {
 }
 
 export default function CompeteTab({ currentUserId, externalTab }) {
-  const [activeTab, setActiveTab] = useState(externalTab || 'h2h');
+  const [activeTab, setActiveTab] = useState(externalTab || 'compete');
   const resolvedTab = externalTab || activeTab;
   const meta = TAB_META[resolvedTab];
 
@@ -3219,7 +3242,7 @@ export default function CompeteTab({ currentUserId, externalTab }) {
       {/* Main content */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Header — hidden for H2H and Group which have their own sidebar title */}
-        {meta && resolvedTab !== 'h2h' && resolvedTab !== 'group' && (
+        {meta && resolvedTab !== 'compete' && (
           <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
             <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
@@ -3227,9 +3250,8 @@ export default function CompeteTab({ currentUserId, externalTab }) {
         )}
 
         {/* Tab content */}
-        <div style={{ flex: 1, overflow: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'hidden' : 'auto', display: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'flex' : (resolvedTab === 'rankings' ? 'flex' : 'block'), flexDirection: resolvedTab === 'rankings' ? 'column' : undefined }}>
-          {resolvedTab === 'h2h'      && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'group'    && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
+        <div style={{ flex: 1, overflow: resolvedTab === 'compete' ? 'hidden' : 'auto', display: resolvedTab === 'compete' ? 'flex' : (resolvedTab === 'rankings' ? 'flex' : 'block'), flexDirection: resolvedTab === 'rankings' ? 'column' : undefined }}>
+          {resolvedTab === 'compete'  && <CompeteWrapper currentUserId={currentUserId} onOpenProfile={openProfile} />}
           {resolvedTab === 'rankings' && <RankingsTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
         </div>
       </div>
