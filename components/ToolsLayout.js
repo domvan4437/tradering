@@ -1882,7 +1882,7 @@ export default function ToolsLayout({tab, setTab, userInfo}){
   const meta = TOOLS_TABS.find(t => t.key === tab) || TOOLS_TABS[0];
 
   const sbItem = (label, isActive, onClick, indent=false) => (
-    <button onClick={onClick} style={{ width:'100%', display:'flex', alignItems:'center', padding: indent ? '6px 10px 6px 22px' : '7px 10px', borderRadius:7, border:'none', background:isActive?'#111827':'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight:isActive?600:400, color:isActive?'#fff':'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:1, flexShrink:0 }}
+    <button onClick={onClick} style={{ width:'100%', display:'flex', alignItems:'center', padding: indent ? '6px 10px 6px 22px' : '7px 10px', borderRadius:7, border:'none', background:isActive?'var(--surface2)':'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight:isActive?500:400, color:'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:1, flexShrink:0 }}
       onMouseEnter={e=>{if(!isActive)e.currentTarget.style.background='var(--surface2)';}}
       onMouseLeave={e=>{if(!isActive)e.currentTarget.style.background='transparent';}}>
       {label}

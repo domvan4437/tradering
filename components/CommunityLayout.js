@@ -1368,7 +1368,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
 
         {NAV_ITEMS.map(item => (
           <button key={item.key} onClick={() => setTab(item.key)}
-            style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background: tab===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: tab===item.key ? 600 : 400, color: tab===item.key ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+            style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background: tab===item.key ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: tab===item.key ? 600 : 400, color: tab===item.key ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
             <i className={`ti ${item.icon}`} style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
             <span style={{ flex:1 }}>{item.label}</span>
           </button>
@@ -1381,7 +1381,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
           const active = feedSection === s;
           return (
             <button key={s} onClick={() => setFeedSection(s)}
-              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'none', background: active ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 600 : 400, color: active ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'none', background: active ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 500 : 400, color: 'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
               {s[0].toUpperCase() + s.slice(1)}
             </button>
           );
@@ -1395,7 +1395,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
               const active = openGroup && String(openGroup.id) === String(g.id);
               return (
                 <button key={g.id} onClick={() => switchGroup(g)}
-                  style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, border:'none', background: active ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 600 : 400, color: active ? '#fff' : 'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+                  style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, border:'none', background: active ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 500 : 400, color: 'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
                   <div style={{ width:22, height:22, borderRadius:6, background:g.grad||'#534AB7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
                     {g.profileImg ? <img src={g.profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
                   </div>
@@ -1420,7 +1420,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
           const active = localView === key;
           return (
             <button key={key} onClick={() => setLocalView(key)}
-              style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background: active ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 600 : 400, color: active ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background: active ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 500 : 400, color: 'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
               <i className={`ti ${icon}`} style={{ fontSize:15 }} aria-hidden="true" />
               {label}
             </button>
