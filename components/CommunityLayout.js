@@ -93,7 +93,7 @@ function UserSearch() {
   );
 }
 
-function GroupChatRoom({ group, activeRoom, channelId, myName }) {
+function GroupChatRoom({ group, activeRoom, channelId, myName, channels, onChannelSelect, members, onOpenSettings }) {
   const myAvatar = useContext(UserAvatarContext);
   const [msg, setMsg] = useState('');
   const [messages, setMessages] = useState([]);
@@ -197,11 +197,47 @@ function GroupChatRoom({ group, activeRoom, channelId, myName }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0, overflow:'hidden' }}>
 
-      {/* Room header */}
-      <div style={{ padding:'8px 16px', borderBottom:'1px solid var(--border)', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
-        <span style={{ fontFamily:'var(--font)', fontSize:14, color:'var(--text-muted)', fontWeight:400 }}>#</span>
-        <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)' }}>{activeRoom}</span>
-        {!channelId && <span style={{ fontFamily:'var(--font)', fontSize:11, color:'#ef4444', marginLeft:4 }}>— not connected</span>}
+      {/* Group header */}
+      <div style={{ padding:'10px 16px 0', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+        {/* Top row: group info + members + settings */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+          <div style={{ width:28, height:28, borderRadius:7, background:group?.grad||'#534AB7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+            {group?.profileImg ? <img src={group.profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (group?.name||'G')[0].toUpperCase()}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)', lineHeight:1.2 }}>{group?.name}</div>
+            <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>
+              {group?.type==='club' ? `${group.members||0}/${group.max||50} members` : `${group?.members||0} members`} · {group?.visibility||'open'}
+            </div>
+          </div>
+          {/* Member avatar stack */}
+          <div style={{ display:'flex', alignItems:'center' }}>
+            {(members||[]).slice(0,3).map((m,i) => (
+              <div key={m.id} style={{ width:22, height:22, borderRadius:'50%', border:'2px solid var(--surface)', marginLeft: i===0?0:-6, background: m.image?'transparent':getColor(m.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0, zIndex:3-i }}>
+                {m.image ? <img src={m.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.name||'?')[0].toUpperCase()}
+              </div>
+            ))}
+            {(members||[]).length > 3 && (
+              <div style={{ width:22, height:22, borderRadius:'50%', border:'2px solid var(--surface)', marginLeft:-6, background:'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:600, color:'var(--text-muted)', flexShrink:0 }}>+{(members||[]).length-3}</div>
+            )}
+          </div>
+          {onOpenSettings && (
+            <button onClick={onOpenSettings} style={{ width:28, height:28, borderRadius:7, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)', flexShrink:0 }}
+              onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <i className="ti ti-settings" style={{ fontSize:14 }} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {/* Channel tabs */}
+        <div style={{ display:'flex', gap:0, overflowX:'auto' }}>
+          {(channels&&channels.length>0 ? channels.map(c=>c.name) : ['general']).map(ch => (
+            <button key={ch} onClick={() => onChannelSelect?.(ch)}
+              style={{ padding:'7px 12px', border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: activeRoom===ch ? 600 : 400, color: activeRoom===ch ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', borderBottom: activeRoom===ch ? '2px solid #534AB7' : '2px solid transparent', whiteSpace:'nowrap', flexShrink:0 }}>
+              # {ch}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={{ flex:1, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
@@ -527,6 +563,10 @@ function GroupsView({ currentUserId, groups, openGroup, onSwitchGroup, onGroupAd
               activeRoom={activeRoom}
               channelId={dbChannels.find(c => c.name === activeRoom)?.id || null}
               myName={displayMe}
+              channels={dbChannels}
+              onChannelSelect={(ch) => setActiveRoom(ch)}
+              members={members}
+              onOpenSettings={() => setShowSettings(true)}
             />
           : <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:12 }}>
               <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)' }}>No groups yet</div>
@@ -1365,9 +1405,13 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
 
           {tab === 'feed' && (
             <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
-              <div style={{ display:'flex', alignItems:'center', padding:'12px 18px', flexShrink:0, justifyContent:'flex-end' }}>
-                <button style={{ all:'unset', cursor:'pointer', width:30, height:30, borderRadius:'50%', background:'var(--text)', color:'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0, lineHeight:1 }}
-                  onMouseEnter={e => e.currentTarget.style.opacity='0.8'}
+              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', flexShrink:0 }}>
+                <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, padding:'8px 14px' }}>
+                  <i className="ti ti-search" style={{ fontSize:14, color:'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
+                  <input placeholder="Search posts, traders, or groups..." style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none' }} />
+                </div>
+                <button style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:'50%', background:'#111827', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0, lineHeight:1 }}
+                  onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
                   onMouseLeave={e => e.currentTarget.style.opacity='1'}
                   title="New post" onClick={()=>setShowPostModal(true)}>+</button>
               </div>
