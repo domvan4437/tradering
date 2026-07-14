@@ -84,7 +84,7 @@ export default function COTAlertsTab({ externalGroup, onGroupChange }) {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [selectedGroup, setSelectedGroupInternal] = useState(externalGroup || 'Commodities');
   function setSelectedGroup(g) { setSelectedGroupInternal(g); onGroupChange?.(g); }
-  React.useEffect(() => { if (externalGroup) setSelectedGroupInternal(externalGroup); }, [externalGroup]);
+  useEffect(() => { if (externalGroup) setSelectedGroupInternal(externalGroup); }, [externalGroup]);
   const [form, setForm] = useState({ commodity:'Gold', condition:'below', threshold:25, label:'' });
   const setF = (k,v) => setForm(p => ({...p,[k]:v}));
 
