@@ -377,119 +377,71 @@ export default function App() {
     <div style={{ height:'100vh', overflow:'hidden', display:'flex', flexDirection:'column', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontSize:13 }}>
 
       {/* ── Navbar — Capital One style ── */}
-      <div data-community-nav="true" style={{ background:'var(--surface)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)' }}>
-        <div style={{ display:'flex', alignItems:'center', height:52, padding:'0 24px', gap:0, overflow:'visible', position:'relative' }}>
+      <div data-community-nav="true" style={{ background:'var(--surface)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)', height:60 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'stretch', height:'100%', padding:'0 28px' }}>
 
-          {/* Logo */}
-          <div onClick={()=>setSection('community')} style={{ display:'flex', alignItems:'center', gap:8, marginRight:36, flexShrink:0, cursor:'pointer' }}>
-            <div style={{ width:28, height:28, borderRadius:'50%', background:'#4B44C8', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <div style={{ width:9, height:9, background:'#fff', borderRadius:'50%' }} />
+          {/* LEFT — Logo */}
+          <div style={{ display:'flex', alignItems:'center' }}>
+            <div onClick={()=>setSection('community')} style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }}>
+              <div style={{ width:30, height:30, borderRadius:'50%', background:'#4B44C8', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:10, height:10, background:'#fff', borderRadius:'50%' }} />
+              </div>
+              <span style={{ fontSize:17, fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px', fontFamily:'var(--font)' }}>TradeZar</span>
             </div>
-            <span style={{ fontSize:16, fontWeight:800, color:'var(--text)', letterSpacing:'-0.4px' }}>TradeZar</span>
           </div>
 
-          {/* Nav links — centered */}
-          <div style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', display:'flex', alignSelf:'stretch', alignItems:'stretch', height:52, overflow:'visible' }}>
+          {/* CENTER — Nav links */}
+          <div style={{ display:'flex', alignItems:'stretch' }}>
             {navItems.map(([label,sec])=>{
               const tabs = SECTION_TABS[sec] || [];
               const hasDropdown = tabs.length > 1;
               const isActive = section === sec;
               const isHovered = hoveredSection === sec;
               return (
-                <div
-                  key={sec}
-                  style={{ position:'relative', flexShrink:0, display:'flex', alignItems:'stretch' }}
+                <div key={sec} style={{ position:'relative', display:'flex', alignItems:'stretch' }}
                   onMouseEnter={() => setHoveredSection(sec)}
-                  onMouseLeave={() => setHoveredSection(null)}
-                >
+                  onMouseLeave={() => setHoveredSection(null)}>
                   <button
                     onClick={() => { setSection(sec); setTab(''); setHoveredSection(null); }}
                     style={{
-                      background: 'transparent',
-                      color: isActive ? 'var(--text)' : 'var(--text-muted)',
-                      border: 'none',
-                      borderBottom: isActive ? '2px solid #4B44C8' : '2px solid transparent',
-                      borderTop: '2px solid transparent',
-                      padding: '0 14px',
-                      fontSize: 13,
-                      fontWeight: isActive ? 600 : 400,
+                      all: 'unset',
                       cursor: 'pointer',
-                      fontFamily: 'var(--font)',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      transition: 'all 0.12s',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 4,
+                      gap: 5,
+                      padding: '0 18px',
+                      fontSize: 15,
+                      fontWeight: isActive ? 600 : 500,
+                      color: isActive ? 'var(--text)' : 'var(--text-muted)',
+                      fontFamily: 'var(--font)',
+                      whiteSpace: 'nowrap',
+                      borderBottom: isActive ? '2px solid #4B44C8' : '2px solid transparent',
+                      boxSizing: 'border-box',
+                      transition: 'color 0.12s',
                     }}
-                    onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.color='var(--text)'; e.currentTarget.style.borderBottomColor='var(--border)'; }}}
-                    onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.color='var(--text-muted)'; e.currentTarget.style.borderBottomColor='transparent'; }}}
+                    onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.color='var(--text)'; }}
+                    onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.color='var(--text-muted)'; }}
                   >
                     {label}
-                    {hasDropdown && (
-                      <span style={{ fontSize: 8, opacity: 0.4, marginTop: 1 }}>▾</span>
-                    )}
+                    {hasDropdown && <span style={{ fontSize:9, opacity:0.45 }}>▾</span>}
                   </button>
 
                   {/* Dropdown */}
                   {hasDropdown && isHovered && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border2)',
-                      borderRadius: '0 0 8px 8px',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-                      zIndex: 99999,
-                      minWidth: 200,
-                      padding: '6px 0',
-                      animation: 'tr-fadeUp 0.12s ease both',
-                    }}>
+                    <div style={{ position:'absolute', top:'100%', left:'50%', transform:'translateX(-50%)', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', zIndex:99999, minWidth:190, padding:'6px 0' }}>
                       {sec === 'tools2' ? TOOLS_LIST.map(tool => (
-                        <button
-                          key={tool.key}
-                          onClick={() => { setSection(sec); setTab(tool.key); }}
-                          style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'8px 16px', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', textAlign:'left' }}
+                        <button key={tool.key} onClick={() => { setSection(sec); setTab(tool.key); }}
+                          style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'9px 16px', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', textAlign:'left' }}
                           onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
-                          onMouseLeave={e=>e.currentTarget.style.background='none'}
-                        >
+                          onMouseLeave={e=>e.currentTarget.style.background='none'}>
                           <i className={`ti ${tool.icon}`} style={{fontSize:13,color:tool.color}} />
                           {tool.title}
                         </button>
                       )) : tabs.map(t => (
-                        <button
-                          key={t}
-                          onClick={() => { setSection(sec); setTab(t); setHoveredSection(null); }}
-                          style={{
-                            display: 'block',
-                            width: '100%',
-                            textAlign: 'left',
-                            background: tab === t && section === sec ? 'var(--accent-bg)' : 'transparent',
-                            color: tab === t && section === sec ? 'var(--accent)' : 'var(--text-secondary)',
-                            border: 'none',
-                            borderLeft: tab === t && section === sec ? '2px solid var(--accent)' : '2px solid transparent',
-                            padding: '9px 16px',
-                            fontSize: 13,
-                            fontFamily: 'var(--font)',
-                            fontWeight: tab === t && section === sec ? 600 : 400,
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.1s',
-                          }}
-                          onMouseEnter={e => {
-                            if (!(tab === t && section === sec)) {
-                              e.currentTarget.style.background = 'var(--surface2)';
-                              e.currentTarget.style.color = 'var(--text)';
-                            }
-                          }}
-                          onMouseLeave={e => {
-                            if (!(tab === t && section === sec)) {
-                              e.currentTarget.style.background = 'transparent';
-                              e.currentTarget.style.color = 'var(--text-secondary)';
-                            }
-                          }}
-                        >
+                        <button key={t} onClick={() => { setSection(sec); setTab(t); setHoveredSection(null); }}
+                          style={{ display:'block', width:'100%', textAlign:'left', padding:'9px 16px', border:'none', background: tab===t&&section===sec ? 'var(--surface2)' : 'transparent', color: tab===t&&section===sec ? 'var(--text)' : 'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight: tab===t&&section===sec ? 600 : 400, cursor:'pointer' }}
+                          onMouseEnter={e=>{ if(!(tab===t&&section===sec)){ e.currentTarget.style.background='var(--surface2)'; e.currentTarget.style.color='var(--text)'; }}}
+                          onMouseLeave={e=>{ if(!(tab===t&&section===sec)){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; }}}>
                           {t}
                         </button>
                       ))}
@@ -500,55 +452,51 @@ export default function App() {
             })}
           </div>
 
-          {/* Right side */}
-          <div style={{ display:'flex', alignItems:'center', gap:4, marginLeft:8, flexShrink:0 }}>
-            {/* Search */}
-            <button style={{ all:'unset', cursor:'pointer', width:34, height:34, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
+          {/* RIGHT — Icons + Account */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:2 }}>
+            <button style={{ all:'unset', cursor:'pointer', width:36, height:36, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
               onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
               onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
-              <i className="ti ti-search" style={{fontSize:17}}/>
+              <i className="ti ti-search" style={{fontSize:18}}/>
             </button>
-            {/* Help */}
-            <button style={{ all:'unset', cursor:'pointer', width:34, height:34, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
+            <button style={{ all:'unset', cursor:'pointer', width:36, height:36, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
               onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
               onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
-              <i className="ti ti-help-circle" style={{fontSize:17}}/>
+              <i className="ti ti-help-circle" style={{fontSize:18}}/>
             </button>
-            {/* Theme toggle */}
-            <button onClick={toggle}
-              style={{ all:'unset', cursor:'pointer', width:34, height:34, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:14 }}
+            <button onClick={toggle} style={{ all:'unset', cursor:'pointer', width:36, height:36, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:15 }}
               onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';}}
               onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}>
               {theme==='dark'?'☀':'☾'}
             </button>
-            <div style={{ width:1, height:20, background:'var(--border)', margin:'0 6px' }}/>
+            <div style={{ width:1, height:22, background:'var(--border)', margin:'0 8px' }}/>
             <div style={{ position:'relative' }}>
               <button onClick={()=>setShowAccount(s=>!s)}
-                style={{ all:'unset', cursor:'pointer', display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, fontSize:13, fontWeight:400, color:'var(--text-muted)', fontFamily:'var(--font)', transition:'all 0.12s' }}
+                style={{ all:'unset', cursor:'pointer', display:'flex', alignItems:'center', gap:7, padding:'7px 13px', borderRadius:8, fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)', transition:'all 0.12s' }}
                 onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
                 onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
-                <i className="ti ti-user-circle" style={{fontSize:17}}/>
-                {userInfo?.name?.split(' ')[0]||session?.user?.name?.split(' ')[0]||session?.user?.email?.split('@')[0]||'Account'}
+                <i className="ti ti-user-circle" style={{fontSize:19}}/>
+                <span>{userInfo?.name?.split(' ')[0]||session?.user?.name?.split(' ')[0]||session?.user?.email?.split('@')[0]||'Account'}</span>
               </button>
               {showAccount && (
-                <div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'1px solid var(--border)', minWidth:220, zIndex:999, borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.35)' }}>
+                <div style={{ position:'absolute', right:0, top:'calc(100% + 6px)', background:'var(--surface)', border:'1px solid var(--border)', minWidth:220, zIndex:999, borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)' }}>
                   <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)' }}>
-                    <div style={{ fontSize:12, color:'var(--text)', fontWeight:600, marginBottom:2 }}>{userInfo?.name||session?.user?.name||'Account'}</div>
-                    <div style={{ fontSize:11, color:'var(--text-muted)' }}>{session?.user?.email}</div>
+                    <div style={{ fontSize:13, color:'var(--text)', fontWeight:600, marginBottom:2 }}>{userInfo?.name||session?.user?.name||'Account'}</div>
+                    <div style={{ fontSize:12, color:'var(--text-muted)' }}>{session?.user?.email}</div>
                     <div style={{ marginTop:6, display:'inline-block', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', padding:'2px 8px', borderRadius:10, background: plan==='trader'?'rgba(217,119,6,0.12)':plan==='pro'?'rgba(75,68,200,0.12)':'var(--surface2)', color: plan==='trader'?'#d97706':plan==='pro'?'#4B44C8':'var(--text-muted)' }}>{plan}</div>
                   </div>
                   <div style={{ padding:'6px' }}>
                     <button onClick={()=>{setSection('account');setAccountTab('overview');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
                       onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <i className="ti ti-user" style={{ fontSize:15, color:'var(--text-muted)', width:18 }} /> Profile
+                      <i className="ti ti-user" style={{fontSize:15,color:'var(--text-muted)',width:18}}/> Profile
                     </button>
                     <button onClick={()=>{setSection('account');setAccountTab('settings');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
                       onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <i className="ti ti-settings" style={{ fontSize:15, color:'var(--text-muted)', width:18 }} /> Settings
+                      <i className="ti ti-settings" style={{fontSize:15,color:'var(--text-muted)',width:18}}/> Settings
                     </button>
                     <button onClick={()=>{setSection('account');setAccountTab('settings');setShowAccount(false);}} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--text)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
                       onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <i className="ti ti-credit-card" style={{ fontSize:15, color:'var(--text-muted)', width:18 }} />
+                      <i className="ti ti-credit-card" style={{fontSize:15,color:'var(--text-muted)',width:18}}/>
                       <span>Plan &amp; Billing</span>
                       {plan==='free' && <span style={{ marginLeft:'auto', fontSize:10, fontWeight:600, color:'#4B44C8', background:'rgba(75,68,200,0.1)', padding:'2px 7px', borderRadius:8 }}>Upgrade</span>}
                     </button>
@@ -556,7 +504,7 @@ export default function App() {
                   <div style={{ borderTop:'1px solid var(--border)', padding:'6px' }}>
                     <button onClick={()=>import('next-auth/react').then(m=>m.signOut({callbackUrl:'/'}))} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', padding:'9px 10px', borderRadius:7, fontSize:13, color:'var(--red)', cursor:'pointer', fontFamily:'var(--font)', textAlign:'left' }}
                       onMouseEnter={e=>e.currentTarget.style.background='rgba(220,38,38,0.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <i className="ti ti-logout" style={{ fontSize:15, width:18 }} /> Sign out
+                      <i className="ti ti-logout" style={{fontSize:15,width:18}}/> Sign out
                     </button>
                   </div>
                 </div>
@@ -564,8 +512,6 @@ export default function App() {
             </div>
           </div>
         </div>
-
-        
       </div>
       {/* CompetitionBanner disabled */}
       {/* TickerStrip removed */}
