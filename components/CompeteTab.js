@@ -2018,7 +2018,7 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
           <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
             {ASSETS.map(a => (
               <button key={a} onClick={() => setAssetFilter(a)}
-                style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'none', background: assetFilter===a ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 600 : 400, color: assetFilter===a ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
+                style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'none', background: assetFilter===a ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 500 : 400, color: 'var(--text)', cursor:'pointer', textAlign:'left' }}>
                 {a}
               </button>
             ))}
@@ -2961,7 +2961,7 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {ASSETS.map(a => (
             <button key={a} onClick={() => setAssetFilter(a)}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: 'none', textAlign: 'left', fontFamily: 'var(--font)', fontSize: 13, cursor: 'pointer', background: assetFilter === a ? '#111827' : 'transparent', color: assetFilter === a ? '#fff' : 'var(--text-muted)', fontWeight: assetFilter === a ? 600 : 400 }}>
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: 'none', textAlign: 'left', fontFamily: 'var(--font)', fontSize: 13, cursor: 'pointer', background: assetFilter === a ? 'var(--surface2)' : 'transparent', color: 'var(--text)', fontWeight: assetFilter === a ? 500 : 400 }}>
               {a}
             </button>
           ))}
