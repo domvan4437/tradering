@@ -276,22 +276,22 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
       />}
 
       {/* Top bar */}
-      <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border,#27272a)', flexShrink:0 }}>
-        {/* Search + toggle */}
-        <div style={{ display:'flex', gap:8, marginBottom:10 }}>
-          <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface2,#27272a)', border:'1px solid var(--border,#3f3f46)', borderRadius:10, padding:'8px 12px' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted,#71717a)" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border,#27272a)', flexShrink:0 }}>
+        {/* Search row */}
+        <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
+          <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface2,#27272a)', border:'1px solid var(--border,#3f3f46)', borderRadius:10, padding:'8px 14px' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color:'var(--text-muted,#71717a)', flexShrink:0 }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name, city, or country…"
+              placeholder="Search traders by name, city, or country…"
               style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font,system-ui)', fontSize:13, color:'var(--text,#f4f4f5)', outline:'none' }}
             />
-            {search && <button onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted,#71717a)', fontSize:18, lineHeight:1, padding:0 }}>×</button>}
+            {search && <button onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted,#71717a)', fontSize:18, lineHeight:1, padding:0, flexShrink:0 }}>×</button>}
           </div>
           {/* List / Map toggle — hidden when controlled by sidebar */}
           {!externalView && (
-            <div style={{ display:'flex', background:'var(--surface2,#27272a)', border:'1px solid var(--border,#3f3f46)', borderRadius:10, padding:3, gap:2 }}>
+            <div style={{ display:'flex', background:'var(--surface2,#27272a)', border:'1px solid var(--border,#3f3f46)', borderRadius:10, padding:3, gap:2, flexShrink:0 }}>
               {[['list','☰ List'],['map','⊙ Map']].map(([v,label]) => (
                 <button key={v} onClick={() => setView(v)}
                   style={{ padding:'6px 14px', borderRadius:7, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
@@ -306,8 +306,8 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
           )}
         </div>
 
-        {/* Filters */}
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+        {/* Filters row */}
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
           <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)} style={sel}>
             <option value="">All countries</option>
             {countries.map(c => <option key={c} value={c}>{c}</option>)}
@@ -317,10 +317,10 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
             {styles.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <button onClick={() => setMeetupOnly(m => !m)}
-            style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border,#3f3f46)', background: meetupOnly ? 'rgba(16,185,129,0.15)' : 'var(--surface2,#27272a)', color: meetupOnly ? '#10b981' : 'var(--text-muted,#71717a)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border,#3f3f46)', background: meetupOnly ? 'rgba(16,185,129,0.15)' : 'transparent', color: meetupOnly ? '#10b981' : 'var(--text-muted,#71717a)', fontSize:12, fontWeight:500, cursor:'pointer', fontFamily:'var(--font,system-ui)' }}>
             📍 Open to meetups
           </button>
-          <span style={{ fontSize:12, color:'var(--text-muted,#71717a)', marginLeft:'auto' }}>
+          <span style={{ fontSize:12, color:'var(--text-muted,#71717a)', marginLeft:'auto', fontFamily:'var(--font,system-ui)' }}>
             {loading ? 'Loading…' : `${filtered.length} trader${filtered.length!==1?'s':''}`}
           </span>
         </div>

@@ -105,6 +105,8 @@ function GroupChatRoom({ group, activeRoom, channelId, myName, channels, onChann
   const fileRef = useRef(null);
   const popRef = useRef(null);
   const endRef = useRef(null);
+  const membersRef = useRef(null);
+  const [showMembers, setShowMembers] = useState(false);
 
   // Fetch messages from API
   const fetchMessages = useCallback(async (cid) => {
@@ -139,7 +141,10 @@ function GroupChatRoom({ group, activeRoom, channelId, myName, channels, onChann
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
 
   useEffect(() => {
-    const handler = (e) => { if (popRef.current && !popRef.current.contains(e.target)) setPopover(false); };
+    const handler = (e) => {
+      if (popRef.current && !popRef.current.contains(e.target)) setPopover(false);
+      if (membersRef.current && !membersRef.current.contains(e.target)) setShowMembers(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -210,15 +215,39 @@ function GroupChatRoom({ group, activeRoom, channelId, myName, channels, onChann
               {group?.type==='club' ? `${group.members||0}/${group.max||50} members` : `${group?.members||0} members`} · {group?.visibility||'open'}
             </div>
           </div>
-          {/* Member avatar stack */}
-          <div style={{ display:'flex', alignItems:'center' }}>
-            {(members||[]).slice(0,3).map((m,i) => (
-              <div key={m.id} style={{ width:22, height:22, borderRadius:'50%', border:'2px solid var(--surface)', marginLeft: i===0?0:-6, background: m.image?'transparent':getColor(m.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0, zIndex:3-i }}>
-                {m.image ? <img src={m.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.name||'?')[0].toUpperCase()}
+          {/* Member avatar stack + dropdown */}
+          <div ref={membersRef} style={{ position:'relative' }}>
+            <div onClick={() => setShowMembers(s => !s)} style={{ display:'flex', alignItems:'center', cursor:'pointer' }} title="View members">
+              {(members||[]).slice(0,3).map((m,i) => (
+                <div key={m.id} style={{ width:22, height:22, borderRadius:'50%', border:'2px solid var(--surface)', marginLeft: i===0?0:-6, background: m.image?'transparent':getColor(m.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0, zIndex:3-i }}>
+                  {m.image ? <img src={m.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.name||'?')[0].toUpperCase()}
+                </div>
+              ))}
+              {(members||[]).length > 3 && (
+                <div style={{ width:22, height:22, borderRadius:'50%', border:'2px solid var(--surface)', marginLeft:-6, background:'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:600, color:'var(--text-muted)', flexShrink:0 }}>+{(members||[]).length-3}</div>
+              )}
+            </div>
+            {showMembers && (
+              <div style={{ position:'absolute', right:0, top:'calc(100% + 8px)', width:220, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.25)', zIndex:200, overflow:'hidden' }}>
+                <div style={{ padding:'8px 12px 6px', fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid var(--border)' }}>
+                  {(members||[]).length} member{(members||[]).length !== 1 ? 's' : ''}
+                </div>
+                <div style={{ maxHeight:260, overflowY:'auto' }}>
+                  {(members||[]).map(m => (
+                    <div key={m.id} style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 12px' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background: m.image?'transparent':getColor(m.name||'?'), display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0 }}>
+                        {m.image ? <img src={m.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.name||'?')[0].toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.name || 'Unknown'}</div>
+                        {m.role && <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.role}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-            {(members||[]).length > 3 && (
-              <div style={{ width:22, height:22, borderRadius:'50%', border:'2px solid var(--surface)', marginLeft:-6, background:'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:600, color:'var(--text-muted)', flexShrink:0 }}>+{(members||[]).length-3}</div>
             )}
           </div>
           {onOpenSettings && (
