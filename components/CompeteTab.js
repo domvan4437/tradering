@@ -1963,7 +1963,6 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
     { key: 'browse', label: 'Browse', badge: null },
     { key: 'mymatches', label: 'My matches', badge: myMatchCount > 0 ? myMatchCount : null },
     { key: 'invites', label: 'Invites', badge: inviteCount > 0 ? inviteCount : null },
-    null,
     { key: 'leaderboard', label: 'Leaderboard', badge: null },
     { key: 'history', label: 'History', badge: null },
   ];
@@ -2897,7 +2896,6 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
     { key: 'browse',     label: 'Browse',      badge: null },
     { key: 'mycontests', label: 'My contests',  badge: myContestCount > 0 ? myContestCount : null },
     { key: 'invites',    label: 'Invites',      badge: null },
-    null,
     { key: 'leaderboard', label: 'Leaderboard', badge: null },
     { key: 'history',     label: 'History',     badge: null },
   ];
