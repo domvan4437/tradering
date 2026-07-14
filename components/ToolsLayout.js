@@ -1906,7 +1906,59 @@ export default function ToolsLayout({tab, setTab, userInfo}){
 
         {/* Header */}
         <div style={{ padding:'18px 16px 10px', flexShrink:0 }}>
-          <div style={{ fontFamily:'var(--font)', fontSize:17, fontWeight:700, color:'var(--text)' }}>Tools</div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:17, fontWeight:700, color:'var(--text)' }}>Tools</div>
+            {tab === 'Journal' && (
+              <div style={{ position:'relative' }}>
+                <button onClick={()=>setShowBookDrop(p=>!p)}
+                  style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:11, color:'var(--text)', fontWeight:500, whiteSpace:'nowrap' }}>
+                  <i className="ti ti-notebook" style={{fontSize:11,color:'#534AB7',flexShrink:0}}/>
+                  <span style={{maxWidth:80,overflow:'hidden',textOverflow:'ellipsis'}}>{activeBook?.name}</span>
+                  <i className="ti ti-chevron-down" style={{fontSize:9,color:'var(--text-muted)',flexShrink:0}}/>
+                </button>
+                {showBookDrop && (
+                  <div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:5, minWidth:180, zIndex:999, boxShadow:'0 4px 16px rgba(0,0,0,0.14)' }} onClick={e=>e.stopPropagation()}>
+                    {books.map(b=>(
+                      <div key={b.id}>
+                        {renamingId===b.id ? (
+                          <div style={{ display:'flex',gap:4,padding:'5px 6px' }} onClick={e=>e.stopPropagation()}>
+                            <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')renameBook(b.id,renameVal);if(e.key==='Escape'){setRenamingId(null);setRenameVal('');}}} autoFocus
+                              style={{ flex:1,padding:'4px 7px',border:'0.5px solid var(--border)',borderRadius:5,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none' }}/>
+                            <button onClick={()=>renameBook(b.id,renameVal)} style={{ padding:'4px 8px',background:PURPLE,color:'#fff',border:'none',borderRadius:5,fontSize:11,cursor:'pointer',fontFamily:'var(--font)',fontWeight:500 }}>OK</button>
+                          </div>
+                        ) : (
+                          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',borderRadius:7,cursor:'pointer',background:b.id===activeBookId?'#EEEDFE':'transparent' }}
+                            onClick={()=>switchBook(b.id)}
+                            onMouseEnter={e=>{if(b.id!==activeBookId)e.currentTarget.style.background='var(--surface2)';}}
+                            onMouseLeave={e=>{if(b.id!==activeBookId)e.currentTarget.style.background=b.id===activeBookId?'#EEEDFE':'transparent';}}>
+                            <span style={{ fontSize:13,fontWeight:b.id===activeBookId?500:400,color:b.id===activeBookId?'#534AB7':'var(--text)',flex:1 }}>{b.name}</span>
+                            <div style={{ display:'flex',gap:2 }} onClick={e=>e.stopPropagation()}>
+                              <button onClick={()=>{setRenamingId(b.id);setRenameVal(b.name);}} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'1px 3px',borderRadius:3 }}><i className="ti ti-pencil" style={{fontSize:10}}/></button>
+                              {b.id!=='default'&&<button onClick={()=>deleteBook(b.id)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:13,padding:'1px 3px',borderRadius:3 }}>×</button>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <div style={{ borderTop:'0.5px solid var(--border)',marginTop:4,paddingTop:4 }}>
+                      {showNewBook ? (
+                        <div style={{ padding:'4px 6px',display:'flex',gap:6 }}>
+                          <input value={newBookName} onChange={e=>setNewBookName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createBook()} placeholder="Journal name…" autoFocus
+                            style={{ flex:1,padding:'5px 8px',border:'0.5px solid var(--border)',borderRadius:5,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none' }}/>
+                          <button onClick={createBook} style={{ padding:'5px 10px',background:PURPLE,color:'#fff',border:'none',borderRadius:5,fontSize:11,cursor:'pointer',fontFamily:'var(--font)',fontWeight:500 }}>Add</button>
+                        </div>
+                      ) : (
+                        <div onClick={()=>setShowNewBook(true)} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 10px',borderRadius:7,cursor:'pointer',color:'var(--text-muted)',fontSize:12 }}
+                          onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <i className="ti ti-plus" style={{fontSize:13}}/> New journal
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Plan. Track. Improve.</div>
         </div>
 
@@ -1935,24 +1987,20 @@ export default function ToolsLayout({tab, setTab, userInfo}){
           {tab === 'Journal' && <>
             {sbl('Journal')}
             {JOURNAL_SUBTABS.map(s => sbItem(s.label, journalTab===s.key, ()=>setJournalTab(s.key)))}
-            {sbDivider()}
-            {sbl('Journals')}
-            {books.map(b => (
-              <button key={b.id} onClick={()=>switchBook(b.id)}
-                style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:7, border:'none', background:b.id===activeBookId?'#111827':'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight:b.id===activeBookId?600:400, color:b.id===activeBookId?'#fff':'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:1 }}
-                onMouseEnter={e=>{if(b.id!==activeBookId)e.currentTarget.style.background='var(--surface2)';}}
-                onMouseLeave={e=>{if(b.id!==activeBookId)e.currentTarget.style.background='transparent';}}>
-                <i className="ti ti-notebook" style={{ fontSize:13, flexShrink:0 }} aria-hidden="true" />
-                {b.name}
-              </button>
-            ))}
-            {showNewBook ? (
-              <div style={{ display:'flex', gap:4, padding:'4px 2px' }}>
-                <input value={newBookName} onChange={e=>setNewBookName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createBook()} placeholder="Journal name…" autoFocus
-                  style={{ flex:1, padding:'5px 8px', border:'0.5px solid var(--border)', borderRadius:5, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}/>
-                <button onClick={createBook} style={{ padding:'5px 10px', background:PURPLE, color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer', fontFamily:'var(--font)', fontWeight:500 }}>Add</button>
+            {journalTab === 'daily' && <>
+              {sbDivider()}
+              {sbl('Pages')}
+              <div style={{ padding:'0 2px' }}>
+                {(jTree.items||[]).filter(i=>!i.parentId).sort((a,b)=>a.order-b.order).map(item=>(
+                  <JournalPageItem key={item.id} item={item} tree={jTree} activeJId={activeJId}
+                    onNavigate={openJEntry} onRename={renameJItem} onDelete={deleteJItem} onNewEntry={newJEntry} depth={0}/>
+                ))}
+                {(jTree.items||[]).filter(i=>!i.parentId).length===0 && (
+                  <div style={{ padding:'6px 10px', fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No pages yet</div>
+                )}
               </div>
-            ) : sbMuted('New journal', ()=>setShowNewBook(true))}
+              {sbMuted('New page', ()=>newJEntry(null))}
+            </>}
           </>}
 
           {/* ── Portfolio sub-nav ── */}
