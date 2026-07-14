@@ -73,7 +73,7 @@ function COTBar({ value, threshold, condition }) {
   );
 }
 
-export default function COTAlertsTab() {
+export default function COTAlertsTab({ externalGroup, onGroupChange }) {
   const [view, setView] = useState('dashboard'); // 'dashboard' | 'alerts'
   const [alerts, setAlerts] = useState(() => loadAlerts());
   const [history, setHistory] = useState(() => loadHistory());
@@ -82,7 +82,9 @@ export default function COTAlertsTab() {
   const [checkResults, setCheckResults] = useState({});
   const [dashboardData, setDashboardData] = useState({});
   const [dashboardLoading, setDashboardLoading] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState('Commodities');
+  const [selectedGroup, setSelectedGroupInternal] = useState(externalGroup || 'Commodities');
+  function setSelectedGroup(g) { setSelectedGroupInternal(g); onGroupChange?.(g); }
+  React.useEffect(() => { if (externalGroup) setSelectedGroupInternal(externalGroup); }, [externalGroup]);
   const [form, setForm] = useState({ commodity:'Gold', condition:'below', threshold:25, label:'' });
   const setF = (k,v) => setForm(p => ({...p,[k]:v}));
 
