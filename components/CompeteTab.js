@@ -2012,7 +2012,7 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
           )}
         </div>
 
-        {inner !== 'leaderboard' && inner !== 'history' && (<>
+        {inner === 'browse' && (<>
           <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:8, marginTop:8 }}>Market</div>
           <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
             {ASSETS.map(a => (
@@ -2954,6 +2954,7 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
           )}
         </div>
 
+        {inner === 'browse' && <>
         {/* Market filter */}
         <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 8 }}>Market</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -2964,6 +2965,7 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
             </button>
           ))}
         </div>
+        </>}
       </div>
 
       {/* ── Main content ── */}
