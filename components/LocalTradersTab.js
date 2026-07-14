@@ -131,7 +131,7 @@ function TraderProfile({ trader, onClose, onMessage, myAvatar, onViewProfile }) 
 }
 
 // ── Main component ────────────────────────────────────────────
-export default function LocalTradersTab({ currentUserId, onNavigate }) {
+export default function LocalTradersTab({ currentUserId, onNavigate, externalView }) {
   const myAvatar = useContext(UserAvatarContext)
   const mapRef = useRef(null)
   const leafletRef = useRef(null)
@@ -146,7 +146,8 @@ export default function LocalTradersTab({ currentUserId, onNavigate }) {
   const [countryFilter, setCountryFilter] = useState('')
   const [styleFilter, setStyleFilter] = useState('')
   const [meetupOnly, setMeetupOnly] = useState(false)
-  const [view, setView] = useState('list') // 'list' | 'map'
+  const [view, setView] = useState(externalView || 'list') // 'list' | 'map'
+  React.useEffect(() => { if (externalView) setView(externalView); }, [externalView]);
   const [mapReady, setMapReady] = useState(false)
   const [mapInited, setMapInited] = useState(false)
 
@@ -288,19 +289,21 @@ export default function LocalTradersTab({ currentUserId, onNavigate }) {
             />
             {search && <button onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted,#71717a)', fontSize:18, lineHeight:1, padding:0 }}>×</button>}
           </div>
-          {/* List / Map toggle */}
-          <div style={{ display:'flex', background:'var(--surface2,#27272a)', border:'1px solid var(--border,#3f3f46)', borderRadius:10, padding:3, gap:2 }}>
-            {[['list','☰ List'],['map','⊙ Map']].map(([v,label]) => (
-              <button key={v} onClick={() => setView(v)}
-                style={{ padding:'6px 14px', borderRadius:7, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
-                  background: view===v ? PURPLE : 'transparent',
-                  color: view===v ? '#fff' : 'var(--text-muted,#71717a)',
-                  transition:'all .15s',
-                }}>
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* List / Map toggle — hidden when controlled by sidebar */}
+          {!externalView && (
+            <div style={{ display:'flex', background:'var(--surface2,#27272a)', border:'1px solid var(--border,#3f3f46)', borderRadius:10, padding:3, gap:2 }}>
+              {[['list','☰ List'],['map','⊙ Map']].map(([v,label]) => (
+                <button key={v} onClick={() => setView(v)}
+                  style={{ padding:'6px 14px', borderRadius:7, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
+                    background: view===v ? PURPLE : 'transparent',
+                    color: view===v ? '#fff' : 'var(--text-muted,#71717a)',
+                    transition:'all .15s',
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Filters */}

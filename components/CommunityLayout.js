@@ -15,186 +15,6 @@ function getColor(name) {
   const colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
   return colors[(name||'?').charCodeAt(0) % colors.length];
 }
-
-
-const INVITE_PREFIX = '__CONTEST_INVITE__';
-function parseContestInvite(content) {
-  if (!content?.startsWith(INVITE_PREFIX)) return null;
-  try { return JSON.parse(content.slice(INVITE_PREFIX.length)); } catch { return null; }
-}
-
-function ContestInviteCard({ invite }) {
-  const [detail, setDetail] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
-  const [joining, setJoining] = React.useState(false);
-  const [joined, setJoined] = React.useState(false);
-
-  React.useEffect(() => {
-    fetch(`/api/group-contests/preview?id=${invite.id}`)
-      .then(r => r.json())
-      .then(d => { setDetail(d); setJoined(!!d.joined); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [invite.id]);
-
-  const joinSolo = async () => {
-    if (joined || joining) return;
-    setJoining(true);
-    try {
-      const res = await fetch('/api/group-contests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId: invite.id }) });
-      if (res.ok) setJoined(true);
-    } catch {}
-    setJoining(false);
-  };
-
-  const joinTeam = async (teamId) => {
-    if (joining || joined) return;
-    setJoining(true);
-    try {
-      const res = await fetch('/api/group-contests/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId: invite.id, teamId }) });
-      if (res.ok) { setJoined(true); setDetail(prev => prev ? { ...prev, joined: true } : prev); }
-    } catch {}
-    setJoining(false);
-  };
-
-  const d = detail;
-  const isTeam = !!(d?.teamFormat);
-
-  return (
-    <div style={{ maxWidth: 320, width: '100%', marginTop: 4 }}>
-      <div style={{ background: 'var(--surface)', border: '1.5px solid #534AB744', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-
-        {/* Header */}
-        <div style={{ padding: '12px 14px 10px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border)' }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#534AB7" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d?.name || invite.name}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>by {d?.creatorName || 'Trader'}</div>
-          </div>
-        </div>
-
-        <div style={{ padding: '12px 14px' }}>
-          {/* Description */}
-          {d?.description && (
-            <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '8px 12px', marginBottom: 10, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>
-              "{d.description}"
-            </div>
-          )}
-
-          {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 10 }}>
-            {[
-              { label: 'Asset', value: d?.asset || invite.asset || 'Any' },
-              { label: 'Buy-in', value: (d?.buyIn ?? invite.buyIn) > 0 ? `$${d?.buyIn ?? invite.buyIn}` : 'Free' },
-              { label: 'Members', value: loading ? '…' : (d?.memberCount ?? invite.memberCount ?? 0) },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</div>
-                <div style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Allowed instruments */}
-          {d?.allowedSymbols && d.allowedSymbols.length > 0 && (
-            <div style={{ marginBottom: 10, padding: '7px 10px', background: '#EEEDFE', borderRadius: 9, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#534AB7" strokeWidth="2" style={{ marginTop: 1, flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <div>
-                <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 600, color: '#534AB7', marginBottom: 3 }}>Allowed instruments only</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                  {d.allowedSymbols.map(sym => (
-                    <span key={sym} style={{ fontFamily: 'var(--font)', fontSize: 10, background: '#fff', color: '#534AB7', border: '1px solid #534AB733', padding: '1px 7px', borderRadius: 10 }}>{sym}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Leaderboard */}
-          {!loading && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Leaderboard</div>
-              {isTeam && d.teams && d.teams.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {d.teams.map(team => (
-                    <div key={team.id} style={{ border: `1.5px solid ${team.color}44`, borderRadius: 10, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', background: team.color + '14' }}>
-                        <span style={{ fontSize: 14 }}>{team.emoji}</span>
-                        <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, color: team.color }}>{team.name}</div>
-                        <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, color: team.teamPnl >= 0 ? '#059669' : '#dc2626' }}>
-                          {team.teamPnl >= 0 ? '+' : ''}${team.teamPnl.toFixed(2)}
-                        </div>
-                      </div>
-                      {team.members.length === 0 ? (
-                        <div style={{ padding: '8px 10px', fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>No members yet</div>
-                      ) : team.members.slice(0, 3).map((m, i) => (
-                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 10px', borderTop: '1px solid var(--border)' }}>
-                          <div style={{ width: 16, textAlign: 'center', fontFamily: 'var(--font)', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>{i + 1}</div>
-                          <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text)' }}>{m.name}</div>
-                          <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, color: m.pnl >= 0 ? '#059669' : '#dc2626' }}>{m.pnl >= 0 ? '+' : ''}${Math.abs(m.pnl).toFixed(2)}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              ) : d?.members && d.members.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {d.members.slice(0, 5).map((m, i) => (
-                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px' }}>
-                      <div style={{ width: 18, textAlign: 'center', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, color: i === 0 ? '#d97706' : 'var(--text-muted)' }}>{i + 1}</div>
-                      <div style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)' }}>{m.name}</div>
-                      <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, color: (m.pnl ?? 0) >= 0 ? '#059669' : '#dc2626' }}>{(m.pnl ?? 0) >= 0 ? '+' : ''}${Math.abs(m.pnl ?? 0).toFixed(2)}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '10px 0', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', background: 'var(--surface2)', borderRadius: 8 }}>No one joined yet — be the first!</div>
-              )}
-            </div>
-          )}
-
-          {/* Pick Your Side (team contest) */}
-          {!loading && isTeam && d?.teams && d.teams.length > 0 && !joined && (
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Pick your side</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {d.teams.map(team => {
-                  const full = !!(d.teamSize && team.memberCount >= d.teamSize);
-                  return (
-                    <button key={team.id} disabled={joining || full} onClick={() => joinTeam(team.id)}
-                      style={{ flex: 1, background: full ? 'var(--surface2)' : team.color + '14', border: `2px solid ${full ? 'var(--border)' : team.color}`, borderRadius: 12, padding: '12px 6px', cursor: full ? 'not-allowed' : 'pointer', opacity: full ? 0.55 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 22 }}>{team.emoji}</span>
-                      <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, color: full ? 'var(--text-muted)' : team.color, textAlign: 'center' }}>{team.name}</div>
-                      <div style={{ fontFamily: 'var(--font)', fontSize: 10, color: 'var(--text-muted)' }}>{team.memberCount}{d.teamSize ? `/${d.teamSize}` : ''} joined</div>
-                      <div style={{ fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, background: full ? 'var(--surface3)' : team.color, color: full ? 'var(--text-muted)' : '#fff', borderRadius: 7, padding: '2px 10px', marginTop: 2 }}>
-                        {joining ? '…' : full ? 'Full' : 'Join'}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Join button (solo contest or already joined) */}
-          {!loading && !isTeam && (
-            <button onClick={joinSolo} disabled={joined || joining}
-              style={{ width: '100%', padding: '9px', border: 'none', borderRadius: 10, background: joined ? '#059669' : joining ? 'var(--surface2)' : '#534AB7', color: joined || joining ? (joined ? '#fff' : 'var(--text-muted)') : '#fff', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, cursor: joined || joining ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              {joined ? '✓ Joined!' : joining ? 'Joining…' : 'Join contest →'}
-            </button>
-          )}
-          {!loading && joined && isTeam && (
-            <div style={{ width: '100%', padding: '9px', borderRadius: 10, background: '#05996920', border: '1.5px solid #059669', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: '#059669', textAlign: 'center' }}>✓ Joined!</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 function loadGroups() {
   if (typeof window === 'undefined') return [];
   try { const d = localStorage.getItem('tr_groups'); if (!d) return []; return JSON.parse(d).map(g => ({ type:'club', visibility:'open', country:'', desc:'', profileImg:null, ...g })); } catch(e) { return []; }
@@ -404,7 +224,7 @@ function GroupChatRoom({ group, activeRoom, channelId, myName }) {
                     <span style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{m.user}</span>
                     <span style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.time}</span>
                   </div>
-                  {m.text && (() => { const _inv = parseContestInvite(m.text); return _inv ? <ContestInviteCard invite={_inv} /> : <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text)', lineHeight:1.5 }}>{m.text}</div>; })()}
+                  {m.text && <div style={{ fontFamily:'var(--font)', fontSize:13, color:'var(--text)', lineHeight:1.5 }}>{m.text}</div>}
                   {m.attachment?.type==="image" && <div style={{ marginTop:6, borderRadius:10, overflow:'hidden', maxWidth:280 }}><img src={m.attachment.url} alt="" style={{ width:'100%', display:'block', borderRadius:10 }} /></div>}
                   {m.attachment?.type==="link" && <a href={m.attachment.url} target="_blank" rel="noreferrer" style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', maxWidth:280, textDecoration:'none' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--accent)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.attachment.url}</span></a>}
                 </div>
@@ -559,9 +379,7 @@ function GroupSettings({ group, onClose, onUpdate }) {
   );
 }
 
-function GroupsView({ currentUserId }) {
-  const [groups, setGroups] = useState([]);
-  const [openGroup, setOpenGroup] = useState(null);
+function GroupsView({ currentUserId, groups, openGroup, onSwitchGroup, onGroupAdded, onGroupDeleted, onGroupUpdated, myName, externalAction, onExternalActionHandled }) {
   const [activeRoom, setActiveRoom] = useState('general');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top:0, left:0 });
@@ -582,63 +400,11 @@ function GroupsView({ currentUserId }) {
   const [createPrice, setCreatePrice] = useState('');
   const [createImg, setCreateImg] = useState(null);
   const [createGrad, setCreateGrad] = useState('linear-gradient(135deg,#4f46e5,#7c3aed)');
-  const [myName, setMyName] = useState('');
-
-  // Load current user's display name
-  useEffect(() => {
-    fetch('/api/auth/session').then(r => r.json()).then(s => {
-      if (s?.user) setMyName(s.user.username || s.user.name || '');
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetch('/api/groups?mine=true')
-      .then(r => r.json())
-      .then(d => {
-        if (!d.groups) return;
-        const localAll = loadGroups();
-        const localById = {};
-        localAll.forEach(g => { localById[String(g.id)] = g; });
-        const dbGroups = d.groups.map(g => ({
-          id: g.id,
-          name: g.name,
-          desc: g.description || '',
-          type: localById[String(g.id)]?.type || 'club',
-          visibility: g.isPublic ? 'open' : 'invite',
-          members: g._count?.members || g.memberCount || 1,
-          joined: true,
-          creator: g.ownerId === currentUserId ? 'me' : (g.owner?.name || g.owner?.username || ''),
-          grad: localById[String(g.id)]?.grad || 'linear-gradient(135deg,#4f46e5,#7c3aed)',
-          profileImg: localById[String(g.id)]?.profileImg || null,
-          fromDB: true,
-        }));
-        const localGroups = localAll.filter(lg => !dbGroups.find(dg => String(dg.id) === String(lg.id)));
-        const all = [...dbGroups, ...localGroups];
-        setGroups(all);
-        const lastId = localStorage.getItem('tr_last_group');
-        const def = all.find(g => String(g.id) === lastId) || all[0] || null;
-        if (def) {
-          setOpenGroup(def);
-          try {
-            const stored = localStorage.getItem('tr_rooms_'+def.id);
-            setCustomRooms(stored ? JSON.parse(stored) : ['general']);
-          } catch { setCustomRooms(['general']); }
-        }
-      })
-      .catch(() => {
-        const loaded = loadGroups();
-        setGroups(loaded);
-        const lastId = localStorage.getItem('tr_last_group');
-        const def = loaded.find(g => g.id === lastId) || loaded[0] || null;
-        if (def) {
-          setOpenGroup(def);
-          try {
-            const stored = localStorage.getItem('tr_rooms_'+def.id);
-            setCustomRooms(stored ? JSON.parse(stored) : ['general']);
-          } catch { setCustomRooms(['general']); }
-        }
-      });
-  }, []);
+  // externalAction: 'create' | 'browse' | null — triggered from sidebar
+  React.useEffect(() => {
+    if (externalAction === 'create') { setShowCreate(true); onExternalActionHandled?.(); }
+    if (externalAction === 'browse') { setShowBrowse(true); onExternalActionHandled?.(); }
+  }, [externalAction]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -652,21 +418,14 @@ function GroupsView({ currentUserId }) {
     const rect = e.currentTarget.getBoundingClientRect();
     setDropdownPos({ top: rect.bottom + 8, left: rect.left });
     if (!openGroup || openGroup.id !== g.id) {
-      // Actually switching groups — reset room
-      switchGroup(g);
+      onSwitchGroup(g);
+      setActiveRoom('general');
+      try {
+        const stored = localStorage.getItem('tr_rooms_'+g.id);
+        setCustomRooms(stored ? JSON.parse(stored) : ['general']);
+      } catch {}
     }
     setDropdownOpen(true);
-  };
-
-  const switchGroup = (g) => {
-    setOpenGroup(g);
-    setActiveRoom('general');
-    setDropdownOpen(false);
-    try {
-      localStorage.setItem('tr_last_group', g.id);
-      const stored = localStorage.getItem('tr_rooms_'+g.id);
-      setCustomRooms(stored ? JSON.parse(stored) : ['general']);
-    } catch {}
   };
   const displayMe = myName || 'You';
   const [members, setMembers] = React.useState([]);
@@ -752,54 +511,13 @@ function GroupsView({ currentUserId }) {
 
       {showSettings && openGroup && <GroupSettings group={openGroup} onClose={() => setShowSettings(false)} onUpdate={(u) => {
         if (u._deleted) {
-          const remaining = groups.filter(g => String(g.id) !== String(openGroup.id));
-          setGroups(remaining);
-          setOpenGroup(remaining[0] || null);
-          if (remaining[0]) {
-            try { const s = localStorage.getItem('tr_rooms_'+remaining[0].id); setCustomRooms(s ? JSON.parse(s) : ['general']); } catch { setCustomRooms(['general']); }
-          }
+          onGroupDeleted(openGroup.id);
           setShowSettings(false);
         } else {
-          setOpenGroup(g => ({...g, ...u}));
-          setGroups(prev => prev.map(g => g.id===openGroup.id ? {...g,...u} : g));
+          onGroupUpdated(openGroup.id, u);
         }
       }} />}
-      {/* Icon rail */}
-      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0, overflowX:'auto' }}>
-        {groups.length === 0
-          ? <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>No groups yet</span>
-          : groups.map(g => {
-            const active = openGroup && openGroup.id === g.id;
-            return (
-              <div key={g.id} style={{ position:'relative', flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center' }}>
-                <button onClick={e => handleIconClick(e, g)} title={g.name}
-                  style={{ width:40, height:40, borderRadius: g.type === 'club' ? '50%' : 10, background:g.grad||PURPLE, border:active?'2px solid '+PURPLE:'2px solid transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'#fff', cursor:'pointer', overflow:'hidden', transition:'all 0.15s', outline:'none', padding:0 }}>
-                  {g.profileImg ? <img src={g.profileImg} alt={g.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
-                </button>
-                {active && (
-                  <div style={{ position:'absolute', bottom:-7, left:'50%', transform:'translateX(-50%)', width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderBottom:'5px solid '+PURPLE }} />
-                )}
-              </div>
-            );
-          })
-        }
-        {groups.length > 0 && <div style={{ width:1, height:28, background:'var(--border)', flexShrink:0, margin:'0 2px' }} />}
-        <div style={{ position:'relative', flexShrink:0 }}>
-          <button onClick={(e) => { const r=e.currentTarget.getBoundingClientRect(); setGroupMenuPos({top:r.bottom+6,left:r.left}); setShowGroupMenu(m=>!m); }} title="Add group" style={{ width:40, height:40, borderRadius:'50%', background:'var(--surface2)', border:'1px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)', fontSize:20, outline:'none' }}>+</button>
-          {showGroupMenu && (
-            <div style={{ position:'fixed', top:groupMenuPos?.top||100, left:groupMenuPos?.left||100, background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:'6px', minWidth:180, zIndex:99999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }}>
-              <button onClick={() => { setShowCreate(true); setShowGroupMenu(false); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:7, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', cursor:'pointer' }}
-                onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                <i className="ti ti-plus" style={{fontSize:15,color:'#4B44C8'}} aria-hidden="true"/> Create group
-              </button>
-              <button onClick={() => { setShowBrowse(true); setShowGroupMenu(false); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:7, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', cursor:'pointer' }}
-                onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                <i className="ti ti-search" style={{fontSize:15,color:'#059669'}} aria-hidden="true"/> Browse groups
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+
 
       {/* Chat */}
       <div style={{ flex:1, overflow:'hidden' }}>
@@ -827,13 +545,7 @@ function GroupsView({ currentUserId }) {
             </div>
             <BrowseGroupsPanel onJoin={(g) => {
               const ng = { id: g.id, name: g.name, desc: g.description||'', visibility: g.isPublic?'open':'invite', members: (g._count?.members||g.memberCount||1)+1, joined: true, creator: g.owner?.name||'', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)', fromDB: true };
-              if (!groups.find(x => x.id === g.id)) {
-                const all = [...groups, ng];
-                setGroups(all);
-                setOpenGroup(ng);
-                setActiveRoom('general');
-                try { localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
-              }
+              if (!groups.find(x => x.id === g.id)) { onGroupAdded(ng); }
               setShowBrowse(false);
             }} />
           </div>
@@ -951,21 +663,17 @@ function GroupsView({ currentUserId }) {
                   const data = await res.json();
                   if (!res.ok || !data.group) throw new Error(data.error || 'Failed');
                   const ng = { id: data.group.id, name: createName, type: createType, visibility: createVis, desc: createDesc, country: createCountry, price: parseFloat(createPrice)||0, profileImg: createImg, grad: createGrad, members: 1, joined: true, creator: 'me', fromDB: true };
-                  const all = [...groups, ng];
-                  setGroups(all);
                   try { localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
                   setCustomRooms(['general']);
                   setActiveRoom('general');
-                  setOpenGroup(ng);
+                  onGroupAdded(ng);
                 } catch (e) {
                   // Fallback to localStorage-only group
                   const ng = { id: Date.now(), name: createName, type: createType, visibility: createVis, desc: createDesc, country: createCountry, price: parseFloat(createPrice)||0, profileImg: createImg, grad: createGrad, members: 1, joined: true, creator: 'me' };
-                  const all = [...groups, ng];
-                  setGroups(all);
-                  try { localStorage.setItem('tr_groups', JSON.stringify(all)); localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
+                  try { localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
                   setCustomRooms(['general']);
                   setActiveRoom('general');
-                  setOpenGroup(ng);
+                  onGroupAdded(ng);
                 }
                 setShowCreate(false); setCreateName(''); setCreateDesc(''); setCreateCountry(''); setCreatePrice(''); setCreateImg(null); setCreateGrad('linear-gradient(135deg,#4f46e5,#7c3aed)');
               }} disabled={!createName.trim()} style={{ flex:1, padding:'11px', borderRadius:10, border:'none', background:createName.trim()?PURPLE:'var(--surface3)', color:createName.trim()?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:createName.trim()?'pointer':'default' }}>Create Group</button>
@@ -1501,39 +1209,164 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
   const [tab, setTabInternal] = React.useState('feed');
   const [feedSection, setFeedSection] = React.useState('discover');
   const [showPostModal, setShowPostModal] = React.useState(false);
+  const [localView, setLocalView] = React.useState('list');
+  const [groupAction, setGroupAction] = React.useState(null);
+
+  // ── Groups state (lifted from GroupsView) ──────────────────────────────────
+  const [groups, setGroups] = React.useState([]);
+  const [openGroup, setOpenGroup] = React.useState(null);
+  const [myName, setMyName] = React.useState('');
+
+  React.useEffect(() => {
+    fetch('/api/auth/session').then(r => r.json()).then(s => {
+      if (s?.user) setMyName(s.user.username || s.user.name || '');
+    }).catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    fetch('/api/groups?mine=true')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.groups) return;
+        const localAll = loadGroups();
+        const localById = {};
+        localAll.forEach(g => { localById[String(g.id)] = g; });
+        const dbGroups = d.groups.map(g => ({
+          id: g.id, name: g.name, desc: g.description || '',
+          type: localById[String(g.id)]?.type || 'club',
+          visibility: g.isPublic ? 'open' : 'invite',
+          members: g._count?.members || g.memberCount || 1,
+          joined: true,
+          creator: g.ownerId === currentUserId ? 'me' : (g.owner?.name || g.owner?.username || ''),
+          grad: localById[String(g.id)]?.grad || 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+          profileImg: localById[String(g.id)]?.profileImg || null,
+          fromDB: true,
+        }));
+        const localGroups = localAll.filter(lg => !dbGroups.find(dg => String(dg.id) === String(lg.id)));
+        const all = [...dbGroups, ...localGroups];
+        setGroups(all);
+        const lastId = localStorage.getItem('tr_last_group');
+        const def = all.find(g => String(g.id) === lastId) || all[0] || null;
+        if (def) setOpenGroup(def);
+      })
+      .catch(() => {
+        const loaded = loadGroups();
+        setGroups(loaded);
+        const lastId = localStorage.getItem('tr_last_group');
+        const def = loaded.find(g => g.id === lastId) || loaded[0] || null;
+        if (def) setOpenGroup(def);
+      });
+  }, []);
+
+  const switchGroup = (g) => {
+    setOpenGroup(g);
+    try { localStorage.setItem('tr_last_group', g.id); } catch {}
+  };
+  const handleGroupAdded = (ng) => {
+    setGroups(prev => prev.find(x => String(x.id) === String(ng.id)) ? prev : [...prev, ng]);
+    setOpenGroup(ng);
+  };
+  const handleGroupDeleted = (id) => {
+    setGroups(prev => {
+      const remaining = prev.filter(g => String(g.id) !== String(id));
+      setOpenGroup(remaining[0] || null);
+      return remaining;
+    });
+  };
+  const handleGroupUpdated = (id, u) => {
+    setGroups(prev => prev.map(g => String(g.id) === String(id) ? { ...g, ...u } : g));
+    setOpenGroup(prev => prev && String(prev.id) === String(id) ? { ...prev, ...u } : prev);
+  };
+  // ──────────────────────────────────────────────────────────────────────────
+
   const setTab = (t) => { setTabInternal(t); if(onTabChange) onTabChange(t); };
   React.useEffect(() => { if(externalTab && TAB_MAP[externalTab]) setTabInternal(TAB_MAP[externalTab]); }, [externalTab]);
 
-  const SIDEBAR_TABS = [
-    { key:'feed',   icon:'ti-home',    label:'Feed',     sub:'Discover & share ideas' },
-    { key:'groups', icon:'ti-users',   label:'Groups',   sub:'Your trading communities' },
-    { key:'dms',    icon:'ti-message', label:'Messages', sub:'Direct messages' },
-    { key:'local',  icon:'ti-map-pin', label:'Map',      sub:'Local traders near you' },
+  const NAV_ITEMS = [
+    { key:'feed',   icon:'ti-home',    label:'Feed' },
+    { key:'groups', icon:'ti-users',   label:'Groups' },
+    { key:'dms',    icon:'ti-message', label:'Messages' },
+    { key:'local',  icon:'ti-map-pin', label:'Map' },
   ];
-  const meta = SIDEBAR_TABS.find(t => t.key === tab) || SIDEBAR_TABS[0];
 
   return (
     <div style={{ display:'flex', flexDirection:'row', height:'100%', fontFamily:'var(--font)', overflow:'hidden', alignItems:'stretch' }}>
-      <CommSidebar tab={tab} setTab={(t)=>setTab(t)} />
-      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
 
+      {/* ── New text sidebar ── */}
+      <div style={{ width:240, flexShrink:0, borderRight:'0.5px solid var(--border)', padding:'20px 14px 16px', display:'flex', flexDirection:'column', gap:0, background:'var(--surface)', overflowY:'auto' }}>
+        <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Community</div>
+        <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Connect. Share. Discover.</div>
+
+        {NAV_ITEMS.map(item => (
+          <button key={item.key} onClick={() => setTab(item.key)}
+            style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background: tab===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: tab===item.key ? 600 : 400, color: tab===item.key ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+            <i className={`ti ${item.icon}`} style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+            <span style={{ flex:1 }}>{item.label}</span>
+          </button>
+        ))}
+
+        <div style={{ height:'0.5px', background:'var(--border)', margin:'10px 0' }} />
+
+        {/* Feed sub-nav */}
+        {tab === 'feed' && ['discover','following','threads'].map(s => {
+          const active = feedSection === s;
+          return (
+            <button key={s} onClick={() => setFeedSection(s)}
+              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'none', background: active ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 600 : 400, color: active ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+              {s[0].toUpperCase() + s.slice(1)}
+            </button>
+          );
+        })}
+
+        {/* Groups sub-nav */}
+        {tab === 'groups' && (
+          <>
+            <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', padding:'0 10px 6px' }}>Your groups</div>
+            {groups.map(g => {
+              const active = openGroup && String(openGroup.id) === String(g.id);
+              return (
+                <button key={g.id} onClick={() => switchGroup(g)}
+                  style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, border:'none', background: active ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 600 : 400, color: active ? '#fff' : 'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+                  <div style={{ width:22, height:22, borderRadius:6, background:g.grad||'#534AB7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                    {g.profileImg ? <img src={g.profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
+                  </div>
+                  <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.name}</span>
+                </button>
+              );
+            })}
+            {groups.length === 0 && <div style={{ padding:'6px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>No groups yet</div>}
+            <button onClick={() => setGroupAction('create')}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:8, border:'1px dashed var(--border)', background:'transparent', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', cursor:'pointer', marginTop:6, marginBottom:2 }}>
+              <i className="ti ti-plus" style={{ fontSize:13 }} aria-hidden="true" /> Create group
+            </button>
+            <button onClick={() => setGroupAction('browse')}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:8, border:'1px dashed var(--border)', background:'transparent', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', cursor:'pointer', marginBottom:2 }}>
+              <i className="ti ti-search" style={{ fontSize:13 }} aria-hidden="true" /> Browse groups
+            </button>
+          </>
+        )}
+
+        {/* Map sub-nav */}
+        {tab === 'local' && [['list','ti-list','List'],['map','ti-map','Map']].map(([key, icon, label]) => {
+          const active = localView === key;
+          return (
+            <button key={key} onClick={() => setLocalView(key)}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background: active ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 600 : 400, color: active ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+              <i className={`ti ${icon}`} style={{ fontSize:15 }} aria-hidden="true" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Main content ── */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
         <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', minHeight:0 }}>
+
           {tab === 'feed' && (
             <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
-              <div style={{ display:'flex', alignItems:'center', padding:'12px 18px', gap:8, flexShrink:0 }}>
-                {['discover','following','threads'].map(s => {
-                  const active = feedSection === s;
-                  const label = s === 'threads' ? 'Threads' : s[0].toUpperCase() + s.slice(1);
-                  return (
-                    <button key={s} onClick={() => setFeedSection(s)}
-                      style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600, padding:'6px 16px', borderRadius:20, background: active ? 'var(--text)' : 'transparent', color: active ? 'var(--surface)' : 'var(--text-muted)', border: active ? 'none' : '1px solid var(--border)', transition:'all 0.12s', whiteSpace:'nowrap' }}
-                      onMouseEnter={e => { if(!active){ e.currentTarget.style.background='var(--surface2)'; e.currentTarget.style.color='var(--text)'; }}}
-                      onMouseLeave={e => { if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; }}}>
-                      {label}
-                    </button>
-                  );
-                })}
-                <button style={{ all:'unset', marginLeft:'auto', cursor:'pointer', width:30, height:30, borderRadius:'50%', background:'var(--text)', color:'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0, lineHeight:1 }}
+              <div style={{ display:'flex', alignItems:'center', padding:'12px 18px', flexShrink:0, justifyContent:'flex-end' }}>
+                <button style={{ all:'unset', cursor:'pointer', width:30, height:30, borderRadius:'50%', background:'var(--text)', color:'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0, lineHeight:1 }}
                   onMouseEnter={e => e.currentTarget.style.opacity='0.8'}
                   onMouseLeave={e => e.currentTarget.style.opacity='1'}
                   title="New post" onClick={()=>setShowPostModal(true)}>+</button>
@@ -1544,9 +1377,26 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
               </div>
             </div>
           )}
-          {tab === 'groups' && <GroupsView currentUserId={currentUserId} />}
+
+          {tab === 'groups' && (
+            <GroupsView
+              currentUserId={currentUserId}
+              groups={groups}
+              openGroup={openGroup}
+              onSwitchGroup={switchGroup}
+              onGroupAdded={handleGroupAdded}
+              onGroupDeleted={handleGroupDeleted}
+              onGroupUpdated={handleGroupUpdated}
+              myName={myName}
+              externalAction={groupAction}
+              onExternalActionHandled={() => setGroupAction(null)}
+            />
+          )}
+
           {tab === 'dms' && <DMTab />}
-          {tab === 'local' && <LocalTradersTab currentUserId={currentUserId} onNavigate={(t) => setTab(TAB_MAP[t] || t)} />}
+
+          {tab === 'local' && <LocalTradersTab currentUserId={currentUserId} onNavigate={(t) => setTab(TAB_MAP[t] || t)} externalView={localView} />}
+
         </div>
       </div>
 
