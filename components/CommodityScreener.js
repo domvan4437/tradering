@@ -378,7 +378,7 @@ export default function App() {
 
       {/* ── Navbar — Capital One style ── */}
       <div data-community-nav="true" style={{ background:'var(--surface)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)' }}>
-        <div style={{ display:'flex', alignItems:'center', height:52, padding:'0 24px', gap:0, overflow:'visible' }}>
+        <div style={{ display:'flex', alignItems:'center', height:52, padding:'0 24px', gap:0, overflow:'visible', position:'relative' }}>
 
           {/* Logo */}
           <div onClick={()=>setSection('community')} style={{ display:'flex', alignItems:'center', gap:8, marginRight:36, flexShrink:0, cursor:'pointer' }}>
@@ -388,8 +388,8 @@ export default function App() {
             <span style={{ fontSize:16, fontWeight:800, color:'var(--text)', letterSpacing:'-0.4px' }}>TradeZar</span>
           </div>
 
-          {/* Nav links */}
-          <div style={{ display:'flex', flex:1, overflow:'visible', alignSelf:'stretch', alignItems:'stretch' }}>
+          {/* Nav links — centered */}
+          <div style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', display:'flex', alignSelf:'stretch', alignItems:'stretch', height:52, overflow:'visible' }}>
             {navItems.map(([label,sec])=>{
               const tabs = SECTION_TABS[sec] || [];
               const hasDropdown = tabs.length > 1;
