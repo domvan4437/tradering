@@ -376,20 +376,20 @@ export default function App() {
     <UserAvatarContext.Provider value={session?.user?.id ? `/api/avatar/${session.user.id}` : (userInfo?.image || null)}>
     <div style={{ height:'100vh', overflow:'hidden', display:'flex', flexDirection:'column', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontSize:13 }}>
 
-      {/* ── Navbar — TradingView style ── */}
-      <div data-community-nav="true" style={{ background:'var(--nav-bg)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--nav-badge)' }}>
-        <div style={{ display:'flex', alignItems:'center', height:46, padding:'0 16px', gap:0, overflow:'visible' }}>
+      {/* ── Navbar — Capital One style ── */}
+      <div data-community-nav="true" style={{ background:'var(--surface)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)' }}>
+        <div style={{ display:'flex', alignItems:'center', height:52, padding:'0 24px', gap:0, overflow:'visible' }}>
 
-          {/* Logo with ring */}
-          <div style={{ display:'flex', alignItems:'center', gap:7, marginRight:20, flexShrink:0 }}>
-            <div style={{ width:20, height:20, borderRadius:'50%', border:'2px solid var(--nav-text-active)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <div style={{ width:7, height:7, background:'var(--accent)', borderRadius:'50%' }} />
+          {/* Logo */}
+          <div onClick={()=>setSection('community')} style={{ display:'flex', alignItems:'center', gap:8, marginRight:36, flexShrink:0, cursor:'pointer' }}>
+            <div style={{ width:28, height:28, borderRadius:'50%', background:'#4B44C8', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <div style={{ width:9, height:9, background:'#fff', borderRadius:'50%' }} />
             </div>
-            <span style={{ fontSize:15, fontWeight:700, color:'var(--nav-text-active)', letterSpacing:'-0.4px' }}>TradeZar</span>
+            <span style={{ fontSize:16, fontWeight:800, color:'var(--text)', letterSpacing:'-0.4px' }}>TradeZar</span>
           </div>
 
-          {/* Nav links with hover dropdowns */}
-          <div style={{ display:'flex', flex:1, overflow:'visible' }}>
+          {/* Nav links */}
+          <div style={{ display:'flex', flex:1, overflow:'visible', alignSelf:'stretch', alignItems:'stretch' }}>
             {navItems.map(([label,sec])=>{
               const tabs = SECTION_TABS[sec] || [];
               const hasDropdown = tabs.length > 1;
@@ -398,35 +398,36 @@ export default function App() {
               return (
                 <div
                   key={sec}
-                  style={{ position:'relative', flexShrink:0 }}
+                  style={{ position:'relative', flexShrink:0, display:'flex', alignItems:'stretch' }}
                   onMouseEnter={() => setHoveredSection(sec)}
                   onMouseLeave={() => setHoveredSection(null)}
                 >
                   <button
                     onClick={() => { setSection(sec); setTab(''); setHoveredSection(null); }}
                     style={{
-                      background: isActive ? 'var(--nav-badge)' : 'transparent',
-                      color: 'var(--nav-text-active)',
+                      background: 'transparent',
+                      color: isActive ? 'var(--text)' : 'var(--text-muted)',
                       border: 'none',
-                      borderBottom: isActive ? '2px solid var(--nav-text-active)' : '2px solid transparent',
-                      padding: '0 12px',
-                      height: 46,
-                      fontSize: 12,
-                      fontWeight: isActive ? 700 : 500,
+                      borderBottom: isActive ? '2px solid #4B44C8' : '2px solid transparent',
+                      borderTop: '2px solid transparent',
+                      padding: '0 14px',
+                      fontSize: 13,
+                      fontWeight: isActive ? 600 : 400,
                       cursor: 'pointer',
                       fontFamily: 'var(--font)',
                       whiteSpace: 'nowrap',
                       flexShrink: 0,
-                      transition: 'all 0.15s',
-                      marginBottom: -1,
+                      transition: 'all 0.12s',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 4,
                     }}
+                    onMouseEnter={e=>{ if(!isActive){ e.currentTarget.style.color='var(--text)'; e.currentTarget.style.borderBottomColor='var(--border)'; }}}
+                    onMouseLeave={e=>{ if(!isActive){ e.currentTarget.style.color='var(--text-muted)'; e.currentTarget.style.borderBottomColor='transparent'; }}}
                   >
                     {label}
                     {hasDropdown && (
-                      <span style={{ fontSize: 8, opacity: 0.5, marginTop: 1 }}>▾</span>
+                      <span style={{ fontSize: 8, opacity: 0.4, marginTop: 1 }}>▾</span>
                     )}
                   </button>
 
@@ -499,22 +500,35 @@ export default function App() {
             })}
           </div>
 
-          {/* Right side — account button only */}
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginLeft:8, flexShrink:0 }}>
-            <button onClick={toggle}
-              style={{ background:'var(--nav-badge)', border:'1px solid var(--nav-badge-border)', color:'var(--nav-text-active)', width:28, height:28, borderRadius:3, cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
-              {theme==='dark'?'○':'●'}
+          {/* Right side */}
+          <div style={{ display:'flex', alignItems:'center', gap:4, marginLeft:8, flexShrink:0 }}>
+            {/* Search */}
+            <button style={{ all:'unset', cursor:'pointer', width:34, height:34, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
+              onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
+              onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
+              <i className="ti ti-search" style={{fontSize:17}}/>
             </button>
+            {/* Help */}
+            <button style={{ all:'unset', cursor:'pointer', width:34, height:34, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
+              onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
+              onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
+              <i className="ti ti-help-circle" style={{fontSize:17}}/>
+            </button>
+            {/* Theme toggle */}
+            <button onClick={toggle}
+              style={{ all:'unset', cursor:'pointer', width:34, height:34, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:14 }}
+              onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';}}
+              onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}>
+              {theme==='dark'?'☀':'☾'}
+            </button>
+            <div style={{ width:1, height:20, background:'var(--border)', margin:'0 6px' }}/>
             <div style={{ position:'relative' }}>
               <button onClick={()=>setShowAccount(s=>!s)}
-                style={{ background:'var(--nav-badge)', color:'var(--nav-text-active)', border:'1px solid var(--nav-badge-border)', padding:'4px 10px', fontSize:12, fontWeight:500, borderRadius:3, cursor:'pointer', fontFamily:'var(--font)', display:'flex', alignItems:'center', gap:6 }}>
-                <span style={{ width:20, height:20, borderRadius:'50%', background:'var(--accent)', color:'#fff', fontSize:9, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
-                  {userInfo?.image
-                    ? <img src={userInfo.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                    : (userInfo?.name?.charAt(0)||session?.user?.name?.charAt(0)||session?.user?.email?.charAt(0)||'U').toUpperCase()
-                  }
-                </span>
-                {userInfo?.name||session?.user?.name||session?.user?.email?.split('@')[0]||'Account'} ▾
+                style={{ all:'unset', cursor:'pointer', display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, fontSize:13, fontWeight:400, color:'var(--text-muted)', fontFamily:'var(--font)', transition:'all 0.12s' }}
+                onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
+                onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
+                <i className="ti ti-user-circle" style={{fontSize:17}}/>
+                {userInfo?.name?.split(' ')[0]||session?.user?.name?.split(' ')[0]||session?.user?.email?.split('@')[0]||'Account'}
               </button>
               {showAccount && (
                 <div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'1px solid var(--border)', minWidth:220, zIndex:999, borderRadius:10, boxShadow:'0 8px 32px rgba(0,0,0,0.35)' }}>
