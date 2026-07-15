@@ -436,7 +436,7 @@ const QUICK_CATS = [
   { label: 'Psychology', prompts: ['How do I stop revenge trading?', 'I keep moving my stop loss — how do I fix this?', 'How do I build unshakeable discipline?', 'I just had 3 losses in a row — what now?'] },
 ];
 
-const WELCOME = '**Welcome. I\'m your TradeZar AI Coach.**\n\nI have full access to your trade journal, performance stats, playbook, and notes. Ask me anything.\n\n- **Analyze your data** — win rates, setups, emotional patterns\n- **Explain any concept** — SMC, ICT, risk management, COT, TA\n- **Chart analysis** — paste a screenshot and I\'ll break it down\n- **Drawing tools** — annotate charts before sending with pen, arrows, shapes\n- **Live decision help** — "should I take this trade?" with your actual stats\n\nWhat do you want to work on?';
+const WELCOME = '**Welcome. I\'m your TradeZar AI Coach.**\n\nI have full access to your trade journal, performance stats, playbook, and notes. Ask me anything.\n\n- **Analyze your data** — win rates, setups, emotional patterns\n- **SMC & ICT** — orderblocks, FVGs, liquidity sweeps, BOS, ChoCH, killzones\n- **Risk & sizing** — position sizing, R:R, drawdown management\n- **Chart analysis** — paste a screenshot and I\'ll break it down\n- **Live decision help** — "should I take this trade?" with your actual stats\n\nWhat do you want to work on?';
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function FloatingAICoach() {
@@ -808,15 +808,7 @@ export default function FloatingAICoach() {
             React.createElement('div', { ref: bottomRef })
           ),
 
-          // Quick prompts (welcome screen only)
-          isWelcome && React.createElement('div', { style: { padding: '0 12px 8px', flexShrink: 0 } },
-            React.createElement('div', { style: { display: 'flex', gap: 5, marginBottom: 6 } },
-              ...QUICK_CATS.map((c, i) => React.createElement('button', { key: i, onClick: () => setCat(i), style: { padding: '2px 8px', borderRadius: 20, border: '0.5px solid ' + (cat === i ? PURPLE : 'var(--border)'), background: cat === i ? 'rgba(75,68,200,0.1)' : 'transparent', color: cat === i ? PURPLE : 'var(--text-muted)', fontFamily: 'var(--font)', fontSize: 10, cursor: 'pointer', fontWeight: cat === i ? 600 : 400 } }, c.label))
-            ),
-            React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 3 } },
-              ...QUICK_CATS[cat].prompts.map(q => React.createElement('button', { key: q, onClick: () => send(q), style: { padding: '6px 10px', borderRadius: 7, border: '0.5px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 12, cursor: 'pointer', textAlign: 'left', transition: 'all 0.1s', lineHeight: 1.4 }, onMouseEnter: e => { e.currentTarget.style.borderColor = PURPLE; e.currentTarget.style.background = 'rgba(75,68,200,0.05)'; }, onMouseLeave: e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface2)'; } }, q))
-            )
-          ),
+          // Quick prompts removed
 
           // Follow-up suggestions
           followUps.length > 0 && React.createElement('div', { style: { padding: '0 12px 8px', flexShrink: 0 } },
