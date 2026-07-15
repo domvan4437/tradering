@@ -305,7 +305,7 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
       )}
 
       {/* ── Action bar (unchanged logic) ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 12, paddingTop: 10, borderTop: '0.5px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginTop: 12, paddingTop: 10, borderTop: '0.5px solid var(--border)', justifyContent: 'space-between' }}>
         {/* Like */}
         <button onClick={() => onLike(post.id)}
           style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font)', fontSize: 12, color: post.liked ? '#E11D48' : 'var(--text-muted)', cursor: 'pointer' }}
@@ -332,7 +332,7 @@ function Post({ post, onLike, onRepost, onDelete, currentUserId }) {
         </button>
         {/* Share */}
         <button onClick={handleShare}
-          style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 'auto' }}
+          style={{ all: 'unset', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}
           onMouseEnter={e => e.currentTarget.style.color = '#4F46E5'}
           onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>

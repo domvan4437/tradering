@@ -93,7 +93,7 @@ function UserSearch() {
   );
 }
 
-function GroupChatRoom({ group, activeRoom, channelId, myName }) {
+function GroupChatRoom({ group, activeRoom, channelId, myName, channels, onChannelSelect, members, onOpenSettings }) {
   const myAvatar = useContext(UserAvatarContext);
   const [msg, setMsg] = useState('');
   const [messages, setMessages] = useState([]);
@@ -105,6 +105,8 @@ function GroupChatRoom({ group, activeRoom, channelId, myName }) {
   const fileRef = useRef(null);
   const popRef = useRef(null);
   const endRef = useRef(null);
+  const membersRef = useRef(null);
+  const [showMembers, setShowMembers] = useState(false);
 
   // Fetch messages from API
   const fetchMessages = useCallback(async (cid) => {
@@ -139,7 +141,10 @@ function GroupChatRoom({ group, activeRoom, channelId, myName }) {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
 
   useEffect(() => {
-    const handler = (e) => { if (popRef.current && !popRef.current.contains(e.target)) setPopover(false); };
+    const handler = (e) => {
+      if (popRef.current && !popRef.current.contains(e.target)) setPopover(false);
+      if (membersRef.current && !membersRef.current.contains(e.target)) setShowMembers(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -197,11 +202,71 @@ function GroupChatRoom({ group, activeRoom, channelId, myName }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0, overflow:'hidden' }}>
 
-      {/* Room header */}
-      <div style={{ padding:'8px 16px', borderBottom:'1px solid var(--border)', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
-        <span style={{ fontFamily:'var(--font)', fontSize:14, color:'var(--text-muted)', fontWeight:400 }}>#</span>
-        <span style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)' }}>{activeRoom}</span>
-        {!channelId && <span style={{ fontFamily:'var(--font)', fontSize:11, color:'#ef4444', marginLeft:4 }}>— not connected</span>}
+      {/* Group header */}
+      <div style={{ padding:'10px 16px 0', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+        {/* Top row: group info + members + settings */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+          <div style={{ width:28, height:28, borderRadius:7, background:group?.grad||'#534AB7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+            {group?.profileImg ? <img src={group.profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (group?.name||'G')[0].toUpperCase()}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:700, color:'var(--text)', lineHeight:1.2 }}>{group?.name}</div>
+            <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>
+              {group?.type==='club' ? `${group.members||0}/${group.max||50} members` : `${group?.members||0} members`} · {group?.visibility||'open'}
+            </div>
+          </div>
+          {/* Member avatar stack + dropdown */}
+          <div ref={membersRef} style={{ position:'relative' }}>
+            <div onClick={() => setShowMembers(s => !s)} style={{ display:'flex', alignItems:'center', cursor:'pointer' }} title="View members">
+              {(members||[]).slice(0,3).map((m,i) => (
+                <div key={m.id} style={{ width:22, height:22, borderRadius:'50%', border:'2px solid var(--surface)', marginLeft: i===0?0:-6, background: m.image?'transparent':getColor(m.name), display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0, zIndex:3-i }}>
+                  {m.image ? <img src={m.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.name||'?')[0].toUpperCase()}
+                </div>
+              ))}
+              {(members||[]).length > 3 && (
+                <div style={{ width:22, height:22, borderRadius:'50%', border:'2px solid var(--surface)', marginLeft:-6, background:'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:600, color:'var(--text-muted)', flexShrink:0 }}>+{(members||[]).length-3}</div>
+              )}
+            </div>
+            {showMembers && (
+              <div style={{ position:'absolute', right:0, top:'calc(100% + 8px)', width:220, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.25)', zIndex:200, overflow:'hidden' }}>
+                <div style={{ padding:'8px 12px 6px', fontFamily:'var(--font)', fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid var(--border)' }}>
+                  {(members||[]).length} member{(members||[]).length !== 1 ? 's' : ''}
+                </div>
+                <div style={{ maxHeight:260, overflowY:'auto' }}>
+                  {(members||[]).map(m => (
+                    <div key={m.id} style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 12px' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background: m.image?'transparent':getColor(m.name||'?'), display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', overflow:'hidden', flexShrink:0 }}>
+                        {m.image ? <img src={m.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (m.name||'?')[0].toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:500, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.name || 'Unknown'}</div>
+                        {m.role && <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{m.role}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {onOpenSettings && (
+            <button onClick={onOpenSettings} style={{ width:28, height:28, borderRadius:7, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)', flexShrink:0 }}
+              onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <i className="ti ti-settings" style={{ fontSize:14 }} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {/* Channel tabs */}
+        <div style={{ display:'flex', gap:0, overflowX:'auto' }}>
+          {(channels&&channels.length>0 ? channels.map(c=>c.name) : ['general']).map(ch => (
+            <button key={ch} onClick={() => onChannelSelect?.(ch)}
+              style={{ padding:'7px 12px', border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: activeRoom===ch ? 600 : 400, color: activeRoom===ch ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', borderBottom: activeRoom===ch ? '2px solid #534AB7' : '2px solid transparent', whiteSpace:'nowrap', flexShrink:0 }}>
+              # {ch}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={{ flex:1, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:10 }}>
@@ -379,9 +444,7 @@ function GroupSettings({ group, onClose, onUpdate }) {
   );
 }
 
-function GroupsView({ currentUserId }) {
-  const [groups, setGroups] = useState([]);
-  const [openGroup, setOpenGroup] = useState(null);
+function GroupsView({ currentUserId, groups, openGroup, onSwitchGroup, onGroupAdded, onGroupDeleted, onGroupUpdated, myName, externalAction, onExternalActionHandled }) {
   const [activeRoom, setActiveRoom] = useState('general');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top:0, left:0 });
@@ -402,63 +465,11 @@ function GroupsView({ currentUserId }) {
   const [createPrice, setCreatePrice] = useState('');
   const [createImg, setCreateImg] = useState(null);
   const [createGrad, setCreateGrad] = useState('linear-gradient(135deg,#4f46e5,#7c3aed)');
-  const [myName, setMyName] = useState('');
-
-  // Load current user's display name
-  useEffect(() => {
-    fetch('/api/auth/session').then(r => r.json()).then(s => {
-      if (s?.user) setMyName(s.user.username || s.user.name || '');
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetch('/api/groups?mine=true')
-      .then(r => r.json())
-      .then(d => {
-        if (!d.groups) return;
-        const localAll = loadGroups();
-        const localById = {};
-        localAll.forEach(g => { localById[String(g.id)] = g; });
-        const dbGroups = d.groups.map(g => ({
-          id: g.id,
-          name: g.name,
-          desc: g.description || '',
-          type: localById[String(g.id)]?.type || 'club',
-          visibility: g.isPublic ? 'open' : 'invite',
-          members: g._count?.members || g.memberCount || 1,
-          joined: true,
-          creator: g.ownerId === currentUserId ? 'me' : (g.owner?.name || g.owner?.username || ''),
-          grad: localById[String(g.id)]?.grad || 'linear-gradient(135deg,#4f46e5,#7c3aed)',
-          profileImg: localById[String(g.id)]?.profileImg || null,
-          fromDB: true,
-        }));
-        const localGroups = localAll.filter(lg => !dbGroups.find(dg => String(dg.id) === String(lg.id)));
-        const all = [...dbGroups, ...localGroups];
-        setGroups(all);
-        const lastId = localStorage.getItem('tr_last_group');
-        const def = all.find(g => String(g.id) === lastId) || all[0] || null;
-        if (def) {
-          setOpenGroup(def);
-          try {
-            const stored = localStorage.getItem('tr_rooms_'+def.id);
-            setCustomRooms(stored ? JSON.parse(stored) : ['general']);
-          } catch { setCustomRooms(['general']); }
-        }
-      })
-      .catch(() => {
-        const loaded = loadGroups();
-        setGroups(loaded);
-        const lastId = localStorage.getItem('tr_last_group');
-        const def = loaded.find(g => g.id === lastId) || loaded[0] || null;
-        if (def) {
-          setOpenGroup(def);
-          try {
-            const stored = localStorage.getItem('tr_rooms_'+def.id);
-            setCustomRooms(stored ? JSON.parse(stored) : ['general']);
-          } catch { setCustomRooms(['general']); }
-        }
-      });
-  }, []);
+  // externalAction: 'create' | 'browse' | null — triggered from sidebar
+  React.useEffect(() => {
+    if (externalAction === 'create') { setShowCreate(true); onExternalActionHandled?.(); }
+    if (externalAction === 'browse') { setShowBrowse(true); onExternalActionHandled?.(); }
+  }, [externalAction]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -472,21 +483,14 @@ function GroupsView({ currentUserId }) {
     const rect = e.currentTarget.getBoundingClientRect();
     setDropdownPos({ top: rect.bottom + 8, left: rect.left });
     if (!openGroup || openGroup.id !== g.id) {
-      // Actually switching groups — reset room
-      switchGroup(g);
+      onSwitchGroup(g);
+      setActiveRoom('general');
+      try {
+        const stored = localStorage.getItem('tr_rooms_'+g.id);
+        setCustomRooms(stored ? JSON.parse(stored) : ['general']);
+      } catch {}
     }
     setDropdownOpen(true);
-  };
-
-  const switchGroup = (g) => {
-    setOpenGroup(g);
-    setActiveRoom('general');
-    setDropdownOpen(false);
-    try {
-      localStorage.setItem('tr_last_group', g.id);
-      const stored = localStorage.getItem('tr_rooms_'+g.id);
-      setCustomRooms(stored ? JSON.parse(stored) : ['general']);
-    } catch {}
   };
   const displayMe = myName || 'You';
   const [members, setMembers] = React.useState([]);
@@ -572,54 +576,13 @@ function GroupsView({ currentUserId }) {
 
       {showSettings && openGroup && <GroupSettings group={openGroup} onClose={() => setShowSettings(false)} onUpdate={(u) => {
         if (u._deleted) {
-          const remaining = groups.filter(g => String(g.id) !== String(openGroup.id));
-          setGroups(remaining);
-          setOpenGroup(remaining[0] || null);
-          if (remaining[0]) {
-            try { const s = localStorage.getItem('tr_rooms_'+remaining[0].id); setCustomRooms(s ? JSON.parse(s) : ['general']); } catch { setCustomRooms(['general']); }
-          }
+          onGroupDeleted(openGroup.id);
           setShowSettings(false);
         } else {
-          setOpenGroup(g => ({...g, ...u}));
-          setGroups(prev => prev.map(g => g.id===openGroup.id ? {...g,...u} : g));
+          onGroupUpdated(openGroup.id, u);
         }
       }} />}
-      {/* Icon rail */}
-      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0, overflowX:'auto' }}>
-        {groups.length === 0
-          ? <span style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>No groups yet</span>
-          : groups.map(g => {
-            const active = openGroup && openGroup.id === g.id;
-            return (
-              <div key={g.id} style={{ position:'relative', flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center' }}>
-                <button onClick={e => handleIconClick(e, g)} title={g.name}
-                  style={{ width:40, height:40, borderRadius: g.type === 'club' ? '50%' : 10, background:g.grad||PURPLE, border:active?'2px solid '+PURPLE:'2px solid transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'#fff', cursor:'pointer', overflow:'hidden', transition:'all 0.15s', outline:'none', padding:0 }}>
-                  {g.profileImg ? <img src={g.profileImg} alt={g.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
-                </button>
-                {active && (
-                  <div style={{ position:'absolute', bottom:-7, left:'50%', transform:'translateX(-50%)', width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderBottom:'5px solid '+PURPLE }} />
-                )}
-              </div>
-            );
-          })
-        }
-        {groups.length > 0 && <div style={{ width:1, height:28, background:'var(--border)', flexShrink:0, margin:'0 2px' }} />}
-        <div style={{ position:'relative', flexShrink:0 }}>
-          <button onClick={(e) => { const r=e.currentTarget.getBoundingClientRect(); setGroupMenuPos({top:r.bottom+6,left:r.left}); setShowGroupMenu(m=>!m); }} title="Add group" style={{ width:40, height:40, borderRadius:'50%', background:'var(--surface2)', border:'1px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)', fontSize:20, outline:'none' }}>+</button>
-          {showGroupMenu && (
-            <div style={{ position:'fixed', top:groupMenuPos?.top||100, left:groupMenuPos?.left||100, background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:'6px', minWidth:180, zIndex:99999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }}>
-              <button onClick={() => { setShowCreate(true); setShowGroupMenu(false); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:7, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', cursor:'pointer' }}
-                onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                <i className="ti ti-plus" style={{fontSize:15,color:'#4B44C8'}} aria-hidden="true"/> Create group
-              </button>
-              <button onClick={() => { setShowBrowse(true); setShowGroupMenu(false); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:7, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', cursor:'pointer' }}
-                onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                <i className="ti ti-search" style={{fontSize:15,color:'#059669'}} aria-hidden="true"/> Browse groups
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+
 
       {/* Chat */}
       <div style={{ flex:1, overflow:'hidden' }}>
@@ -629,6 +592,10 @@ function GroupsView({ currentUserId }) {
               activeRoom={activeRoom}
               channelId={dbChannels.find(c => c.name === activeRoom)?.id || null}
               myName={displayMe}
+              channels={dbChannels}
+              onChannelSelect={(ch) => setActiveRoom(ch)}
+              members={members}
+              onOpenSettings={() => setShowSettings(true)}
             />
           : <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:12 }}>
               <div style={{ fontFamily:'var(--font)', fontSize:14, fontWeight:600, color:'var(--text)' }}>No groups yet</div>
@@ -647,13 +614,7 @@ function GroupsView({ currentUserId }) {
             </div>
             <BrowseGroupsPanel onJoin={(g) => {
               const ng = { id: g.id, name: g.name, desc: g.description||'', visibility: g.isPublic?'open':'invite', members: (g._count?.members||g.memberCount||1)+1, joined: true, creator: g.owner?.name||'', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)', fromDB: true };
-              if (!groups.find(x => x.id === g.id)) {
-                const all = [...groups, ng];
-                setGroups(all);
-                setOpenGroup(ng);
-                setActiveRoom('general');
-                try { localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
-              }
+              if (!groups.find(x => x.id === g.id)) { onGroupAdded(ng); }
               setShowBrowse(false);
             }} />
           </div>
@@ -771,21 +732,17 @@ function GroupsView({ currentUserId }) {
                   const data = await res.json();
                   if (!res.ok || !data.group) throw new Error(data.error || 'Failed');
                   const ng = { id: data.group.id, name: createName, type: createType, visibility: createVis, desc: createDesc, country: createCountry, price: parseFloat(createPrice)||0, profileImg: createImg, grad: createGrad, members: 1, joined: true, creator: 'me', fromDB: true };
-                  const all = [...groups, ng];
-                  setGroups(all);
                   try { localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
                   setCustomRooms(['general']);
                   setActiveRoom('general');
-                  setOpenGroup(ng);
+                  onGroupAdded(ng);
                 } catch (e) {
                   // Fallback to localStorage-only group
                   const ng = { id: Date.now(), name: createName, type: createType, visibility: createVis, desc: createDesc, country: createCountry, price: parseFloat(createPrice)||0, profileImg: createImg, grad: createGrad, members: 1, joined: true, creator: 'me' };
-                  const all = [...groups, ng];
-                  setGroups(all);
-                  try { localStorage.setItem('tr_groups', JSON.stringify(all)); localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
+                  try { localStorage.setItem('tr_rooms_'+ng.id, JSON.stringify(['general'])); } catch {}
                   setCustomRooms(['general']);
                   setActiveRoom('general');
-                  setOpenGroup(ng);
+                  onGroupAdded(ng);
                 }
                 setShowCreate(false); setCreateName(''); setCreateDesc(''); setCreateCountry(''); setCreatePrice(''); setCreateImg(null); setCreateGrad('linear-gradient(135deg,#4f46e5,#7c3aed)');
               }} disabled={!createName.trim()} style={{ flex:1, padding:'11px', borderRadius:10, border:'none', background:createName.trim()?PURPLE:'var(--surface3)', color:createName.trim()?'#fff':'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:700, cursor:createName.trim()?'pointer':'default' }}>Create Group</button>
@@ -1321,40 +1278,169 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
   const [tab, setTabInternal] = React.useState('feed');
   const [feedSection, setFeedSection] = React.useState('discover');
   const [showPostModal, setShowPostModal] = React.useState(false);
+  const [localView, setLocalView] = React.useState('list');
+  const [groupAction, setGroupAction] = React.useState(null);
+
+  // ── Groups state (lifted from GroupsView) ──────────────────────────────────
+  const [groups, setGroups] = React.useState([]);
+  const [openGroup, setOpenGroup] = React.useState(null);
+  const [myName, setMyName] = React.useState('');
+
+  React.useEffect(() => {
+    fetch('/api/auth/session').then(r => r.json()).then(s => {
+      if (s?.user) setMyName(s.user.username || s.user.name || '');
+    }).catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    fetch('/api/groups?mine=true')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.groups) return;
+        const localAll = loadGroups();
+        const localById = {};
+        localAll.forEach(g => { localById[String(g.id)] = g; });
+        const dbGroups = d.groups.map(g => ({
+          id: g.id, name: g.name, desc: g.description || '',
+          type: localById[String(g.id)]?.type || 'club',
+          visibility: g.isPublic ? 'open' : 'invite',
+          members: g._count?.members || g.memberCount || 1,
+          joined: true,
+          creator: g.ownerId === currentUserId ? 'me' : (g.owner?.name || g.owner?.username || ''),
+          grad: localById[String(g.id)]?.grad || 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+          profileImg: localById[String(g.id)]?.profileImg || null,
+          fromDB: true,
+        }));
+        const localGroups = localAll.filter(lg => !dbGroups.find(dg => String(dg.id) === String(lg.id)));
+        const all = [...dbGroups, ...localGroups];
+        setGroups(all);
+        const lastId = localStorage.getItem('tr_last_group');
+        const def = all.find(g => String(g.id) === lastId) || all[0] || null;
+        if (def) setOpenGroup(def);
+      })
+      .catch(() => {
+        const loaded = loadGroups();
+        setGroups(loaded);
+        const lastId = localStorage.getItem('tr_last_group');
+        const def = loaded.find(g => g.id === lastId) || loaded[0] || null;
+        if (def) setOpenGroup(def);
+      });
+  }, []);
+
+  const switchGroup = (g) => {
+    setOpenGroup(g);
+    try { localStorage.setItem('tr_last_group', g.id); } catch {}
+  };
+  const handleGroupAdded = (ng) => {
+    setGroups(prev => prev.find(x => String(x.id) === String(ng.id)) ? prev : [...prev, ng]);
+    setOpenGroup(ng);
+  };
+  const handleGroupDeleted = (id) => {
+    setGroups(prev => {
+      const remaining = prev.filter(g => String(g.id) !== String(id));
+      setOpenGroup(remaining[0] || null);
+      return remaining;
+    });
+  };
+  const handleGroupUpdated = (id, u) => {
+    setGroups(prev => prev.map(g => String(g.id) === String(id) ? { ...g, ...u } : g));
+    setOpenGroup(prev => prev && String(prev.id) === String(id) ? { ...prev, ...u } : prev);
+  };
+  // ──────────────────────────────────────────────────────────────────────────
+
   const setTab = (t) => { setTabInternal(t); if(onTabChange) onTabChange(t); };
   React.useEffect(() => { if(externalTab && TAB_MAP[externalTab]) setTabInternal(TAB_MAP[externalTab]); }, [externalTab]);
 
-  const SIDEBAR_TABS = [
-    { key:'feed',   icon:'ti-home',    label:'Feed',     sub:'Discover & share ideas' },
-    { key:'groups', icon:'ti-users',   label:'Groups',   sub:'Your trading communities' },
-    { key:'dms',    icon:'ti-message', label:'Messages', sub:'Direct messages' },
-    { key:'local',  icon:'ti-map-pin', label:'Map',      sub:'Local traders near you' },
+  const NAV_ITEMS = [
+    { key:'feed',   icon:'ti-home',    label:'Feed' },
+    { key:'groups', icon:'ti-users',   label:'Groups' },
+    { key:'dms',    icon:'ti-message', label:'Messages' },
+    { key:'local',  icon:'ti-map-pin', label:'Map' },
   ];
-  const meta = SIDEBAR_TABS.find(t => t.key === tab) || SIDEBAR_TABS[0];
 
   return (
     <div style={{ display:'flex', flexDirection:'row', height:'100%', fontFamily:'var(--font)', overflow:'hidden', alignItems:'stretch' }}>
-      <CommSidebar tab={tab} setTab={(t)=>setTab(t)} />
-      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
 
+      {/* ── New text sidebar ── */}
+      <div style={{ width:240, flexShrink:0, borderRight:'0.5px solid var(--border)', padding:'20px 14px 16px', display:'flex', flexDirection:'column', gap:0, background:'var(--surface)', overflowY:'auto' }}>
+        <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Community</div>
+        <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Connect. Share. Discover.</div>
+
+        {NAV_ITEMS.map(item => (
+          <button key={item.key} onClick={() => setTab(item.key)}
+            style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background: tab===item.key ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: tab===item.key ? 600 : 400, color: tab===item.key ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+            <i className={`ti ${item.icon}`} style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+            <span style={{ flex:1 }}>{item.label}</span>
+          </button>
+        ))}
+
+        <div style={{ height:'0.5px', background:'var(--border)', margin:'10px 0' }} />
+
+        {/* Feed sub-nav */}
+        {tab === 'feed' && ['discover','following','threads'].map(s => {
+          const active = feedSection === s;
+          return (
+            <button key={s} onClick={() => setFeedSection(s)}
+              style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'none', background: active ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 500 : 400, color: 'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+              {s[0].toUpperCase() + s.slice(1)}
+            </button>
+          );
+        })}
+
+        {/* Groups sub-nav */}
+        {tab === 'groups' && (
+          <>
+            <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', padding:'0 10px 6px' }}>Your groups</div>
+            {groups.map(g => {
+              const active = openGroup && String(openGroup.id) === String(g.id);
+              return (
+                <button key={g.id} onClick={() => switchGroup(g)}
+                  style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, border:'none', background: active ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 500 : 400, color: 'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+                  <div style={{ width:22, height:22, borderRadius:6, background:g.grad||'#534AB7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                    {g.profileImg ? <img src={g.profileImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
+                  </div>
+                  <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.name}</span>
+                </button>
+              );
+            })}
+            {groups.length === 0 && <div style={{ padding:'6px 10px', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)' }}>No groups yet</div>}
+            <button onClick={() => setGroupAction('create')}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:8, border:'1px dashed var(--border)', background:'transparent', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', cursor:'pointer', marginTop:6, marginBottom:2 }}>
+              <i className="ti ti-plus" style={{ fontSize:13 }} aria-hidden="true" /> Create group
+            </button>
+            <button onClick={() => setGroupAction('browse')}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:8, border:'1px dashed var(--border)', background:'transparent', fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', cursor:'pointer', marginBottom:2 }}>
+              <i className="ti ti-search" style={{ fontSize:13 }} aria-hidden="true" /> Browse groups
+            </button>
+          </>
+        )}
+
+        {/* Map sub-nav */}
+        {tab === 'local' && [['list','ti-list','List'],['map','ti-map','Map']].map(([key, icon, label]) => {
+          const active = localView === key;
+          return (
+            <button key={key} onClick={() => setLocalView(key)}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background: active ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: active ? 500 : 400, color: 'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+              <i className={`ti ${icon}`} style={{ fontSize:15 }} aria-hidden="true" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Main content ── */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
         <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', minHeight:0 }}>
+
           {tab === 'feed' && (
             <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
-              <div style={{ display:'flex', alignItems:'center', padding:'12px 18px', gap:8, flexShrink:0 }}>
-                {['discover','following','threads'].map(s => {
-                  const active = feedSection === s;
-                  const label = s === 'threads' ? 'Threads' : s[0].toUpperCase() + s.slice(1);
-                  return (
-                    <button key={s} onClick={() => setFeedSection(s)}
-                      style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:600, padding:'6px 16px', borderRadius:20, background: active ? 'var(--text)' : 'transparent', color: active ? 'var(--surface)' : 'var(--text-muted)', border: active ? 'none' : '1px solid var(--border)', transition:'all 0.12s', whiteSpace:'nowrap' }}
-                      onMouseEnter={e => { if(!active){ e.currentTarget.style.background='var(--surface2)'; e.currentTarget.style.color='var(--text)'; }}}
-                      onMouseLeave={e => { if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; }}}>
-                      {label}
-                    </button>
-                  );
-                })}
-                <button style={{ all:'unset', marginLeft:'auto', cursor:'pointer', width:30, height:30, borderRadius:'50%', background:'var(--text)', color:'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0, lineHeight:1 }}
-                  onMouseEnter={e => e.currentTarget.style.opacity='0.8'}
+              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', flexShrink:0 }}>
+                <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, padding:'8px 14px' }}>
+                  <i className="ti ti-search" style={{ fontSize:14, color:'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
+                  <input placeholder="Search posts, traders, or groups..." style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none' }} />
+                </div>
+                <button style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:'50%', background:'#111827', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0, lineHeight:1 }}
+                  onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
                   onMouseLeave={e => e.currentTarget.style.opacity='1'}
                   title="New post" onClick={()=>setShowPostModal(true)}>+</button>
               </div>
@@ -1364,9 +1450,26 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
               </div>
             </div>
           )}
-          {tab === 'groups' && <GroupsView currentUserId={currentUserId} />}
+
+          {tab === 'groups' && (
+            <GroupsView
+              currentUserId={currentUserId}
+              groups={groups}
+              openGroup={openGroup}
+              onSwitchGroup={switchGroup}
+              onGroupAdded={handleGroupAdded}
+              onGroupDeleted={handleGroupDeleted}
+              onGroupUpdated={handleGroupUpdated}
+              myName={myName}
+              externalAction={groupAction}
+              onExternalActionHandled={() => setGroupAction(null)}
+            />
+          )}
+
           {tab === 'dms' && <DMTab />}
-          {tab === 'local' && <LocalTradersTab currentUserId={currentUserId} onNavigate={(t) => setTab(TAB_MAP[t] || t)} />}
+
+          {tab === 'local' && <LocalTradersTab currentUserId={currentUserId} onNavigate={(t) => setTab(TAB_MAP[t] || t)} externalView={localView} />}
+
         </div>
       </div>
 

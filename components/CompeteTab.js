@@ -861,13 +861,12 @@ function teamInitials(name) {
   return (words[0][0] + (words[1][0] || '')).toUpperCase();
 }
 function contestTiming(contest) {
-  if (contest.status === 'active') return null; // shown separately
   if (!contest.endDate) return 'Open';
   const diff = new Date(contest.endDate) - Date.now();
   if (diff <= 0) return 'Ended';
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
-  return d > 0 ? `${d}d ${h}h left` : `${h}h left`;
+  return d > 0 ? `Ends in ${d}d ${h}h` : `Ends in ${h}h`;
 }
 
 // team avatar circle used in cards
@@ -875,8 +874,28 @@ function TeamAvatar({ name, color, size = 44 }) {
   const colors = ['#534AB7','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#db2777'];
   const bg = color || colors[(name || '').charCodeAt(0) % colors.length];
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.33, fontWeight: 700, color: '#fff', flexShrink: 0, letterSpacing: '-0.02em' }}>
+    <div style={{ width: size, height: size, borderRadius: Math.round(size * 0.22), background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.33, fontWeight: 700, color: '#fff', flexShrink: 0, letterSpacing: '-0.02em' }}>
       {teamInitials(name)}
+    </div>
+  );
+}
+
+// Profile picture with letter fallback
+function MemberAvatar({ name, image, size = 28 }) {
+  const [err, setErr] = useState(false);
+  if (image && !err) {
+    return (
+      <img
+        src={image}
+        alt={name}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+        onError={() => setErr(true)}
+      />
+    );
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(size * 0.43), fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+      {(name || '?')[0].toUpperCase()}
     </div>
   );
 }
@@ -904,7 +923,12 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
 
   // Determine display mode: 2-slot (≤2 teams expected) vs ranked list (3+)
   const maxTeams  = contest.maxTeams || (isTeam ? 2 : null);
-  const is2Slot   = isTeam && (!maxTeams || maxTeams === 2);
+  // Use actual team count when preview loaded; fall back to maxTeams config
+  const is2Slot   = isTeam && (
+    teams.length === 2 ||
+    (teams.length === 0 && maxTeams === 2) ||
+    (teams.length === 1 && maxTeams === 2)
+  );
   const teamA     = teams[0] || null;
   const teamB     = teams[1] || null;
   const hasOpenSlot = isTeam && teams.length < (maxTeams || 2);
@@ -952,41 +976,33 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
 
           {/* Card body */}
           {is2Slot ? (
-            /* ── 2-slot: avatar VS avatar ── */
+            /* ── 2-slot: name VS name (no avatars) ── */
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               {/* Team A */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 90 }}>
-                {teamA
-                  ? <TeamAvatar name={teamA.name} color={teamA.color} size={52} />
-                  : <div style={{ width: 52, height: 52, borderRadius: '50%', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 20 }}>?</div>
-                }
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1 }}>
                 {teamA ? (
                   <>
-                    <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamA.name}</div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamA.name}</div>
                     {teamA.memberCount > 0 && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{teamA.memberCount} member{teamA.memberCount !== 1 ? 's' : ''}</div>}
                     {isLive && <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(teamA.pnl) }}>{pnlFmt(teamA.pnl)}</div>}
                   </>
                 ) : (
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>Open slot</div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Open slot</div>
                 )}
               </div>
 
-              <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>VS</div>
+              <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, padding: '0 12px', flexShrink: 0 }}>VS</div>
 
               {/* Team B */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 90 }}>
-                {teamB
-                  ? <TeamAvatar name={teamB.name} color={teamB.color} size={52} />
-                  : <div style={{ width: 52, height: 52, borderRadius: '50%', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 20 }}>?</div>
-                }
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1 }}>
                 {teamB ? (
                   <>
-                    <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamB.name}</div>
+                    <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)', textAlign: 'center', lineHeight: 1.2 }}>{teamB.name}</div>
                     {teamB.memberCount > 0 && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{teamB.memberCount} member{teamB.memberCount !== 1 ? 's' : ''}</div>}
                     {isLive && <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(teamB.pnl) }}>{pnlFmt(teamB.pnl)}</div>}
                   </>
                 ) : (
-                  <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>Open slot</div>
+                  <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Open slot</div>
                 )}
               </div>
             </div>
@@ -996,22 +1012,40 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
               {teams.slice(0, 4).map((t, i) => (
                 <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
-                  <TeamAvatar name={t.name} color={t.color} size={28} />
                   <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{t.name}</span>
-                  {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(t.pnl) }}>{pnlFmt(t.pnl)}</span>}
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{t.memberCount} member{t.memberCount !== 1 ? 's' : ''}</span>
+                  {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(t.teamPnl) }}>{pnlFmt(t.teamPnl)}</span>}
                 </div>
               ))}
+              {teams.length > 4 && (
+                <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', paddingLeft: 24 }}>+{teams.length - 4} more teams</div>
+              )}
               {hasOpenSlot && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 14, flexShrink: 0 }} />
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>?</div>
-                  <span style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)' }}>Open slot</span>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', paddingLeft: 24, marginTop: 2 }}>
+                  {maxTeams ? `${maxTeams - teams.length} slot${maxTeams - teams.length !== 1 ? 's' : ''} open` : 'Open to join'}
                 </div>
               )}
-              {/* No teams yet — show placeholder */}
               {teams.length === 0 && !preview && (
                 <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>
                   {contest.memberCount > 0 ? `${contest.memberCount} member${contest.memberCount !== 1 ? 's' : ''} joined` : 'No teams yet — be the first'}
+                </div>
+              )}
+            </div>
+          )}
+          {/* ── Individual (non-team) contest: member list ── */}
+          {!isTeam && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {(preview?.members || []).slice(0, 4).map((m, i) => (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', width: 14, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                  <MemberAvatar name={m.name} image={m.image} size={28} />
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{m.name}</span>
+                  {isLive && <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: pnlColor(m.pnl) }}>{pnlFmt(m.pnl)}</span>}
+                </div>
+              ))}
+              {!(preview?.members?.length) && (
+                <div style={{ fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>
+                  {contest.memberCount > 0 ? `${contest.memberCount} trader${contest.memberCount !== 1 ? 's' : ''} joined` : 'No members yet — be the first!'}
                 </div>
               )}
             </div>
@@ -1020,7 +1054,7 @@ function GroupContestCard({ contest, onJoin, onOpenProfile, onDelete, onEnter })
           {/* Footer meta */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)' }}>
-              {contest.description ? contest.description.slice(0, 40) + (contest.description.length > 40 ? '…' : '') : `by ${contest.creatorName}`}
+              {contestTiming(contest) || `by ${contest.creatorName}`}
             </span>
             <span style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{stakeLabel}</span>
           </div>
@@ -1442,6 +1476,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
     teamNameA: 'Team Alpha',
     teamNameB: 'Team Beta',
     teamSizeCustom: '10',
+    maxTeams: '2',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1462,10 +1497,23 @@ function CreateGroupModal({ onClose, onSuccess }) {
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setDur = (patch) => setForm(p => ({ ...p, ...patch }));
 
-  // Load groups when invite step opens
+  // Load groups when invite step opens (DB groups + local groups merged)
   useEffect(() => {
     if (step === 'invite') {
-      fetch('/api/groups?mine=true').then(r => r.json()).then(d => setInviteGroups(d.groups || [])).catch(() => {});
+      fetch('/api/groups?mine=true').then(r => r.json()).then(d => {
+        const dbGroups = d.groups || [];
+        try {
+          const local = JSON.parse(localStorage.getItem('tr_groups') || '[]');
+          const localOnly = local.filter(lg => !dbGroups.find(dg => dg.id === lg.id));
+          const merged = dbGroups.map(dg => {
+            const match = local.find(l => l.id === dg.id);
+            return (match?.profileImg || match?.grad) ? { ...dg, profileImg: match.profileImg, grad: match.grad } : dg;
+          });
+          setInviteGroups([...merged, ...localOnly]);
+        } catch { setInviteGroups(dbGroups); }
+      }).catch(() => {
+        try { setInviteGroups(JSON.parse(localStorage.getItem('tr_groups') || '[]')); } catch {}
+      });
     }
   }, [step]);
 
@@ -1511,11 +1559,21 @@ function CreateGroupModal({ onClose, onSuccess }) {
     if (!selectedGroupId) return;
     setInviteSending(true); setInviteError('');
     try {
-      const channelId = await getGeneralChannel(selectedGroupId);
-      if (!channelId) { setInviteError('Could not find a channel in that group'); setInviteSending(false); return; }
       const c = createdContest;
       const msg = `__CONTEST_INVITE__${JSON.stringify({ id: c.id, name: c.name, asset: c.asset || 'Any', buyIn: c.buyIn || 0, memberCount: c.memberCount || 1 })}`;
-      await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+      const isLocalGroup = inviteGroups.find(g => g.id === selectedGroupId && !g.slug);
+      if (isLocalGroup) {
+        // Write directly to localStorage chat for local groups
+        const chatKey = `tr_chat_${selectedGroupId}`;
+        const existing = JSON.parse(localStorage.getItem(chatKey) || '[]');
+        const newMsg = { id: Date.now(), user: 'you', avatar: 'Y', grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: msg, type: 'contest_invite' };
+        localStorage.setItem(chatKey, JSON.stringify([...existing, newMsg]));
+      } else {
+        const channelId = await getGeneralChannel(selectedGroupId);
+        if (!channelId) { setInviteError('Could not find a channel in that group'); setInviteSending(false); return; }
+        const postRes = await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+        if (!postRes.ok) { const d = await postRes.json().catch(() => ({})); setInviteError(d.error || 'Failed to post invite to group'); setInviteSending(false); return; }
+      }
       setInviteSent(true);
     } catch { setInviteError('Failed to send — try again'); }
     setInviteSending(false);
@@ -1552,6 +1610,7 @@ function CreateGroupModal({ onClose, onSuccess }) {
         buyIn: type === 'paid' ? form.fee : '0',
         teamFormat: finalTeamFormat,
         teamSize: parsedTeamSize,
+        maxTeams: parsedTeamSize ? (parseInt(form.maxTeams) || 2) : null,
         teamNameA: form.teamNameA,
         teamNameB: form.teamNameB,
       };
@@ -1791,15 +1850,27 @@ function CreateGroupModal({ onClose, onSuccess }) {
                 <input type="number" min={2} max={50} value={form.teamSizeCustom} onChange={e => set('teamSizeCustom', e.target.value)} style={S.input} />
               </div>
             )}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={S.label}>Team names</label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input value={form.teamNameA} onChange={e => set('teamNameA', e.target.value)} placeholder="Team Alpha" style={{ ...S.input, flex: 1 }} />
-                <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>VS</span>
-                <input value={form.teamNameB} onChange={e => set('teamNameB', e.target.value)} placeholder="Team Beta" style={{ ...S.input, flex: 1 }} />
-              </div>
-              {parsedTeamSize && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{parsedTeamSize} slots per team — players pick their side when joining</div>}
+            <div>
+              <label style={S.label}>Number of teams</label>
+              <input type="number" min={2} max={16} value={form.maxTeams} onChange={e => set('maxTeams', e.target.value)} style={S.input} placeholder="2" />
+              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>How many teams can join this contest</div>
             </div>
+            {parseInt(form.maxTeams) <= 2 && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={S.label}>Team names</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input value={form.teamNameA} onChange={e => set('teamNameA', e.target.value)} placeholder="Team Alpha" style={{ ...S.input, flex: 1 }} />
+                  <span style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>VS</span>
+                  <input value={form.teamNameB} onChange={e => set('teamNameB', e.target.value)} placeholder="Team Beta" style={{ ...S.input, flex: 1 }} />
+                </div>
+                {parsedTeamSize && <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{parsedTeamSize} slots per team — players pick their side when joining</div>}
+              </div>
+            )}
+            {parseInt(form.maxTeams) > 2 && parsedTeamSize && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>{parseInt(form.maxTeams)} teams × {parsedTeamSize} players — teams are auto-named Team 1, Team 2, etc.</div>
+              </div>
+            )}
           </>
         )}
 
@@ -1829,66 +1900,8 @@ function CreateGroupModal({ onClose, onSuccess }) {
 }
 
 // ─── HOME TAB ─────────────────────────────────────────────────────────────────
-function HomeTab({ setActiveTab, currentUserId }) {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/challenges')
-      .then(r => r.json())
-      .then(d => setData(d))
-      .catch(() => {});
-  }, []);
-
-  const activeMatches = data?.myMatches?.length ?? 0;
-  const history = data?.history ?? [];
-  const wins = history.filter(m => m.won).length;
-  const winRate = history.length ? Math.round(wins / history.length * 100) : null;
-
-  return (
-    <div style={{ padding: 18 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
-        <StatCard label="Active matches" value={activeMatches} sub={activeMatches === 0 ? 'Start your first challenge' : `${activeMatches} ongoing`} />
-        <StatCard label="Win rate" value={winRate !== null ? `${winRate}%` : '—'} sub={history.length ? `${wins}W / ${history.length - wins}L` : 'No matches yet'} />
-        <StatCard label="Total matches" value={history.length || '—'} sub={history.length ? 'All time' : 'Connect broker to track'} />
-      </div>
-
-      <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 10 }}>Quick actions</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
-        {[
-          ['ti-swords',  'Challenge someone',   'Start a 1v1 match',       'h2h'],
-          ['ti-users',   'Join a group contest', 'Compete with a group',    'group'],
-          ['ti-trophy',  'View leaderboard',     'See top traders',         'leaderboard'],
-          ['ti-history', 'Match history',        'Review past trades',      'history'],
-        ].map(([icon, title, sub, tab]) => (
-          <div
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'border-color .15s' }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#7F77DD'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-          >
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <i className={`ti ${icon}`} style={{ fontSize: 18, color: '#534AB7' }} aria-hidden="true" />
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{title}</div>
-              <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 10 }}>Recent activity</div>
-      {history.length === 0
-        ? <EmptyState icon="ti-activity" title="No activity yet" sub="Your matches and results will appear here" />
-        : history.slice(0, 3).map(m => <HistoryCard key={m.id} match={m} currentUserId={currentUserId} />)
-      }
-    </div>
-  );
-}
-
 // ─── H2H TAB ──────────────────────────────────────────────────────────────────
-function H2HTab({ currentUserId, onOpenProfile }) {
+function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
   const [inner, setInner] = useState('browse');
   const [search, setSearch] = useState('');
   const [assetFilter, setAssetFilter] = useState('Any');
@@ -1950,6 +1963,8 @@ function H2HTab({ currentUserId, onOpenProfile }) {
     { key: 'browse', label: 'Browse', badge: null },
     { key: 'mymatches', label: 'My matches', badge: myMatchCount > 0 ? myMatchCount : null },
     { key: 'invites', label: 'Invites', badge: inviteCount > 0 ? inviteCount : null },
+    { key: 'leaderboard', label: 'Leaderboard', badge: null },
+    { key: 'history', label: 'History', badge: null },
   ];
 
   const renderGrid = (items, emptyTitle = 'No open challenges', emptySub = 'Be the first — post a challenge above') => (
@@ -1970,7 +1985,12 @@ function H2HTab({ currentUserId, onOpenProfile }) {
 
       {/* ── Sidebar ── */}
       <div style={{ width:220, flexShrink:0, borderRight:'1px solid var(--border)', padding:'20px 16px', display:'flex', flexDirection:'column', gap:0, overflowY:'auto' }}>
-        <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Head to Head</div>
+        {/* Mode pill */}
+        <div style={{ display:'flex', background:'var(--surface2)', borderRadius:8, padding:3, gap:2, marginBottom:16 }}>
+          <button style={{ flex:1, padding:'5px 0', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'default' }}>Singles</button>
+          <button onClick={onSwitchToGroup} style={{ flex:1, padding:'5px 0', borderRadius:6, border:'none', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:400, cursor:'pointer' }}>Group</button>
+        </div>
+        <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Singles</div>
         <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Challenge traders 1v1</div>
 
         <button onClick={() => setShowModal(true)}
@@ -1979,36 +1999,39 @@ function H2HTab({ currentUserId, onOpenProfile }) {
         </button>
 
         {/* Nav items */}
-        <div style={{ display:'flex', flexDirection:'column', gap:2, marginBottom:24 }}>
-          {sidebarNav.map(item => (
-            <button key={item.key} onClick={() => setInner(item.key)}
-              style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:8, border:'none', background: inner===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: inner===item.key ? 600 : 400, color: inner===item.key ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
-              {item.label}
-              {item.badge && (
-                <span style={{ background: item.key === 'invites' ? '#ef4444' : '#534AB7', color:'#fff', borderRadius:20, minWidth:20, height:20, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
-              )}
-            </button>
-          ))}
+        <div style={{ display:'flex', flexDirection:'column', gap:2, marginBottom:8 }}>
+          {sidebarNav.map((item, idx) => item === null
+            ? <div key={idx} style={{ height:1, background:'var(--border)', margin:'6px 0' }} />
+            : <button key={item.key} onClick={() => setInner(item.key)}
+                style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:8, border:'none', background: inner===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: inner===item.key ? 600 : 400, color: inner===item.key ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
+                {item.label}
+                {item.badge && (
+                  <span style={{ background: item.key === 'invites' ? '#ef4444' : '#534AB7', color:'#fff', borderRadius:20, minWidth:20, height:20, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
+                )}
+              </button>
+          )}
         </div>
 
-        {/* Market filter */}
-        <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:8 }}>Market</div>
-        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          {ASSETS.map(a => (
-            <button key={a} onClick={() => setAssetFilter(a)}
-              style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'none', background: assetFilter===a ? '#111827' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 600 : 400, color: assetFilter===a ? '#fff' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
-              {a}
-            </button>
-          ))}
-        </div>
+        {inner === 'browse' && (<>
+          <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:8, marginTop:8 }}>Market</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            {ASSETS.map(a => (
+              <button key={a} onClick={() => setAssetFilter(a)}
+                style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'none', background: assetFilter===a ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 500 : 400, color: 'var(--text)', cursor:'pointer', textAlign:'left' }}>
+                {a}
+              </button>
+            ))}
+          </div>
+        </>)}
       </div>
 
       {/* ── Main content ── */}
-      <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
-        {/* Search bar */}
-        <div style={{ marginBottom:20 }}>
-          <SearchBar placeholder="Search by trader name or @username..." value={search} onChange={setSearch} />
-        </div>
+      <div style={{ flex:1, overflowY:'auto', padding: (inner==='leaderboard'||inner==='history') ? 0 : '20px 24px' }}>
+        {inner !== 'leaderboard' && inner !== 'history' && (
+          <div style={{ marginBottom:20 }}>
+            <SearchBar placeholder="Search by trader name or @username..." value={search} onChange={setSearch} />
+          </div>
+        )}
 
         {inner === 'browse' && renderGrid(
           filteredOpen.map(m => <ChallengeCard key={m.id} match={m} onAccept={handleAccept} onOpenProfile={onOpenProfile} />)
@@ -2056,6 +2079,8 @@ function H2HTab({ currentUserId, onOpenProfile }) {
             </div>
           )
         )}
+        {inner === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
+        {inner === 'history' && <HistoryTab currentUserId={currentUserId} />}
       </div>
     </div>
   );
@@ -2481,7 +2506,7 @@ function TeamBattleView({ contestId, currentUserId, teamSize: propTeamSize }) {
 }
 
 // ─── CONTEST DETAIL VIEW ───────────────────────────────────────────────────────
-function ContestDetailView({ contest, onBack, currentUserId }) {
+function ContestDetailView({ contest, onBack, onDelete, currentUserId }) {
   const hasTeamFormat = !!(contest.teamFormat);
   const [tab, setTab] = useState(hasTeamFormat ? 'battle' : 'leaderboard');
   const [detail, setDetail] = useState(null);
@@ -2514,6 +2539,17 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
           <div style={{ fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text-muted)' }}>
             {new Date(endDate) > Date.now() ? `ends ${new Date(endDate).toLocaleDateString()}` : 'Ended'}
           </div>
+        )}
+        {contest.isCreator && (
+          <button
+            onClick={async () => {
+              if (!confirm('Delete this contest? All entries and trades will be permanently removed.')) return;
+              await onDelete?.(contest.id);
+              onBack();
+            }}
+            style={{ background: 'none', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', color: '#dc2626', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <i className="ti ti-trash" style={{ fontSize: 14 }} /> Delete
+          </button>
         )}
       </div>
 
@@ -2583,16 +2619,19 @@ function ContestDetailView({ contest, onBack, currentUserId }) {
 // ─── Group avatar helper ──────────────────────────────────────────────────────
 function GroupAvatar({ group, size = 36 }) {
   const [imgOk, setImgOk] = useState(true);
-  const src = group.ownerId ? `/api/avatar/${group.ownerId}` : null;
+  const src = group.imageUrl || group.profileImg || null;
   if (src && imgOk) {
     return (
       <img src={src} onError={() => setImgOk(false)} alt=""
         style={{ width: size, height: size, borderRadius: size * 0.25, objectFit: 'cover', flexShrink: 0 }} />
     );
   }
+  const _colors = ['#4f46e5','#7c3aed','#0891b2','#059669','#d97706','#dc2626'];
+  const letter = (group.name || '?')[0].toUpperCase();
+  const bg = group.grad || _colors[letter.charCodeAt(0) % _colors.length];
   return (
-    <div style={{ width: size, height: size, borderRadius: size * 0.25, background: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.45, flexShrink: 0 }}>
-      {group.emoji || '👥'}
+    <div style={{ width: size, height: size, borderRadius: size * 0.25, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+      {letter}
     </div>
   );
 }
@@ -2613,7 +2652,20 @@ function ContestInviteModal({ contest, onClose }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/groups?mine=true').then(r => r.json()).then(d => setGroups(d.groups || [])).catch(() => {});
+    fetch('/api/groups?mine=true').then(r => r.json()).then(d => {
+      const dbGroups = d.groups || [];
+      try {
+        const local = JSON.parse(localStorage.getItem('tr_groups') || '[]');
+        const localOnly = local.filter(lg => !dbGroups.find(dg => dg.id === lg.id));
+        const merged = dbGroups.map(dg => {
+          const match = local.find(l => l.id === dg.id);
+          return (match?.profileImg || match?.grad) ? { ...dg, profileImg: match.profileImg, grad: match.grad } : dg;
+        });
+        setGroups([...merged, ...localOnly]);
+      } catch { setGroups(dbGroups); }
+    }).catch(() => {
+      try { setGroups(JSON.parse(localStorage.getItem('tr_groups') || '[]')); } catch {}
+    });
   }, []);
 
   useEffect(() => {
@@ -2643,10 +2695,19 @@ function ContestInviteModal({ contest, onClose }) {
     if (!selectedGroupId) return;
     setSending(true); setError('');
     try {
-      const channelId = await getGeneralChannel(selectedGroupId);
-      if (!channelId) { setError('Could not find a channel in that group'); setSending(false); return; }
       const msg = `__CONTEST_INVITE__${JSON.stringify({ id: contest.id, name: contest.name, asset: contest.asset || 'Any', buyIn: contest.buyIn || 0, memberCount: contest.memberCount || 1 })}`;
-      await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+      const isLocalGroup = groups.find(g => g.id === selectedGroupId && !g.slug);
+      if (isLocalGroup) {
+        const chatKey = `tr_chat_${selectedGroupId}`;
+        const existing = JSON.parse(localStorage.getItem(chatKey) || '[]');
+        const newMsg = { id: Date.now(), user: 'you', avatar: 'Y', grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: msg, type: 'contest_invite' };
+        localStorage.setItem(chatKey, JSON.stringify([...existing, newMsg]));
+      } else {
+        const channelId = await getGeneralChannel(selectedGroupId);
+        if (!channelId) { setError('Could not find a channel in that group'); setSending(false); return; }
+        const postRes = await fetch('/api/groups/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelId, content: msg }) });
+        if (!postRes.ok) { const d = await postRes.json().catch(() => ({})); setError(d.error || 'Failed to post invite to group'); setSending(false); return; }
+      }
       setSentMode('group'); setSent(true);
     } catch { setError('Failed to send — try again'); }
     setSending(false);
@@ -2715,7 +2776,7 @@ function ContestInviteModal({ contest, onClose }) {
               ))}
             </div>
           }
-          <WarnBox>The invite will be posted in the group's general channel. Members can join from Compete → Group Contest → Browse.</WarnBox>
+          <WarnBox>The invite will be posted in the group's general channel. Members can join from Compete → Group → Browse.</WarnBox>
           {error && <div style={{ margin: '8px 0', padding: '8px 12px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626', fontFamily: 'var(--font)' }}>{error}</div>}
           <ModalFooter onCancel={onClose} onSubmit={handleSendToGroup} submitLabel={sending ? 'Sending…' : 'Send invite'} disabled={!selectedGroupId || sending} />
         </div>
@@ -2773,7 +2834,7 @@ function ContestInviteModal({ contest, onClose }) {
 }
 
 // ─── GROUP TAB ────────────────────────────────────────────────────────────────
-function GroupTab({ currentUserId, onOpenProfile }) {
+function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
   const [inner, setInner] = useState('browse');
   const [search, setSearch] = useState('');
   const [assetFilter, setAssetFilter] = useState('Any');
@@ -2792,15 +2853,6 @@ function GroupTab({ currentUserId, onOpenProfile }) {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Show ContestDetailView (paper trading) if a joined contest is selected
-  if (selectedContest) {
-    return (
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} currentUserId={currentUserId} />
-      </div>
-    );
-  }
-
   const handleJoin = async (contestId) => {
     await fetch('/api/group-contests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join', contestId }) });
     fetchData();
@@ -2811,6 +2863,15 @@ function GroupTab({ currentUserId, onOpenProfile }) {
     await fetch('/api/group-contests', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contestId }) });
     fetchData();
   };
+
+  // Show ContestDetailView (paper trading) if a joined contest is selected
+  if (selectedContest) {
+    return (
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <ContestDetailView contest={selectedContest} onBack={() => { setSelectedContest(null); fetchData(); }} onDelete={handleDeleteContest} currentUserId={currentUserId} />
+      </div>
+    );
+  }
 
   const ASSETS = ['Any', 'Forex', 'Commodities', 'Futures', 'Stocks', 'Crypto'];
   const myContestCount = (data.myContests || []).length;
@@ -2835,6 +2896,8 @@ function GroupTab({ currentUserId, onOpenProfile }) {
     { key: 'browse',     label: 'Browse',      badge: null },
     { key: 'mycontests', label: 'My contests',  badge: myContestCount > 0 ? myContestCount : null },
     { key: 'invites',    label: 'Invites',      badge: null },
+    { key: 'leaderboard', label: 'Leaderboard', badge: null },
+    { key: 'history',     label: 'History',     badge: null },
   ];
 
   const renderGrid = (items, emptyIcon, emptyTitle, emptySub) => (
@@ -2864,7 +2927,12 @@ function GroupTab({ currentUserId, onOpenProfile }) {
 
       {/* ── Sidebar ── */}
       <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto' }}>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Group Contest</div>
+        {/* Mode pill */}
+        <div style={{ display:'flex', background:'var(--surface2)', borderRadius:8, padding:3, gap:2, marginBottom:16 }}>
+          <button onClick={onSwitchToSingles} style={{ flex:1, padding:'5px 0', borderRadius:6, border:'none', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:400, cursor:'pointer' }}>Singles</button>
+          <button style={{ flex:1, padding:'5px 0', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'default' }}>Group</button>
+        </div>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Group Contest</div>
         <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Compete with a group</div>
 
         <button onClick={() => setShowModal(true)}
@@ -2874,34 +2942,39 @@ function GroupTab({ currentUserId, onOpenProfile }) {
 
         {/* Nav items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 24 }}>
-          {sidebarNav.map(item => (
-            <button key={item.key} onClick={() => setInner(item.key)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, border: 'none', background: inner === item.key ? 'var(--surface2)' : 'transparent', fontFamily: 'var(--font)', fontSize: 13, fontWeight: inner === item.key ? 600 : 400, color: inner === item.key ? 'var(--text)' : 'var(--text-muted)', cursor: 'pointer', textAlign: 'left' }}>
-              {item.label}
-              {item.badge && (
-                <span style={{ background: '#534AB7', color: '#fff', borderRadius: 20, minWidth: 20, height: 20, padding: '0 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{item.badge}</span>
-              )}
-            </button>
-          ))}
+          {sidebarNav.map((item, idx) => item === null
+            ? <div key={idx} style={{ height:1, background:'var(--border)', margin:'6px 0' }} />
+            : <button key={item.key} onClick={() => setInner(item.key)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, border: 'none', background: inner === item.key ? 'var(--surface2)' : 'transparent', fontFamily: 'var(--font)', fontSize: 13, fontWeight: inner === item.key ? 600 : 400, color: inner === item.key ? 'var(--text)' : 'var(--text-muted)', cursor: 'pointer', textAlign: 'left' }}>
+                {item.label}
+                {item.badge && (
+                  <span style={{ background: '#534AB7', color: '#fff', borderRadius: 20, minWidth: 20, height: 20, padding: '0 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{item.badge}</span>
+                )}
+              </button>
+          )}
         </div>
 
+        {inner === 'browse' && <>
         {/* Market filter */}
         <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 8 }}>Market</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {ASSETS.map(a => (
             <button key={a} onClick={() => setAssetFilter(a)}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: 'none', textAlign: 'left', fontFamily: 'var(--font)', fontSize: 13, cursor: 'pointer', background: assetFilter === a ? '#111827' : 'transparent', color: assetFilter === a ? '#fff' : 'var(--text-muted)', fontWeight: assetFilter === a ? 600 : 400 }}>
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: 'none', textAlign: 'left', fontFamily: 'var(--font)', fontSize: 13, cursor: 'pointer', background: assetFilter === a ? 'var(--surface2)' : 'transparent', color: 'var(--text)', fontWeight: assetFilter === a ? 500 : 400 }}>
               {a}
             </button>
           ))}
         </div>
+        </>}
       </div>
 
       {/* ── Main content ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-        <div style={{ marginBottom: 20 }}>
-          <SearchBar placeholder="Search by contest name or @creator..." value={search} onChange={setSearch} />
-        </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: (inner==='leaderboard'||inner==='history') ? 0 : '20px 24px' }}>
+        {inner !== 'leaderboard' && inner !== 'history' && (
+          <div style={{ marginBottom: 20 }}>
+            <SearchBar placeholder="Search by contest name or @creator..." value={search} onChange={setSearch} />
+          </div>
+        )}
 
         {inner === 'browse' && renderGrid(
           filteredBrowse,
@@ -2939,6 +3012,8 @@ function GroupTab({ currentUserId, onOpenProfile }) {
         {inner === 'invites' && (
           <EmptyState icon="ti-mail" title="No invites" sub="When someone invites you to a private contest, it'll appear here" />
         )}
+        {inner === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
+        {inner === 'history' && <HistoryTab currentUserId={currentUserId} />}
       </div>
     </div>
   );
@@ -3115,21 +3190,52 @@ function HistoryTab({ currentUserId }) {
   );
 }
 
+// ─── RANKINGS TAB ─────────────────────────────────────────────────────────────
+function RankingsTab({ currentUserId, onOpenProfile }) {
+  const [view, setView] = useState('leaderboard');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ display: 'flex', padding: '0 18px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        {[['leaderboard', '🏆 Leaderboard'], ['history', '🕐 History']].map(([key, label]) => (
+          <button key={key} onClick={() => setView(key)} style={{
+            padding: '11px 14px', background: 'none', border: 'none',
+            borderBottom: view === key ? '2px solid #534AB7' : '2px solid transparent',
+            color: view === key ? '#534AB7' : 'var(--text-muted)',
+            fontFamily: 'var(--font)', fontSize: 13, fontWeight: view === key ? 600 : 400,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>{label}</button>
+        ))}
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {view === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} />}
+        {view === 'history'     && <HistoryTab currentUserId={currentUserId} />}
+      </div>
+    </div>
+  );
+}
+
+
 // ─── SIDEBAR ICONS ────────────────────────────────────────────────────────────
+// ─── COMPETE WRAPPER ──────────────────────────────────────────────────────────
+function CompeteWrapper({ currentUserId, onOpenProfile }) {
+  const [mode, setMode] = useState('h2h');
+  return (
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      {mode === 'h2h'   && <H2HTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} onSwitchToGroup={() => setMode('group')} />}
+      {mode === 'group' && <GroupTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} onSwitchToSingles={() => setMode('h2h')} />}
+    </div>
+  );
+}
+
+
 const SIDEBAR_TABS = [
-  { key: 'home',        icon: 'ti-home',    label: 'Home' },
-  { key: 'h2h',         icon: 'ti-swords',  label: 'Head to Head' },
-  { key: 'group',       icon: 'ti-users',   label: 'Group Contest' },
-  { key: 'leaderboard', icon: 'ti-trophy',  label: 'Leaderboard' },
-  { key: 'history',     icon: 'ti-history', label: 'History' },
+  { key: 'compete',  icon: 'ti-swords',  label: 'Compete' },
+  { key: 'rankings', icon: 'ti-trophy',  label: 'Rankings' },
 ];
 
 const TAB_META = {
-  home:        { label: 'Home',          sub: 'Your competitive overview' },
-  h2h:         { label: 'Head to Head',  sub: 'Challenge traders 1v1' },
-  group:       { label: 'Group Contest', sub: 'Compete with a group' },
-  leaderboard: { label: 'Leaderboard',   sub: 'Top performers' },
-  history:     { label: 'History',       sub: 'Your past matches' },
+  compete:  { label: 'Compete',   sub: 'Singles & Group Contests' },
+  rankings: { label: 'Rankings',  sub: 'Leaderboard & match history' },
 };
 
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
@@ -3138,50 +3244,9 @@ function openProfile(slug) {
 }
 
 export default function CompeteTab({ currentUserId, externalTab }) {
-  const [activeTab, setActiveTab] = useState(externalTab || 'home');
-  const resolvedTab = externalTab || activeTab;
-  const meta = TAB_META[resolvedTab];
-
   return (
     <div style={{ display: 'flex', height: '100%', fontFamily: 'var(--font)' }}>
-      {/* Sidebar */}
-      <div style={{ width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 4, borderRight: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
-        {SIDEBAR_TABS.map(t => (
-          <div
-            key={t.key}
-            title={t.label}
-            onClick={() => setActiveTab(t.key)}
-            style={{
-              width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'background 0.15s',
-              background: resolvedTab === t.key ? '#EEEDFE' : 'transparent',
-              color: resolvedTab === t.key ? '#534AB7' : 'var(--text-muted)',
-            }}
-          >
-            <i className={`ti ${t.icon}`} style={{ fontSize: 20 }} aria-hidden="true" />
-          </div>
-        ))}
-      </div>
-
-      {/* Main content */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Header — hidden for H2H and Group which have their own sidebar title */}
-        {meta && resolvedTab !== 'h2h' && resolvedTab !== 'group' && (
-          <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{meta.label}</div>
-            <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meta.sub}</div>
-          </div>
-        )}
-
-        {/* Tab content */}
-        <div style={{ flex: 1, overflow: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'hidden' : 'auto', display: (resolvedTab === 'h2h' || resolvedTab === 'group') ? 'flex' : 'block' }}>
-          {resolvedTab === 'home'        && <HomeTab setActiveTab={setActiveTab} currentUserId={currentUserId} />}
-          {resolvedTab === 'h2h'         && <H2HTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'group'       && <GroupTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'leaderboard' && <LeaderboardTab currentUserId={currentUserId} onOpenProfile={openProfile} />}
-          {resolvedTab === 'history'     && <HistoryTab currentUserId={currentUserId} />}
-        </div>
-      </div>
+      <CompeteWrapper currentUserId={currentUserId} onOpenProfile={openProfile} />
     </div>
   );
 }

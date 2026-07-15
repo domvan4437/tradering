@@ -1301,6 +1301,7 @@ function Playbook({trades}){
 const BOOKS_KEY = 'tr_journal_books';
 
 const PORTFOLIO_BOOKS_KEY = 'tr_portfolio_books';
+const PACC_KEY = 'tr_port_accounts_v3';
 const SECTOR_COLORS = {Technology:'#534AB7',Crypto:'#BA7517',Financials:'#0F6E56',Consumer:'#185FA5',Healthcare:'#993556',Energy:'#993C1D',Materials:'#639922','Real Estate':'#D85A30',Utilities:'#5F5E5A',Communication:'#1D9E75',Cash:'#B4B2A9'};
 const ASSET_COLORS = ['#534AB7','#0F6E56','#BA7517','#185FA5','#993556','#993C1D','#639922','#1D9E75','#D85A30','#5F5E5A'];
 
@@ -1314,7 +1315,7 @@ function donutPath(cx,cy,outerR,innerR,startA,endA){
   return `M${x1o},${y1o} A${outerR},${outerR},0,${lg},1,${x2o},${y2o} L${x2i},${y2i} A${innerR},${innerR},0,${lg},0,${x1i},${y1i}Z`;
 }
 
-function Portfolio({holdings,setHoldings,holdingsKey}){
+function Portfolio({holdings,setHoldings,holdingsKey,externalAccountId,onAccountsChange}){
   const PACC_KEY='tr_port_accounts_v3';
   const PPOS_KEY='tr_port_positions_v3';
   const PACT_KEY='tr_port_activity_v3';
@@ -1322,8 +1323,10 @@ function Portfolio({holdings,setHoldings,holdingsKey}){
 
   const DEF_ACCOUNTS=[];
 
-  const [accounts,setAccounts]=useState(()=>load(PACC_KEY,DEF_ACCOUNTS));
-  const [activeAccount,setActiveAccount]=useState('all');
+  const [accounts,setAccountsInternal]=useState(()=>load(PACC_KEY,DEF_ACCOUNTS));
+  function setAccounts(v){const next=typeof v==='function'?v(accounts):v;setAccountsInternal(next);try{localStorage.setItem(PACC_KEY,JSON.stringify(next));}catch{}onAccountsChange?.(next);}
+  const [activeAccount,setActiveAccount]=useState(externalAccountId||'all');
+  React.useEffect(()=>{if(externalAccountId!==undefined)setActiveAccount(externalAccountId);},[externalAccountId]);
   const [positions,setPositions]=useState(()=>load(PPOS_KEY,[]));
   const [activity,setActivity]=useState(()=>load(PACT_KEY,[]));
   const [snapshots,setSnapshots]=useState(()=>load(PSNAP_KEY,[]));
@@ -1789,6 +1792,11 @@ export default function ToolsLayout({tab, setTab, userInfo}){
   function saveJTree(t){const s=sanitizeTree(t);setJTree(s);save(JOURNAL_TREE_KEY,s);}
   React.useEffect(()=>{function h(e){if(showJDrop&&!e.target.closest('[data-jdrop]'))setShowJDrop(false);}document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[showJDrop]);
   React.useEffect(()=>{setShowJDrop(false);setShowBookDrop(false);},[tab]);
+  // Sidebar account/COT/screener state
+  const [sidebarAccounts, setSidebarAccounts] = useState(() => load(PACC_KEY, []));
+  const [activePortfolioAccount, setActivePortfolioAccount] = useState('all');
+  const [cotGroup, setCotGroup] = useState('Commodities');
+  const [screenerAction, setScreenerAction] = useState(null);
   function openJEntry(id){setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setJNavHistory([]);}
   function navigateJTo(id){setJNavHistory(h=>[...h,activeJId]);setActiveJId(id);save(JOURNAL_ACTIVE_KEY,id);setShowJDrop(false);}
   function jGoBack(){setJNavHistory(h=>{const prev=[...h];const last=prev.pop();if(last){setActiveJId(last);save(JOURNAL_ACTIVE_KEY,last);}return prev;});}
@@ -1873,100 +1881,154 @@ export default function ToolsLayout({tab, setTab, userInfo}){
 
   const meta = TOOLS_TABS.find(t => t.key === tab) || TOOLS_TABS[0];
 
+  const sbItem = (label, isActive, onClick, indent=false) => (
+    <button onClick={onClick} style={{ width:'100%', display:'flex', alignItems:'center', padding: indent ? '6px 10px 6px 22px' : '7px 10px', borderRadius:7, border:'none', background:isActive?'var(--surface2)':'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight:isActive?500:400, color:'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:1, flexShrink:0 }}
+      onMouseEnter={e=>{if(!isActive)e.currentTarget.style.background='var(--surface2)';}}
+      onMouseLeave={e=>{if(!isActive)e.currentTarget.style.background='transparent';}}>
+      {label}
+    </button>
+  );
+  const sbl = (label) => <div style={{ padding:'10px 10px 4px', fontSize:10, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:'var(--font)' }}>{label}</div>;
+  const sbDivider = () => <div style={{ height:'0.5px', background:'var(--border)', margin:'8px 0' }} />;
+  const sbMuted = (label, onClick) => (
+    <button onClick={onClick} style={{ width:'100%', display:'flex', alignItems:'center', padding:'6px 10px', borderRadius:7, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:1 }}
+      onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
+      onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
+      + {label}
+    </button>
+  );
+
   return (
     <div style={{ display:'flex', height:'100%', fontFamily:'var(--font)' }}>
 
-      {/* ── Sidebar ── matches Community/Compete exactly ── */}
-      <div style={{ width:56, display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 0', gap:4, borderRight:'0.5px solid var(--border)', background:'var(--surface)', flexShrink:0, alignSelf:'stretch' }}>
-        {TOOLS_TABS.map(t => {
-          const isActive = tab === t.key;
-          return (
-            <div key={t.key} title={t.label} onClick={() => setTab(t.key)}
-              style={{ width:38, height:38, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', background:isActive?'#EEEDFE':'transparent', color:isActive?'#534AB7':'var(--text-muted)', fontSize:19, transition:'all .15s', flexShrink:0 }}
-              onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background='#EEEDFE'; e.currentTarget.style.color='#534AB7'; } }}
-              onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; } }}
-            >
-              <i className={`ti ${t.icon}`} aria-hidden="true" />
-            </div>
-          );
-        })}
+      {/* ── 240px Text Sidebar ── */}
+      <div style={{ width:240, display:'flex', flexDirection:'column', borderRight:'0.5px solid var(--border)', background:'var(--surface)', flexShrink:0, alignSelf:'stretch', overflow:'hidden' }}>
+
+        {/* Header */}
+        <div style={{ padding:'18px 16px 10px', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+            <div style={{ fontFamily:'var(--font)', fontSize:17, fontWeight:700, color:'var(--text)' }}>Tools</div>
+            {tab === 'Journal' && (
+              <div style={{ position:'relative' }}>
+                <button onClick={()=>setShowBookDrop(p=>!p)}
+                  style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:11, color:'var(--text)', fontWeight:500, whiteSpace:'nowrap' }}>
+                  <i className="ti ti-notebook" style={{fontSize:11,color:'#534AB7',flexShrink:0}}/>
+                  <span style={{maxWidth:80,overflow:'hidden',textOverflow:'ellipsis'}}>{activeBook?.name}</span>
+                  <i className="ti ti-chevron-down" style={{fontSize:9,color:'var(--text-muted)',flexShrink:0}}/>
+                </button>
+                {showBookDrop && (
+                  <div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:5, minWidth:180, zIndex:999, boxShadow:'0 4px 16px rgba(0,0,0,0.14)' }} onClick={e=>e.stopPropagation()}>
+                    {books.map(b=>(
+                      <div key={b.id}>
+                        {renamingId===b.id ? (
+                          <div style={{ display:'flex',gap:4,padding:'5px 6px' }} onClick={e=>e.stopPropagation()}>
+                            <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')renameBook(b.id,renameVal);if(e.key==='Escape'){setRenamingId(null);setRenameVal('');}}} autoFocus
+                              style={{ flex:1,padding:'4px 7px',border:'0.5px solid var(--border)',borderRadius:5,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none' }}/>
+                            <button onClick={()=>renameBook(b.id,renameVal)} style={{ padding:'4px 8px',background:PURPLE,color:'#fff',border:'none',borderRadius:5,fontSize:11,cursor:'pointer',fontFamily:'var(--font)',fontWeight:500 }}>OK</button>
+                          </div>
+                        ) : (
+                          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',borderRadius:7,cursor:'pointer',background:b.id===activeBookId?'#EEEDFE':'transparent' }}
+                            onClick={()=>switchBook(b.id)}
+                            onMouseEnter={e=>{if(b.id!==activeBookId)e.currentTarget.style.background='var(--surface2)';}}
+                            onMouseLeave={e=>{if(b.id!==activeBookId)e.currentTarget.style.background=b.id===activeBookId?'#EEEDFE':'transparent';}}>
+                            <span style={{ fontSize:13,fontWeight:b.id===activeBookId?500:400,color:b.id===activeBookId?'#534AB7':'var(--text)',flex:1 }}>{b.name}</span>
+                            <div style={{ display:'flex',gap:2 }} onClick={e=>e.stopPropagation()}>
+                              <button onClick={()=>{setRenamingId(b.id);setRenameVal(b.name);}} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',padding:'1px 3px',borderRadius:3 }}><i className="ti ti-pencil" style={{fontSize:10}}/></button>
+                              {b.id!=='default'&&<button onClick={()=>deleteBook(b.id)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',fontSize:13,padding:'1px 3px',borderRadius:3 }}>×</button>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <div style={{ borderTop:'0.5px solid var(--border)',marginTop:4,paddingTop:4 }}>
+                      {showNewBook ? (
+                        <div style={{ padding:'4px 6px',display:'flex',gap:6 }}>
+                          <input value={newBookName} onChange={e=>setNewBookName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createBook()} placeholder="Journal name…" autoFocus
+                            style={{ flex:1,padding:'5px 8px',border:'0.5px solid var(--border)',borderRadius:5,background:'var(--surface2)',fontSize:12,color:'var(--text)',fontFamily:'var(--font)',outline:'none' }}/>
+                          <button onClick={createBook} style={{ padding:'5px 10px',background:PURPLE,color:'#fff',border:'none',borderRadius:5,fontSize:11,cursor:'pointer',fontFamily:'var(--font)',fontWeight:500 }}>Add</button>
+                        </div>
+                      ) : (
+                        <div onClick={()=>setShowNewBook(true)} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 10px',borderRadius:7,cursor:'pointer',color:'var(--text-muted)',fontSize:12 }}
+                          onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <i className="ti ti-plus" style={{fontSize:13}}/> New journal
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Plan. Track. Improve.</div>
+        </div>
+
+        {/* Top nav */}
+        <div style={{ padding:'0 8px', flexShrink:0 }}>
+          {TOOLS_TABS.map(t => {
+            const isActive = tab === t.key;
+            return (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                style={{ width:'100%', display:'flex', alignItems:'center', gap:9, padding:'8px 10px', borderRadius:8, border:'none', background:isActive?'#111827':'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight:isActive?600:400, color:isActive?'#fff':'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}
+                onMouseEnter={e=>{if(!isActive)e.currentTarget.style.background='var(--surface2)';}}
+                onMouseLeave={e=>{if(!isActive)e.currentTarget.style.background='transparent';}}>
+                <i className={`ti ${t.icon}`} style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {sbDivider()}
+
+        {/* Sub-sections */}
+        <div style={{ flex:1, overflowY:'auto', padding:'0 8px 16px' }}>
+
+          {/* ── Journal sub-nav ── */}
+          {tab === 'Journal' && <>
+            {sbl('Journal')}
+            {JOURNAL_SUBTABS.map(s => sbItem(s.label, journalTab===s.key, ()=>setJournalTab(s.key)))}
+            {journalTab === 'daily' && <>
+              {sbDivider()}
+              {sbl('Pages')}
+              <div style={{ padding:'0 2px' }}>
+                {(jTree.items||[]).filter(i=>!i.parentId).sort((a,b)=>a.order-b.order).map(item=>(
+                  <JournalPageItem key={item.id} item={item} tree={jTree} activeJId={activeJId}
+                    onNavigate={openJEntry} onRename={renameJItem} onDelete={deleteJItem} onNewEntry={newJEntry} depth={0}/>
+                ))}
+                {(jTree.items||[]).filter(i=>!i.parentId).length===0 && (
+                  <div style={{ padding:'6px 10px', fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font)' }}>No pages yet</div>
+                )}
+              </div>
+              {sbMuted('New page', ()=>newJEntry(null))}
+            </>}
+          </>}
+
+          {/* ── Portfolio sub-nav ── */}
+          {tab === 'Portfolio' && <>
+            {sbl('Accounts')}
+            {sbItem('All accounts', activePortfolioAccount==='all', ()=>setActivePortfolioAccount('all'))}
+            {sidebarAccounts.map(a => sbItem(a.label||a.name||'Account', activePortfolioAccount===a.id, ()=>setActivePortfolioAccount(a.id)))}
+            {sbMuted('Add account', ()=>{/* triggers inside Portfolio */})}
+          </>}
+
+          {/* ── COT Alerts sub-nav ── */}
+          {tab === 'COT Alerts' && <>
+            {sbl('Watchlists')}
+            {['Commodities','Forex','Financials'].map(g => sbItem(g, cotGroup===g, ()=>setCotGroup(g)))}
+          </>}
+
+          {/* ── Custom Screener sub-nav ── */}
+          {tab === 'Screener' && <>
+            {sbl('Protocols')}
+            <div style={{ padding:'4px 10px 8px', fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)' }}>No screeners yet</div>
+            {sbMuted('New Screener', ()=>setScreenerAction('new'))}
+          </>}
+
+        </div>
       </div>
 
       {/* ── Main content ── */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
-
-
-
-        {/* Journal tab topbar */}
-        {tab === 'Journal' && <div style={{ display:'flex', alignItems:'center', padding:'0 18px', gap:24, borderBottom:'0.5px solid var(--border)', flexShrink:0, height:44 }}>
-          {tab === 'Journal' && JOURNAL_SUBTABS.map(s => (
-            <span key={s.key} onClick={() => setJournalTab(s.key)}
-              style={{ all:'unset', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, fontWeight:journalTab===s.key?600:400, color:journalTab===s.key?'var(--text)':'var(--text-muted)', position:'relative', height:44, display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
-              <i className={`ti ${s.icon}`} style={{ fontSize:14 }} aria-hidden="true" />
-              {s.label}
-              {journalTab===s.key && <span style={{ position:'absolute', bottom:-1, left:0, right:0, height:2, background:'#534AB7', borderRadius:1 }} />}
-            </span>
-          ))}
-          <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8, position:'relative' }}>
-            {/* Page picker — journal subtab only */}
-            {tab==='Journal'&&journalTab==='daily'&&<div style={{position:'relative'}} data-jdrop="true">
-              <button data-jdrop="true" onClick={()=>setShowJDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
-                <i className="ti ti-notebook" style={{fontSize:14,color:'#534AB7'}}/>{activeJId?(jTree.items||[]).find(i=>i.id===activeJId)?.name||'Journal':'Journal'}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
-              </button>
-              {showJDrop&&<div data-jdrop="true" style={{position:'absolute',right:0,top:'calc(100% + 4px)',background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:10,padding:5,minWidth:220,zIndex:999,boxShadow:'0 4px 20px rgba(0,0,0,0.13)',maxHeight:360,overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
-                {(jTree.items||[]).filter(i=>!i.parentId).sort((a,b)=>a.order-b.order).map(item=>(
-                  <JournalPageItem key={item.id} item={item} tree={jTree} activeJId={activeJId} onNavigate={openJEntry} onRename={renameJItem} onDelete={deleteJItem} onNewEntry={newJEntry} depth={0}/>
-                ))}
-                {(jTree.items||[]).filter(i=>!i.parentId).length===0&&<div style={{padding:'8px 10px',fontSize:12,color:'var(--text-muted)'}}>No pages yet</div>}
-                <div style={{borderTop:'0.5px solid var(--border)',margin:'4px 0'}}/>
-                <div onClick={()=>newJEntry(null)} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:5,cursor:'pointer',fontSize:12,color:'var(--text-muted)'}} onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}><i className="ti ti-file-plus" style={{fontSize:12}}/>New page</div>
-              </div>}
-            </div>}
-            {/* Book selector — always visible */}
-            <div style={{position:'relative'}}>
-              <button onClick={()=>setShowBookDrop(p=>!p)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:7, border:'0.5px solid var(--border)', background:'var(--surface2)', cursor:'pointer', fontFamily:'var(--font)', fontSize:12, color:'var(--text)', fontWeight:500 }}>
-                <i className="ti ti-books" style={{fontSize:14}}/>{activeBook?.name}<i className="ti ti-chevron-down" style={{fontSize:11,color:'var(--text-muted)',marginLeft:4}}/>
-              </button>
-              {showBookDrop&&<div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'var(--surface)', border:'0.5px solid var(--border)', borderRadius:10, padding:6, minWidth:190, zIndex:999, boxShadow:'0 4px 16px rgba(0,0,0,0.12)' }} onClick={e=>e.stopPropagation()}>
-                {books.map(b=>(
-                  <div key={b.id} style={{ borderRadius:7, background:b.id===activeBookId?'#EEEDFE':'transparent' }}
-                    onMouseEnter={e=>{if(b.id!==activeBookId&&renamingId!==b.id)e.currentTarget.style.background='var(--surface2)'}} onMouseLeave={e=>{if(b.id!==activeBookId)e.currentTarget.style.background=b.id===activeBookId?'#EEEDFE':'transparent'}}>
-                    {renamingId===b.id?(
-                      <div style={{ display:'flex', gap:4, padding:'5px 6px' }} onClick={e=>e.stopPropagation()}>
-                        <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')renameBook(b.id,renameVal);if(e.key==='Escape'){setRenamingId(null);setRenameVal('');}}} autoFocus
-                          style={{ flex:1, padding:'4px 7px', border:'0.5px solid var(--border)', borderRadius:5, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}/>
-                        <button onClick={()=>renameBook(b.id,renameVal)} style={{ padding:'4px 8px', background:PURPLE, color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer', fontFamily:'var(--font)', fontWeight:500 }}>OK</button>
-                      </div>
-                    ):(
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', cursor:'pointer' }} onClick={()=>switchBook(b.id)}>
-                        <span style={{ fontSize:13, fontWeight:b.id===activeBookId?500:400, color:b.id===activeBookId?'#534AB7':'var(--text)', flex:1 }}>{b.name}</span>
-                        <div style={{ display:'flex', gap:2 }} onClick={e=>e.stopPropagation()}>
-                          <button onClick={()=>{setRenamingId(b.id);setRenameVal(b.name);}} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:12, padding:'1px 3px', lineHeight:1, borderRadius:3 }} title="Rename"><i className="ti ti-pencil" style={{fontSize:11}}/></button>
-                          {b.id!=='default'&&<button onClick={()=>deleteBook(b.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:'1px 3px', lineHeight:1, borderRadius:3 }}>x</button>}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <div style={{ borderTop:'0.5px solid var(--border)', marginTop:4, paddingTop:4 }}>
-                  {showNewBook?(
-                    <div style={{ padding:'4px 6px', display:'flex', gap:6 }}>
-                      <input value={newBookName} onChange={e=>setNewBookName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&createBook()} placeholder="Journal name..." autoFocus
-                        style={{ flex:1, padding:'5px 8px', border:'0.5px solid var(--border)', borderRadius:5, background:'var(--surface2)', fontSize:12, color:'var(--text)', fontFamily:'var(--font)', outline:'none' }}/>
-                      <button onClick={createBook} style={{ padding:'5px 10px', background:PURPLE, color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer', fontFamily:'var(--font)', fontWeight:500 }}>Add</button>
-                    </div>
-                  ):(
-                    <div onClick={()=>setShowNewBook(true)} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:7, cursor:'pointer', color:'var(--text-muted)', fontSize:12 }}
-                      onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <i className="ti ti-plus" style={{fontSize:13}}/> New journal
-                    </div>
-                  )}
-                </div>
-              </div>}
-            </div>
-          </div>
-        </div>}
-
         {/* Scrollable content */}
         <div style={{ flex:1, overflowY:'auto', padding:'16px 24px 120px 24px' }}>
           {tab==='Journal' && journalTab==='dashboard' && <Dashboard trades={trades} journals={journals}/>}
@@ -1975,9 +2037,9 @@ export default function ToolsLayout({tab, setTab, userInfo}){
           {tab==='Journal' && journalTab==='reports'   && <Reports   trades={trades} journals={journals}/>}
           {tab==='Journal' && journalTab==='playbook'  && <Playbook  trades={trades}/>}
           {tab==='Journal' && journalTab==='import'    && (ImportTab ? <ImportTab/> : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
-          {tab==='COT Alerts'&&(COTAlertsTab    ? <COTAlertsTab/>                       : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
-          {tab==='Screener'&& (ScreenerBuilder ? <ScreenerBuilder user={userInfo}/>    : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
-          {tab==='Portfolio' && <Portfolio holdings={portfolioHoldings} setHoldings={setPortfolioHoldings} holdingsKey={holdingsKey}/>}
+          {tab==='COT Alerts'&&(COTAlertsTab    ? <COTAlertsTab externalGroup={cotGroup} onGroupChange={setCotGroup}/> : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
+          {tab==='Screener'&& (ScreenerBuilder ? <ScreenerBuilder user={userInfo} externalAction={screenerAction} onActionHandled={()=>setScreenerAction(null)}/> : <div style={{color:'var(--text-muted)',padding:20}}>Loading...</div>)}
+          {tab==='Portfolio' && <Portfolio holdings={portfolioHoldings} setHoldings={setPortfolioHoldings} holdingsKey={holdingsKey} externalAccountId={activePortfolioAccount} onAccountsChange={setSidebarAccounts}/>}
         </div>
       </div>
     </div>
