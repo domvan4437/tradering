@@ -1984,40 +1984,42 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
       {showModal && <PostChallengeModal onClose={() => setShowModal(false)} onSuccess={fetchData} />}
 
       {/* ── Sidebar ── */}
-      <div style={{ width:220, flexShrink:0, borderRight:'1px solid var(--border)', padding:'20px 16px', display:'flex', flexDirection:'column', gap:0, overflowY:'auto' }}>
-        {/* Mode pill */}
-        <div style={{ display:'flex', background:'var(--surface2)', borderRadius:8, padding:3, gap:2, marginBottom:16 }}>
-          <button style={{ flex:1, padding:'5px 0', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'default' }}>Singles</button>
-          <button onClick={onSwitchToGroup} style={{ flex:1, padding:'5px 0', borderRadius:6, border:'none', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:400, cursor:'pointer' }}>Group</button>
-        </div>
-        <div style={{ fontFamily:'var(--font)', fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Singles</div>
-        <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Challenge traders 1v1</div>
+      <div style={{ width:240, flexShrink:0, borderRight:'0.5px solid var(--border)', padding:'20px 14px 16px', display:'flex', flexDirection:'column', gap:0, background:'var(--surface)', overflowY:'auto', alignSelf:'stretch' }}>
+        <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Competitions</div>
+        <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Compete & challenge traders</div>
 
-        <button onClick={() => setShowModal(true)}
-          style={{ width:'100%', padding:'10px 14px', borderRadius:10, background:'#111827', color:'#fff', border:'none', fontFamily:'var(--font)', fontSize:13, fontWeight:600, cursor:'pointer', marginBottom:20, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-          <i className="ti ti-plus" aria-hidden="true" /> Post challenge
+        {/* Main tabs — Singles (active) / Group */}
+        <button style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:'#111827', fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+          <i className="ti ti-swords" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+          <span style={{ flex:1 }}>Singles</span>
+        </button>
+        <button onClick={onSwitchToGroup} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight:400, color:'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
+          onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
+          <i className="ti ti-users" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+          <span style={{ flex:1 }}>Group</span>
         </button>
 
-        {/* Nav items */}
-        <div style={{ display:'flex', flexDirection:'column', gap:2, marginBottom:8 }}>
-          {sidebarNav.map((item, idx) => item === null
-            ? <div key={idx} style={{ height:1, background:'var(--border)', margin:'6px 0' }} />
-            : <button key={item.key} onClick={() => setInner(item.key)}
-                style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:8, border:'none', background: inner===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: inner===item.key ? 600 : 400, color: inner===item.key ? 'var(--text)' : 'var(--text-muted)', cursor:'pointer', textAlign:'left' }}>
-                {item.label}
-                {item.badge && (
-                  <span style={{ background: item.key === 'invites' ? '#ef4444' : '#534AB7', color:'#fff', borderRadius:20, minWidth:20, height:20, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
-                )}
-              </button>
-          )}
-        </div>
+        <div style={{ height:'0.5px', background:'var(--border)', margin:'10px 0' }} />
+
+        {/* Sub-nav */}
+        {sidebarNav.map((item, idx) => item === null ? null
+          : <button key={item.key} onClick={() => setInner(item.key)}
+              style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderRadius:8, border:'none', background: inner===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: inner===item.key ? 500 : 400, color:'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+              {item.label}
+              {item.badge && (
+                <span style={{ background: item.key === 'invites' ? '#ef4444' : '#534AB7', color:'#fff', borderRadius:20, minWidth:20, height:20, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
+              )}
+            </button>
+        )}
 
         {inner === 'browse' && (<>
-          <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:8, marginTop:8 }}>Market</div>
+          <div style={{ height:'0.5px', background:'var(--border)', margin:'10px 0' }} />
+          <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:8 }}>Market</div>
           <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
             {ASSETS.map(a => (
               <button key={a} onClick={() => setAssetFilter(a)}
-                style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'none', background: assetFilter===a ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 500 : 400, color: 'var(--text)', cursor:'pointer', textAlign:'left' }}>
+                style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'none', background: assetFilter===a ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 500 : 400, color:'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
                 {a}
               </button>
             ))}
@@ -2926,46 +2928,47 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
       {showModal && <CreateGroupModal onClose={() => setShowModal(false)} onSuccess={() => { fetchData(); setInner('mycontests'); }} />}
 
       {/* ── Sidebar ── */}
-      <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto' }}>
-        {/* Mode pill */}
-        <div style={{ display:'flex', background:'var(--surface2)', borderRadius:8, padding:3, gap:2, marginBottom:16 }}>
-          <button onClick={onSwitchToSingles} style={{ flex:1, padding:'5px 0', borderRadius:6, border:'none', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:12, fontWeight:400, cursor:'pointer' }}>Singles</button>
-          <button style={{ flex:1, padding:'5px 0', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontFamily:'var(--font)', fontSize:12, fontWeight:600, cursor:'default' }}>Group</button>
-        </div>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Group Contest</div>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Compete with a group</div>
+      <div style={{ width:240, flexShrink:0, borderRight:'0.5px solid var(--border)', padding:'20px 14px 16px', display:'flex', flexDirection:'column', gap:0, background:'var(--surface)', overflowY:'auto', alignSelf:'stretch' }}>
+        <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Competitions</div>
+        <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Compete & challenge traders</div>
 
-        <button onClick={() => setShowModal(true)}
-          style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#111827', color: '#fff', border: 'none', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          <i className="ti ti-plus" /> Create contest
+        {/* Main tabs — Singles / Group (active) */}
+        <button onClick={onSwitchToSingles} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight:400, color:'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
+          onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
+          <i className="ti ti-swords" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+          <span style={{ flex:1 }}>Singles</span>
+        </button>
+        <button style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:'#111827', fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+          <i className="ti ti-users" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
+          <span style={{ flex:1 }}>Group</span>
         </button>
 
-        {/* Nav items */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 24 }}>
-          {sidebarNav.map((item, idx) => item === null
-            ? <div key={idx} style={{ height:1, background:'var(--border)', margin:'6px 0' }} />
-            : <button key={item.key} onClick={() => setInner(item.key)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, border: 'none', background: inner === item.key ? 'var(--surface2)' : 'transparent', fontFamily: 'var(--font)', fontSize: 13, fontWeight: inner === item.key ? 600 : 400, color: inner === item.key ? 'var(--text)' : 'var(--text-muted)', cursor: 'pointer', textAlign: 'left' }}>
-                {item.label}
-                {item.badge && (
-                  <span style={{ background: '#534AB7', color: '#fff', borderRadius: 20, minWidth: 20, height: 20, padding: '0 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{item.badge}</span>
-                )}
-              </button>
-          )}
-        </div>
+        <div style={{ height:'0.5px', background:'var(--border)', margin:'10px 0' }} />
 
-        {inner === 'browse' && <>
-        {/* Market filter */}
-        <div style={{ fontFamily: 'var(--font)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 8 }}>Market</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {ASSETS.map(a => (
-            <button key={a} onClick={() => setAssetFilter(a)}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: 'none', textAlign: 'left', fontFamily: 'var(--font)', fontSize: 13, cursor: 'pointer', background: assetFilter === a ? 'var(--surface2)' : 'transparent', color: 'var(--text)', fontWeight: assetFilter === a ? 500 : 400 }}>
-              {a}
+        {/* Sub-nav */}
+        {sidebarNav.map((item, idx) => item === null ? null
+          : <button key={item.key} onClick={() => setInner(item.key)}
+              style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderRadius:8, border:'none', background: inner===item.key ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: inner===item.key ? 500 : 400, color:'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+              {item.label}
+              {item.badge && (
+                <span style={{ background:'#534AB7', color:'#fff', borderRadius:20, minWidth:20, height:20, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>{item.badge}</span>
+              )}
             </button>
-          ))}
-        </div>
-        </>}
+        )}
+
+        {inner === 'browse' && (<>
+          <div style={{ height:'0.5px', background:'var(--border)', margin:'10px 0' }} />
+          <div style={{ fontFamily:'var(--font)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:8 }}>Market</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            {ASSETS.map(a => (
+              <button key={a} onClick={() => setAssetFilter(a)}
+                style={{ width:'100%', padding:'8px 10px', borderRadius:8, border:'none', background: assetFilter===a ? 'var(--surface2)' : 'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight: assetFilter===a ? 500 : 400, color:'var(--text)', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
+                {a}
+              </button>
+            ))}
+          </div>
+        </>)}
       </div>
 
       {/* ── Main content ── */}

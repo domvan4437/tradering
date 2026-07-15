@@ -77,14 +77,14 @@ const STAGES = [
 const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil','Natural Gas','Gasoline','Heating Oil','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Lean Hogs','Rice','Oats','Lumber']
 const SECTION_TABS = {
   community: ['Feed','Groups','Messages','Map'],
-  compete:   ['H2H','Group'],
+  compete:   ['Singles','Group'],
   tools2:    ['Journal','Portfolio','COT Alerts','Screener'],
   account:   ['Profile','Analytics','Monetization','Connect Broker','Settings'],
 }
 // Map dropdown label → internal key for each section
 const TAB_KEYS = {
   community: { 'Feed':'feed','Groups':'groups','Messages':'dms','Map':'local' },
-  compete:   { 'H2H':'h2h', 'Group':'group' },
+  compete:   { 'Singles':'h2h', 'Group':'group' },
   tools2:    { 'Journal':'Journal','Portfolio':'Portfolio','COT Alerts':'COT Alerts','Screener':'Screener' },
   account:   { 'Profile':'overview','Analytics':'analytics','Monetization':'monetization','Connect Broker':'broker','Settings':'settings' },
 }
