@@ -377,16 +377,16 @@ export default function App() {
     <div style={{ height:'100vh', overflow:'hidden', display:'flex', flexDirection:'column', background:'var(--bg)', fontFamily:'var(--font)', color:'var(--text)', fontSize:13 }}>
 
       {/* ── Navbar — Capital One style ── */}
-      <div data-community-nav="true" style={{ background:'var(--surface)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)', height:60 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'stretch', height:'100%', padding:'0 28px' }}>
+      <div data-community-nav="true" style={{ background:'var(--surface)', position:'sticky', top:0, zIndex:300, borderBottom:'1px solid var(--border)', height:50 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'stretch', height:'100%', padding:'0 22px' }}>
 
           {/* LEFT — Logo */}
           <div style={{ display:'flex', alignItems:'center' }}>
             <div onClick={()=>setSection('community')} style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }}>
-              <div style={{ width:30, height:30, borderRadius:'50%', background:'#4B44C8', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <div style={{ width:10, height:10, background:'#fff', borderRadius:'50%' }} />
+              <div style={{ width:26, height:26, borderRadius:'50%', background:'#4B44C8', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:8, height:8, background:'#fff', borderRadius:'50%' }} />
               </div>
-              <span style={{ fontSize:17, fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px', fontFamily:'var(--font)' }}>TradeZar</span>
+              <span style={{ fontSize:15, fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px', fontFamily:'var(--font)' }}>TradeZar</span>
             </div>
           </div>
 
@@ -409,8 +409,8 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 5,
-                      padding: '0 18px',
-                      fontSize: 15,
+                      padding: '0 13px',
+                      fontSize: 13,
                       fontWeight: isActive ? 600 : 500,
                       color: isActive ? 'var(--text)' : 'var(--text-muted)',
                       fontFamily: 'var(--font)',
@@ -454,17 +454,17 @@ export default function App() {
 
           {/* RIGHT — Icons + Account */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:2 }}>
-            <button style={{ all:'unset', cursor:'pointer', width:36, height:36, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
+            <button style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
               onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
               onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
-              <i className="ti ti-search" style={{fontSize:18}}/>
+              <i className="ti ti-search" style={{fontSize:16}}/>
             </button>
-            <button style={{ all:'unset', cursor:'pointer', width:36, height:36, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
+            <button style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
               onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
               onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
-              <i className="ti ti-help-circle" style={{fontSize:18}}/>
+              <i className="ti ti-help-circle" style={{fontSize:16}}/>
             </button>
-            <button onClick={toggle} style={{ all:'unset', cursor:'pointer', width:36, height:36, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:15 }}
+            <button onClick={toggle} style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:13 }}
               onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';}}
               onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}>
               {theme==='dark'?'☀':'☾'}
@@ -472,10 +472,10 @@ export default function App() {
             <div style={{ width:1, height:22, background:'var(--border)', margin:'0 8px' }}/>
             <div style={{ position:'relative' }}>
               <button onClick={()=>setShowAccount(s=>!s)}
-                style={{ all:'unset', cursor:'pointer', display:'flex', alignItems:'center', gap:7, padding:'7px 13px', borderRadius:8, fontSize:14, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)', transition:'all 0.12s' }}
+                style={{ all:'unset', cursor:'pointer', display:'flex', alignItems:'center', gap:7, padding:'5px 10px', borderRadius:7, fontSize:13, fontWeight:500, color:'var(--text-muted)', fontFamily:'var(--font)', transition:'all 0.12s' }}
                 onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
                 onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
-                <i className="ti ti-user-circle" style={{fontSize:19}}/>
+                <i className="ti ti-user-circle" style={{fontSize:16}}/>
                 <span>{userInfo?.name?.split(' ')[0]||session?.user?.name?.split(' ')[0]||session?.user?.email?.split('@')[0]||'Account'}</span>
               </button>
               {showAccount && (
