@@ -77,15 +77,14 @@ const STAGES = [
 const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil','Natural Gas','Gasoline','Heating Oil','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Lean Hogs','Rice','Oats','Lumber']
 const SECTION_TABS = {
   community: ['Feed','Groups','Messages','Map'],
-  compete:   ['Browse','My Matches','Invites','Leaderboard','History'],
+  compete:   [],
   tools2:    ['Journal','Portfolio','COT Alerts','Screener'],
-  creator:   [],
   account:   ['Profile','Analytics','Monetization','Connect Broker','Settings'],
 }
 // Map dropdown label → internal key for each section
 const TAB_KEYS = {
   community: { 'Feed':'feed','Groups':'groups','Messages':'dms','Map':'local' },
-  compete:   { 'Browse':'browse','My Matches':'mymatches','Invites':'invites','Leaderboard':'leaderboard','History':'history' },
+  compete:   {},
   tools2:    { 'Journal':'Journal','Portfolio':'Portfolio','COT Alerts':'COT Alerts','Screener':'Screener' },
   account:   { 'Profile':'overview','Analytics':'analytics','Monetization':'monetization','Connect Broker':'broker','Settings':'settings' },
 }
@@ -377,7 +376,7 @@ export default function App() {
   const goToProfile = (slug) => { setViewingProfile(slug); }
   // Expose globally so child components can navigate to profiles
   if (typeof window !== 'undefined') window.__goToProfile = goToProfile;
-  const navItems = [['Community','community'],['Competitions','compete'],['Tools','tools2'],['Creator','creator'],['Account','account']]
+  const navItems = [['Community','community'],['Competitions','compete'],['Tools','tools2'],['Account','account']]
 
   return (
     <UserAvatarContext.Provider value={session?.user?.id ? `/api/avatar/${session.user.id}` : (userInfo?.image || null)}>
@@ -436,15 +435,7 @@ export default function App() {
                   {/* Dropdown */}
                   {hasDropdown && isHovered && (
                     <div style={{ position:'absolute', top:'100%', left:'50%', transform:'translateX(-50%)', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', zIndex:99999, minWidth:190, padding:'6px 0' }}>
-                      {sec === 'tools2' ? TOOLS_LIST.map(tool => (
-                        <button key={tool.key} onClick={() => { setSection(sec); setTab(tool.key); }}
-                          style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'9px 16px', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', textAlign:'left' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'}
-                          onMouseLeave={e=>e.currentTarget.style.background='none'}>
-                          <i className={`ti ${tool.icon}`} style={{fontSize:13,color:tool.color}} />
-                          {tool.title}
-                        </button>
-                      )) : tabs.map(t => (
+                      {tabs.map(t => (
                         <button key={t} onClick={() => {
                             const key = (TAB_KEYS[sec]||{})[t] || t;
                             setSection(sec);
@@ -458,7 +449,7 @@ export default function App() {
                           onMouseLeave={e=>{ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; }}>
                           {t}
                         </button>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
