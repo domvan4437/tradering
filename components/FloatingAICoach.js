@@ -874,6 +874,11 @@ export default function FloatingAICoach() {
       )
     ),
 
+    // Disclaimer
+    React.createElement('div', { style: { textAlign: 'center', padding: '3px 12px 6px', flexShrink: 0 } },
+      React.createElement('span', { style: { fontFamily: 'var(--font)', fontSize: 9.5, color: 'var(--text-muted)', opacity: 0.55, lineHeight: 1.4 } }, '⚠ Educational analysis only — not financial advice. Verify all data before trading.')
+    ),
+
     // Styles
     React.createElement('style', null,
       '@keyframes tz-bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}' +

@@ -16,7 +16,7 @@ async function getTodayEvents() {
     const high = events.filter(e => e.impact === 'High' && e.date && e.date.startsWith(today));
     if (!high.length) return '';
     const lines = high.map(e => `${e.date} ${e.time||''} | ${e.country} | ${e.title} | Forecast: ${e.forecast||'N/A'} | Previous: ${e.previous||'N/A'}`);
-    return '\n\n## TODAY\'S HIGH-IMPACT ECONOMIC EVENTS\n' + lines.join('\n') + '\nFactor these into any bias or trade analysis today.';
+    return '\n\n## TODAY\'S HIGH-IMPACT ECONOMIC EVENTS (source: Forex Factory — verify before acting)\n' + lines.join('\n') + '\nUse these as context only. Always verify timing and figures from a live source before trading around these events.';
   } catch { return ''; }
 }
 
@@ -175,7 +175,9 @@ Use 3–6 annotations max. Quality over quantity. Only include [ANNOTATIONS] whe
 - Be honest: if they're making a mistake, say it directly with the reason
 - When analyzing a chart image: be thorough on all 6 points above
 - Short questions → concise answers. Complex topics → full treatment.
-- **ALWAYS engage — never refuse or deflect.** If asked about specific stocks, sectors, pairs, or setups: give a real, substantive answer. Share the technical picture, key levels, relevant catalysts, and what you'd be watching for. Add a brief disclaimer at the end if needed, but the answer itself must be genuinely useful. A trader asking "what stocks look good for buys?" wants real analysis, not a lecture about advice. Give it to them.`;
+- **Always engage substantively** — if asked about specific instruments, setups, or market conditions, give real technical analysis: levels, structure, patterns, catalysts. Never refuse or give empty deflections.
+- **End every response containing market analysis or trade ideas with the disclaimer line** from the Legal & Compliance section above. One line is enough — do not lecture, just append it cleanly.
+- **Caveat all real-time data** (news, prices, calendar events) with a note to verify, since data may be delayed.`;
 }
 
 // ── Rate limit helper ─────────────────────────────────────────────────────────
