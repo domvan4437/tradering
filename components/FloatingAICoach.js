@@ -592,7 +592,28 @@ export default function FloatingAICoach() {
     if (!content && !imgOverride && !pendingImg) return;
     if (busy) return;
     const img = imgOverride !== undefined ? imgOverride : pendingImg;
-    const ingested = ingestOverride !== undefined ? ingestOverride : ingestedContent;
+    let ingested = ingestOverride !== undefined ? ingestOverride : ingestedContent;
+
+    // Auto-detect URLs in the message and ingest them transparently
+    if (!ingested) {
+      const urlMatch = content.match(/https?:\/\/[^\s]+/);
+      if (urlMatch) {
+        const detectedUrl = urlMatch[0];
+        setIngestLoading(true);
+        try {
+          const ingestRes = await fetch('/api/ai-coach/ingest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: detectedUrl }),
+          });
+          if (ingestRes.ok) {
+            ingested = await ingestRes.json();
+          }
+        } catch {}
+        setIngestLoading(false);
+      }
+    }
+
     const userMsg = { role: 'user', content: content || '[Analyzing chart image]', image: img?.b64 || null };
     setMessages(prev => [...prev, userMsg]);
     setInput(''); setPendingImg(null); setIngestedContent(null); setFollowUps([]); setBusy(true);
