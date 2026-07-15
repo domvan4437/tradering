@@ -1599,16 +1599,19 @@ export default function AccountTab({ user, requestTab }) {
     <div style={{ fontFamily: 'var(--font)', display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
       {/* ── SIDEBAR ── */}
-      <div style={{ width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 4, borderRight: '0.5px solid var(--border)', background: 'var(--surface)', flexShrink: 0, alignSelf: 'stretch' }}>
+      <div style={{ width: 240, flexShrink: 0, borderRight: '0.5px solid var(--border)', padding: '20px 14px 16px', display: 'flex', flexDirection: 'column', gap: 0, background: 'var(--surface)', overflowY: 'auto', alignSelf: 'stretch' }}>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Account</div>
+        <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Manage your profile & settings</div>
         {ACCOUNT_TABS.map(t => {
           const isActive = activeTab === t.key
           return (
-            <div key={t.key} title={t.label} onClick={() => setActiveTab(t.key)}
-              style={{ width: 38, height: 38, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: isActive ? '#EEEDFE' : 'transparent', color: isActive ? '#534AB7' : 'var(--text-muted)', fontSize: 19, transition: 'all .15s', flexShrink: 0 }}
-              onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#EEEDFE'; e.currentTarget.style.color = '#534AB7' } }}
-              onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' } }}>
-              <i className={`ti ${t.icon}`} aria-hidden="true" />
-            </div>
+            <button key={t.key} onClick={() => setActiveTab(t.key)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: 'none', background: isActive ? 'var(--surface2)' : 'transparent', fontFamily: 'var(--font)', fontSize: 13, fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--text)' : 'var(--text-muted)', cursor: 'pointer', textAlign: 'left', marginBottom: 2 }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--surface2)' }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}>
+              <i className={`ti ${t.icon}`} style={{ fontSize: 15, flexShrink: 0 }} aria-hidden="true" />
+              <span style={{ flex: 1 }}>{t.label}</span>
+            </button>
           )
         })}
       </div>
@@ -1621,14 +1624,4 @@ export default function AccountTab({ user, requestTab }) {
           </div>
         ) : (
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
-            {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
-            {activeTab === 'monetization' && <MonetizationTab />}
-            {activeTab === 'broker'       && <BrokerTab />}
-            {activeTab === 'billing'      && <PlanBillingTab user={user} />}
-            {activeTab === 'settings'     && <SettingsPage user={user} />}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+            {activeTab === 'analytics'    &
