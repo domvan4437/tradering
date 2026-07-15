@@ -6,6 +6,9 @@ const PURPLE = '#4B44C8';
 function lsGet(key, fb) {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; } catch { return fb; }
 }
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
 function pnlNum(v) { return parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')) || 0; }
 
 function gatherTraderContext() {
@@ -50,6 +53,7 @@ function gatherTraderContext() {
       recentTrades: recent.length ? recent : ['No trades logged'],
       playbookSetups: setups.length ? setups.map(s => s.name).join(', ') : 'None',
       recentJournalNotes: recentNotes,
+      allJournalEntries: (jTree.items || []).filter(i => i.type === 'entry').map(i => i.name),
     };
   } catch { return null; }
 }
@@ -438,9 +442,99 @@ const QUICK_CATS = [
 
 const WELCOME = '**Welcome. I\'m your TradeZar AI Coach.**\n\nI have full access to your trade journal, performance stats, playbook, and notes. Ask me anything.\n\n- **Analyze your data** — win rates, setups, emotional patterns\n- **Live decision help** — "should I take this trade?" with your actual stats\n- **Chart analysis** — paste a screenshot and I\'ll break it down\n- **Risk & sizing** — position sizing, R:R, drawdown management\n- **Explain any concept** — liquidity, price action, support & resistance, trend analysis, Wyckoff, COT, risk management, market structure, momentum, volume\n- **YouTube & articles** — paste the 🔗 button below to load any video or article and I\'ll break it down for you\n\nWhat do you want to work on?';
 
+
+// ── Save-to-Journal modal ─────────────────────────────────────────────────────
+function SaveToJournalModal({ content, onClose }) {
+  const [jTree] = React.useState(() => lsGet('tr_journal_v3_jtree', { items: [], entries: {} }));
+  const [selected, setSelected] = React.useState(null);
+  const [newName, setNewName] = React.useState('');
+  const [mode, setMode] = React.useState('pick'); // 'pick' | 'new'
+  const [saved, setSaved] = React.useState(false);
+
+  const entries = (jTree.items || []).filter(i => i.type === 'entry');
+
+  function doSave(targetId, targetName) {
+    const tree = lsGet('tr_journal_v3_jtree', { items: [], entries: {} });
+    let itemId = targetId;
+
+    if (!itemId) {
+      // Create new entry
+      itemId = 'je_' + Date.now();
+      const newItem = { id: itemId, type: 'entry', name: targetName || 'AI Note', parentId: null, order: Date.now() };
+      tree.items = [...(tree.items || []), newItem];
+    }
+
+    const existing = tree.entries?.[itemId] || { blocks: [], tags: [], date: new Date().toISOString().slice(0, 10) };
+    const newBlock = { id: 'b_' + Date.now(), type: 'text', content: content };
+    tree.entries = { ...(tree.entries || {}), [itemId]: { ...existing, blocks: [...(existing.blocks || []), newBlock] } };
+    lsSet('tr_journal_v3_jtree', tree);
+    setSaved(true);
+    setTimeout(onClose, 1200);
+  }
+
+  const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+  const modalStyle = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 320, maxWidth: '90vw', padding: '18px 18px 14px', boxShadow: '0 16px 48px rgba(0,0,0,0.2)', fontFamily: 'var(--font)' };
+
+  if (saved) return React.createElement('div', { style: overlayStyle },
+    React.createElement('div', { style: { ...modalStyle, textAlign: 'center' } },
+      React.createElement('div', { style: { fontSize: 28, marginBottom: 8 } }, '✓'),
+      React.createElement('div', { style: { fontSize: 14, fontWeight: 600, color: 'var(--text)' } }, 'Saved to journal')
+    )
+  );
+
+  return React.createElement('div', { style: overlayStyle, onClick: e => e.target === e.currentTarget && onClose() },
+    React.createElement('div', { style: modalStyle },
+      React.createElement('div', { style: { fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 4 } }, 'Save to Journal'),
+      React.createElement('div', { style: { fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 } }, 'Choose an existing entry or create a new one'),
+
+      mode === 'pick' && React.createElement(React.Fragment, null,
+        entries.length === 0
+          ? React.createElement('div', { style: { fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 } }, 'No journal entries yet.')
+          : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto', marginBottom: 10 } },
+              ...entries.map(e =>
+                React.createElement('button', {
+                  key: e.id,
+                  onClick: () => setSelected(e.id === selected ? null : e.id),
+                  style: { padding: '8px 12px', borderRadius: 8, border: '1px solid ' + (selected === e.id ? PURPLE : 'var(--border)'), background: selected === e.id ? 'rgba(75,68,200,0.08)' : 'var(--surface2)', color: selected === e.id ? PURPLE : 'var(--text)', fontSize: 13, fontWeight: selected === e.id ? 600 : 400, cursor: 'pointer', textAlign: 'left' }
+                }, e.name)
+              )
+            ),
+        React.createElement('div', { style: { display: 'flex', gap: 6 } },
+          React.createElement('button', { onClick: () => setMode('new'), style: { flex: 1, padding: '7px', borderRadius: 8, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' } }, '+ New entry'),
+          React.createElement('button', {
+            onClick: () => selected && doSave(selected),
+            disabled: !selected,
+            style: { flex: 1, padding: '7px', borderRadius: 8, border: 'none', background: selected ? PURPLE : 'var(--surface2)', color: selected ? '#fff' : 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: selected ? 'pointer' : 'not-allowed' }
+          }, 'Save here')
+        )
+      ),
+
+      mode === 'new' && React.createElement(React.Fragment, null,
+        React.createElement('input', {
+          autoFocus: true,
+          value: newName,
+          onChange: e => setNewName(e.target.value),
+          onKeyDown: e => e.key === 'Enter' && newName.trim() && doSave(null, newName.trim()),
+          placeholder: 'Entry name (e.g. NQ Playbook)',
+          style: { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font)', boxSizing: 'border-box', marginBottom: 10 }
+        }),
+        React.createElement('div', { style: { display: 'flex', gap: 6 } },
+          React.createElement('button', { onClick: () => setMode('pick'), style: { flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' } }, '← Back'),
+          React.createElement('button', {
+            onClick: () => newName.trim() && doSave(null, newName.trim()),
+            disabled: !newName.trim(),
+            style: { flex: 1, padding: '7px', borderRadius: 8, border: 'none', background: newName.trim() ? PURPLE : 'var(--surface2)', color: newName.trim() ? '#fff' : 'var(--text-muted)', fontSize: 12, fontWeight: 600, cursor: newName.trim() ? 'pointer' : 'not-allowed' }
+          }, 'Create & Save')
+        )
+      )
+    )
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function FloatingAICoach() {
   const [open, setOpen] = useState(false);
+  const [saveModal, setSaveModal] = React.useState(null); // content string to save
   const [showSidebar, setShowSidebar] = useState(false);
   const [messages, setMessages] = useState([{ role: 'assistant', content: WELCOME }]);
   const [input, setInput] = useState('');
@@ -903,7 +997,17 @@ export default function FloatingAICoach() {
                     React.createElement('img', { src: m.annotatedImg, alt: 'AI annotated chart', style: { display: 'block', maxWidth: '100%', borderRadius: 7, border: '0.5px solid var(--border)' } })
                   ),
                   m.streaming && React.createElement('span', { style: { display: 'inline-block', width: 8, height: 14, background: PURPLE, borderRadius: 1, marginLeft: 2, animation: 'tz-blink 0.8s step-end infinite', verticalAlign: 'text-bottom' } }),
-                  m.isLimit && React.createElement('button', { onClick: () => { window.location.href = '/api/stripe/checkout?plan=pro'; }, style: { display: 'block', marginTop: 8, padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#fff', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, cursor: 'pointer' } }, 'Upgrade to Pro →')
+                  m.isLimit && React.createElement('button', { onClick: () => { window.location.href = '/api/stripe/checkout?plan=pro'; }, style: { display: 'block', marginTop: 8, padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#fff', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 700, cursor: 'pointer' } }, 'Upgrade to Pro →'),
+                  m.role === 'assistant' && !m.streaming && m.content && m.content !== WELCOME &&
+                    React.createElement('div', { style: { marginTop: 6, display: 'flex', justifyContent: 'flex-end' } },
+                      React.createElement('button', {
+                        onClick: () => setSaveModal(m.content),
+                        title: 'Save to journal',
+                        style: { display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, border: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 10, fontWeight: 600, cursor: 'pointer', transition: 'all 0.1s' },
+                        onMouseEnter: e => { e.currentTarget.style.borderColor = PURPLE; e.currentTarget.style.color = PURPLE; },
+                        onMouseLeave: e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }
+                      }, '📓 Save to journal')
+                    )
                 )
               )
             ),
@@ -979,6 +1083,9 @@ export default function FloatingAICoach() {
         )
       )
     ),
+
+    // Save to journal modal
+    saveModal && React.createElement(SaveToJournalModal, { content: saveModal, onClose: () => setSaveModal(null) }),
 
     // Disclaimer
     React.createElement('div', { style: { textAlign: 'center', padding: '3px 12px 6px', flexShrink: 0 } },
