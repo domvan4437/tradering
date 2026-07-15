@@ -31,11 +31,8 @@ export async function POST(request) {
   const { channelId, content } = await request.json()
   const channel = await prisma.groupChannel.findUnique({ where: { id: channelId }, select: { groupId: true } })
   if (!channel) return Response.json({ error: 'Channel not found' }, { status: 404 })
-  const [isMember, isOwner] = await Promise.all([
-    prisma.groupMember.findFirst({ where: { groupId: channel.groupId, userId: session.user.id } }),
-    prisma.group.findFirst({ where: { id: channel.groupId, ownerId: session.user.id } }),
-  ])
-  if (!isMember && !isOwner) return Response.json({ error: 'Not a member' }, { status: 403 })
+  const isMember = await prisma.groupMember.findFirst({ where: { groupId: channel.groupId, userId: session.user.id } })
+  if (!isMember) return Response.json({ error: 'Not a member' }, { status: 403 })
   const message = await prisma.groupMessage.create({
     data: { channelId, userId: session.user.id, content },
     include: { user: { select: { id: true, name: true, username: true, displayName: true } } }

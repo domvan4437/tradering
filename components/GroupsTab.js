@@ -193,10 +193,6 @@ function ContestInviteCard({ invite }) {
 }
 
 function ChatMessage({ m, onJoinCall, myAvatar }) {
-  // Contest invite — check first, before all other type checks
-  const contestInvite = parseContestInvite(m.text);
-  if (contestInvite) return <ContestInviteCard invite={contestInvite} />;
-
   if (m.type === 'call_invite') {
     return (
       <div style={{ display:'flex', justifyContent:'center', margin:'6px 0' }}>
@@ -247,6 +243,8 @@ function ChatMessage({ m, onJoinCall, myAvatar }) {
   }
 
   const isMe = m.user === 'you';
+  const invite = parseContestInvite(m.text);
+  if (invite) return <ContestInviteCard invite={invite} />;
   return (
     <div style={{ display:'flex', gap:8, flexDirection: isMe?'row-reverse':'row', alignItems:'flex-end', marginBottom:2 }}>
       <Av letter={m.avatar} grad={m.grad} size={28} imageUrl={isMe ? myAvatar : null} />
@@ -429,7 +427,7 @@ function GroupRoom({ group, onBack, onUpdateGroup }) {
           grad: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
           time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           text: m.content,
-          type: m.content?.startsWith('__CONTEST_INVITE__') ? 'contest_invite' : 'text',
+          type: 'text',
           fromApi: true,
         }));
         setMessages(prev => {

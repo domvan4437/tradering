@@ -450,11 +450,10 @@ function RunResults({ results, onClose, onExport }) {
   );
 }
 
-export default function ScreenerBuilder({ user, externalAction, onActionHandled }) {
+export default function ScreenerBuilder({ user }) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list'); // list | build | edit | run | community
-  useEffect(() => { if (externalAction === 'new') { setView('build'); setSelected(null); onActionHandled?.(); } }, [externalAction]);
   const [selected, setSelected] = useState(null);
   const [runResults, setRunResults] = useState(null);
   const [running, setRunning] = useState(null);

@@ -449,7 +449,7 @@ export default function App() {
                           onMouseLeave={e=>{ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; }}>
                           {t}
                         </button>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>
