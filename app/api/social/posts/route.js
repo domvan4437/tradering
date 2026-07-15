@@ -101,6 +101,21 @@ export async function GET(request) {
       return Response.json({ posts: feed })
     }
 
+    if (tab === 'search') {
+      const q = (searchParams.get('q') || '').trim()
+      if (!q) return Response.json({ posts: [] })
+      const posts = await prisma.socialPost.findMany({
+        where: {
+          groupId: null,
+          content: { contains: q, mode: 'insensitive' },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: POST_INCLUDE(session.user.id),
+      })
+      return Response.json({ posts: posts.map(p => mapPost(p, session)) })
+    }
+
     // Discover: all regular posts + recent reposts from anyone
     const posts = await prisma.socialPost.findMany({
       where: { groupId: null },

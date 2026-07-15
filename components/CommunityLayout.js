@@ -93,6 +93,124 @@ function UserSearch() {
   );
 }
 
+
+function FeedSearch({ groups, onGroupClick }) {
+  const [query, setQuery] = useState('');
+  const [accounts, setAccounts] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!query.trim()) { setAccounts([]); setPosts([]); return; }
+    setLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const [uRes, pRes] = await Promise.all([
+          fetch('/api/users/search?q=' + encodeURIComponent(query)),
+          fetch('/api/social/posts?tab=search&q=' + encodeURIComponent(query)),
+        ]);
+        const [uData, pData] = await Promise.all([uRes.json(), pRes.json()]);
+        setAccounts(uData.users || []);
+        setPosts(pData.posts || []);
+      } catch { setAccounts([]); setPosts([]); }
+      setLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const matchedGroups = query.trim()
+    ? (groups||[]).filter(g => g.name?.toLowerCase().includes(query.toLowerCase())).slice(0,4)
+    : [];
+
+  const hasResults = accounts.length > 0 || posts.length > 0 || matchedGroups.length > 0;
+
+  const rowStyle = { display:'flex', alignItems:'center', gap:10, padding:'9px 14px', cursor:'pointer', borderBottom:'0.5px solid var(--border)' };
+  const hoverOn  = e => e.currentTarget.style.background = 'var(--surface2)';
+  const hoverOff = e => e.currentTarget.style.background = 'transparent';
+  const label    = (txt) => (
+    <div style={{ padding:'8px 14px 4px', fontFamily:'var(--font)', fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{txt}</div>
+  );
+
+  return (
+    <div ref={ref} style={{ position:'relative', flex:1 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'8px 14px' }}>
+        <i className="ti ti-search" style={{ fontSize:14, color:'var(--text-muted)', flexShrink:0 }} />
+        <input
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search posts, traders, or groups..."
+          style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none' }}
+        />
+        {query && <button onClick={() => { setQuery(''); setAccounts([]); setPosts([]); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:16, lineHeight:1, padding:0 }}>×</button>}
+      </div>
+
+      {open && query.trim() && (
+        <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 12px 40px rgba(0,0,0,0.15)', zIndex:2990, maxHeight:380, overflowY:'auto' }}>
+          {loading && <div style={{ padding:16, fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', textAlign:'center' }}>Searching…</div>}
+          {!loading && !hasResults && <div style={{ padding:16, fontFamily:'var(--font)', fontSize:13, color:'var(--text-muted)', textAlign:'center' }}>No results</div>}
+
+          {!loading && accounts.length > 0 && (<>
+            {label('Accounts')}
+            {accounts.slice(0,4).map(u => (
+              <div key={u.id} style={rowStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+                onClick={() => { goToProfile(u.username || u.id); setOpen(false); setQuery(''); }}>
+                <div style={{ width:32, height:32, borderRadius:'50%', background:getColor(u.displayName), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                  {u.image ? <img src={u.image} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (u.displayName||'?')[0].toUpperCase()}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{u.displayName}</div>
+                  {u.username && <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>@{u.username}</div>}
+                </div>
+              </div>
+            ))}
+          </>)}
+
+          {!loading && matchedGroups.length > 0 && (<>
+            {label('Groups')}
+            {matchedGroups.map(g => (
+              <div key={g.id} style={rowStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+                onClick={() => { onGroupClick(g); setOpen(false); setQuery(''); }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:g.grad||PURPLE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                  {g.profileImg ? <img src={g.profileImg} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : (g.name||'G')[0].toUpperCase()}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'var(--text)' }}>{g.name}</div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:11, color:'var(--text-muted)' }}>{g.members||0} members</div>
+                </div>
+              </div>
+            ))}
+          </>)}
+
+          {!loading && posts.length > 0 && (<>
+            {label('Posts')}
+            {posts.slice(0,4).map(p => (
+              <div key={p.id} style={rowStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+                onClick={() => { goToProfile(p.authorSlug || p.userId); setOpen(false); setQuery(''); }}>
+                <div style={{ width:32, height:32, borderRadius:'50%', background:getColor(p.authorName), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                  <img src={p.authorImage} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e => e.currentTarget.style.display='none'} />
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'var(--text)', marginBottom:1 }}>{p.authorName}</div>
+                  <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{p.content}</div>
+                </div>
+              </div>
+            ))}
+          </>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GroupChatRoom({ group, activeRoom, channelId, myName, channels, onChannelSelect, members, onOpenSettings }) {
   const myAvatar = useContext(UserAvatarContext);
   const [msg, setMsg] = useState('');
@@ -1435,10 +1553,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
           {tab === 'feed' && (
             <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', flexShrink:0 }}>
-                <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'8px 14px' }}>
-                  <i className="ti ti-search" style={{ fontSize:14, color:'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
-                  <input placeholder="Search posts, traders, or groups..." style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none' }} />
-                </div>
+                <FeedSearch groups={groups} onGroupClick={(g) => { switchGroup(g); setTab('groups'); }} />
                 <button style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:'50%', background:'#111827', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:300, flexShrink:0, lineHeight:1 }}
                   onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
                   onMouseLeave={e => e.currentTarget.style.opacity='1'}
