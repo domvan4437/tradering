@@ -261,7 +261,7 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
     if (onNavigate) onNavigate('dms')
   }
 
-  const pill = { padding:'4px 10px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontSize:11, fontFamily:'var(--font,system-ui)', cursor:'pointer', outline:'none', appearance:'auto' }
+  const pill = { padding:'4px 10px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontSize:11, fontFamily:'var(--font,system-ui)', cursor:'pointer', outline:'none', width:'auto', flexShrink:0 }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', fontFamily:'var(--font,system-ui)', overflow:'hidden' }}>
@@ -330,7 +330,7 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
           </select>
           <button onClick={() => setMeetupOnly(m => !m)}
             style={{ ...pill, border:'1px solid var(--border)', background: meetupOnly ? 'rgba(16,185,129,0.12)' : 'var(--surface2)', color: meetupOnly ? '#10b981' : 'var(--text-muted)', fontWeight: meetupOnly ? 600 : 400, cursor:'pointer' }}>
-            📍 Meetups
+            Meetups
           </button>
           <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:'auto' }}>
             {loading ? 'Loading…' : `${filtered.length} trader${filtered.length!==1?'s':''}`}
