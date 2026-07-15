@@ -594,23 +594,88 @@ export default function FloatingAICoach() {
     const img = imgOverride !== undefined ? imgOverride : pendingImg;
     let ingested = ingestOverride !== undefined ? ingestOverride : ingestedContent;
 
-    // Auto-detect URLs in the message and ingest them transparently
+    // Auto-detect URLs — ingest them transparently before sending
     if (!ingested) {
       const urlMatch = content.match(/https?:\/\/[^\s]+/);
       if (urlMatch) {
         const detectedUrl = urlMatch[0];
+        // Show the user's message first so chat feels responsive
+        setMessages(prev => [...prev, { role: 'user', content: content }]);
+        setInput('');
+        setMessages(prev => [...prev, { role: 'assistant', content: '', streaming: true }]);
+        setBusy(true);
         setIngestLoading(true);
+        let ingestErr = null;
         try {
           const ingestRes = await fetch('/api/ai-coach/ingest', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: detectedUrl }),
           });
-          if (ingestRes.ok) {
-            ingested = await ingestRes.json();
+          const ingestData = await ingestRes.json();
+          if (ingestRes.ok && !ingestData.error) {
+            ingested = ingestData;
+          } else {
+            ingestErr = ingestData.error || 'Could not load that link.';
           }
-        } catch {}
+        } catch (e) {
+          ingestErr = 'Network error loading the link.';
+        }
         setIngestLoading(false);
+        if (ingestErr) {
+          // Ingest failed — show a helpful message, don't send to AI
+          const isYT = /youtube\.com|youtu\.be/.test(detectedUrl);
+          setMessages(prev => {
+            const next = [...prev];
+            next[next.length - 1] = {
+              role: 'assistant',
+              content: isYT
+                ? \`I tried to load that YouTube video automatically but couldn't retrieve the transcript. This usually means the video doesn't have captions enabled.\n\nTry this instead:\n1. Open the video on YouTube\n2. Click the three dots **···** → **Show transcript**\n3. Copy the transcript and paste it here — I'll analyse it instantly.\`
+                : \`I tried to load that link automatically but got an error: \${ingestErr}\n\nTry copying the key text from the page and pasting it here — I can work with that directly.\`,
+              streaming: false,
+            };
+            return next;
+          });
+          setBusy(false);
+          return;
+        }
+        // Ingest succeeded — continue with the rest of send() but skip re-adding the user message
+        setMessages(prev => { const next = [...prev]; next[next.length - 1] = { role: 'assistant', content: '', streaming: true }; return next; });
+        setPendingImg(null); setIngestedContent(null); setFollowUps([]);
+        const tradeContext2 = gatherTraderContext();
+        const history2 = [...messages, { role: 'user', content, image: null }].map(m => ({ role: m.role, content: m.content, image: m.image || null }));
+        try {
+          const res2 = await fetch('/api/ai-coach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history2, tradeContext: tradeContext2, ingestedContent: ingested }) });
+          if (res2.status === 429) {
+            const d2 = await res2.json();
+            setMessages(prev => { const next=[...prev]; next[next.length-1]={role:'assistant',content:d2.message||'Daily limit reached.',isLimit:true,plan:d2.plan}; return next; });
+            setBusy(false); return;
+          }
+          if (!res2.ok || !res2.body) {
+            const d2 = await res2.json().catch(()=>({}));
+            setMessages(prev => { const next=[...prev]; next[next.length-1]={role:'assistant',content:d2.error||'Something went wrong.'}; return next; });
+            setBusy(false); return;
+          }
+          const reader2 = res2.body.getReader();
+          const decoder2 = new TextDecoder();
+          let full2 = '';
+          while (true) {
+            const { done, value } = await reader2.read();
+            if (done) break;
+            full2 += decoder2.decode(value, { stream: true });
+            const snap2 = stripAnnotations(full2);
+            setMessages(prev => { const next=[...prev]; next[next.length-1]={role:'assistant',content:snap2,streaming:true}; return next; });
+          }
+          const clean2 = stripAnnotations(full2);
+          setMessages(prev => { const next=[...prev]; next[next.length-1]={role:'assistant',content:clean2,streaming:false}; return next; });
+          const finalMsgs2 = [...history2, { role:'assistant', content:clean2 }];
+          generateFollowUps(finalMsgs2);
+          saveConversation(finalMsgs2);
+        } catch {
+          setMessages(prev => { const next=[...prev]; next[next.length-1]={role:'assistant',content:'Connection error. Please try again.'}; return next; });
+        }
+        setBusy(false);
+        return; // done — skip the normal send flow below
       }
     }
 
