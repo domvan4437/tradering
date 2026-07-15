@@ -1435,7 +1435,7 @@ export default function CommunityLayout({ currentUserId, externalTab, onTabChang
           {tab === 'feed' && (
             <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', flexShrink:0 }}>
-                <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, padding:'8px 14px' }}>
+                <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'8px 14px' }}>
                   <i className="ti ti-search" style={{ fontSize:14, color:'var(--text-muted)', flexShrink:0 }} aria-hidden="true" />
                   <input placeholder="Search posts, traders, or groups..." style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text)', outline:'none' }} />
                 </div>
