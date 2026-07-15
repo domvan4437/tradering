@@ -76,11 +76,18 @@ const STAGES = [
 
 const COMMODITIES = ['Gold','Silver','Copper','Platinum','Palladium','Crude Oil','Natural Gas','Gasoline','Heating Oil','Corn','Wheat','Soybeans','Coffee','Sugar','Cotton','Cocoa','Live Cattle','Lean Hogs','Rice','Oats','Lumber']
 const SECTION_TABS = {
-  community:   ['Feed','Groups','Messages'],
-  compete:     ['Home','H2H','Group Contests','Leaderboard','History'],
-  tools2:      ['Journal','COT Alerts','Screener'],
-  journal:     ['Journal'],
-  account:     ['Overview'],
+  community: ['Feed','Groups','Messages','Map'],
+  compete:   ['Browse','My Matches','Invites','Leaderboard','History'],
+  tools2:    ['Journal','Portfolio','COT Alerts','Screener'],
+  creator:   [],
+  account:   ['Profile','Analytics','Monetization','Connect Broker','Settings'],
+}
+// Map dropdown label → internal key for each section
+const TAB_KEYS = {
+  community: { 'Feed':'feed','Groups':'groups','Messages':'dms','Map':'local' },
+  compete:   { 'Browse':'browse','My Matches':'mymatches','Invites':'invites','Leaderboard':'leaderboard','History':'history' },
+  tools2:    { 'Journal':'Journal','Portfolio':'Portfolio','COT Alerts':'COT Alerts','Screener':'Screener' },
+  account:   { 'Profile':'overview','Analytics':'analytics','Monetization':'monetization','Connect Broker':'broker','Settings':'settings' },
 }
 const TABS = SECTION_TABS.commodities
 const C = {
@@ -370,7 +377,7 @@ export default function App() {
   const goToProfile = (slug) => { setViewingProfile(slug); }
   // Expose globally so child components can navigate to profiles
   if (typeof window !== 'undefined') window.__goToProfile = goToProfile;
-  const navItems = [['Community','community'],['Competitions','compete'],['Tools','tools2'],['Account','account']]
+  const navItems = [['Community','community'],['Competitions','compete'],['Tools','tools2'],['Creator','creator'],['Account','account']]
 
   return (
     <UserAvatarContext.Provider value={session?.user?.id ? `/api/avatar/${session.user.id}` : (userInfo?.image || null)}>
@@ -438,10 +445,17 @@ export default function App() {
                           {tool.title}
                         </button>
                       )) : tabs.map(t => (
-                        <button key={t} onClick={() => { setSection(sec); setTab(t); setHoveredSection(null); }}
-                          style={{ display:'block', width:'100%', textAlign:'left', padding:'9px 16px', border:'none', background: tab===t&&section===sec ? 'var(--surface2)' : 'transparent', color: tab===t&&section===sec ? 'var(--text)' : 'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight: tab===t&&section===sec ? 600 : 400, cursor:'pointer' }}
-                          onMouseEnter={e=>{ if(!(tab===t&&section===sec)){ e.currentTarget.style.background='var(--surface2)'; e.currentTarget.style.color='var(--text)'; }}}
-                          onMouseLeave={e=>{ if(!(tab===t&&section===sec)){ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; }}}>
+                        <button key={t} onClick={() => {
+                            const key = (TAB_KEYS[sec]||{})[t] || t;
+                            setSection(sec);
+                            setHoveredSection(null);
+                            if(sec==='account'){ setAccountTab(key); }
+                            else if(sec==='community'){ setTab(key); }
+                            else { setTab(key); }
+                          }}
+                          style={{ display:'block', width:'100%', textAlign:'left', padding:'9px 16px', border:'none', background:'transparent', color:'var(--text-muted)', fontFamily:'var(--font)', fontSize:13, fontWeight:400, cursor:'pointer' }}
+                          onMouseEnter={e=>{ e.currentTarget.style.background='var(--surface2)'; e.currentTarget.style.color='var(--text)'; }}
+                          onMouseLeave={e=>{ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)'; }}>
                           {t}
                         </button>
                       ))}
