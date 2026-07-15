@@ -3217,8 +3217,9 @@ function RankingsTab({ currentUserId, onOpenProfile }) {
 
 // ─── SIDEBAR ICONS ────────────────────────────────────────────────────────────
 // ─── COMPETE WRAPPER ──────────────────────────────────────────────────────────
-function CompeteWrapper({ currentUserId, onOpenProfile }) {
+function CompeteWrapper({ currentUserId, onOpenProfile, externalTab }) {
   const [mode, setMode] = useState('h2h');
+  React.useEffect(() => { if (externalTab === 'h2h' || externalTab === 'group') setMode(externalTab); }, [externalTab]);
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       {mode === 'h2h'   && <H2HTab currentUserId={currentUserId} onOpenProfile={onOpenProfile} onSwitchToGroup={() => setMode('group')} />}
@@ -3246,7 +3247,7 @@ function openProfile(slug) {
 export default function CompeteTab({ currentUserId, externalTab }) {
   return (
     <div style={{ display: 'flex', height: '100%', fontFamily: 'var(--font)' }}>
-      <CompeteWrapper currentUserId={currentUserId} onOpenProfile={openProfile} />
+      <CompeteWrapper currentUserId={currentUserId} onOpenProfile={openProfile} externalTab={externalTab} />
     </div>
   );
 }
