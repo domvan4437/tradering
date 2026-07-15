@@ -440,7 +440,7 @@ const QUICK_CATS = [
   { label: 'Psychology', prompts: ['How do I stop revenge trading?', 'I keep moving my stop loss — how do I fix this?', 'How do I build unshakeable discipline?', 'I just had 3 losses in a row — what now?'] },
 ];
 
-const WELCOME = '**Welcome. I\'m your TradeZar AI Coach.**\n\nI have full access to your trade journal, performance stats, playbook, and notes. Ask me anything.\n\n- **Analyze your data** — win rates, setups, emotional patterns\n- **Live decision help** — "should I take this trade?" with your actual stats\n- **Chart analysis** — paste a screenshot and I\'ll break it down\n- **Risk & sizing** — position sizing, R:R, drawdown management\n- **Explain any concept** — liquidity, price action, support & resistance, trend analysis, Wyckoff, COT, risk management, market structure, momentum, volume\n- **YouTube & articles** — paste the 🔗 button below to load any video or article and I\'ll break it down for you\n\nWhat do you want to work on?';
+const WELCOME = ''; // removed — start blank
 
 
 // ── Save-to-Journal modal ─────────────────────────────────────────────────────
@@ -536,7 +536,7 @@ export default function FloatingAICoach() {
   const [open, setOpen] = useState(false);
   const [saveModal, setSaveModal] = React.useState(null); // content string to save
   const [showSidebar, setShowSidebar] = useState(false);
-  const [messages, setMessages] = useState([{ role: 'assistant', content: WELCOME }]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [cat, setCat] = useState(0);
@@ -564,7 +564,33 @@ export default function FloatingAICoach() {
   const sendRef = useRef(null);
 
   useEffect(() => { convIdRef.current = convId; }, [convId]);
-  useEffect(() => { if (open) { setTimeout(() => inputRef.current?.focus(), 100); setPulse(false); } if (open && showSidebar) loadHistory(); }, [open, showSidebar]);
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+      setPulse(false);
+      // Auto-resume last conversation on first open
+      if (messages.length === 0 && !convIdRef.current) {
+        (async () => {
+          try {
+            const r = await fetch('/api/ai-coach/history');
+            const d = await r.json();
+            const convs = d.conversations || [];
+            if (convs.length > 0) {
+              const last = convs[0];
+              const msgs = (last.messages || []).map(m => ({ role: m.role, content: m.content }));
+              if (msgs.length > 0) {
+                setMessages(msgs);
+                convIdRef.current = last.id;
+                setConvId(last.id);
+                setConversations(convs);
+              }
+            }
+          } catch {}
+        })();
+      }
+    }
+    if (open && showSidebar) loadHistory();
+  }, [open, showSidebar]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, busy]);
 
   // External trigger (from trade rows, journal AI review, etc.)
@@ -847,7 +873,7 @@ export default function FloatingAICoach() {
   sendRef.current = send;
 
   function clearChat() {
-    setMessages([{ role: 'assistant', content: WELCOME }]);
+    setMessages([]);
     convIdRef.current = null; setConvId(null); setFollowUps([]); setPendingImg(null); setIngestedContent(null);
   }
 
@@ -864,7 +890,7 @@ export default function FloatingAICoach() {
     return groups.filter(g => g.items.length);
   }
 
-  const isWelcome = messages.length <= 1;
+  const isWelcome = messages.length === 0;
 
   // ── Render ────────────────────────────────────────────────────────────────
   return React.createElement(React.Fragment, null,
@@ -986,6 +1012,13 @@ export default function FloatingAICoach() {
 
           // Messages
           React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: 8 } },
+            isWelcome && React.createElement('div', {
+              style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8, opacity: 0.45, pointerEvents: 'none' }
+            },
+              React.createElement('div', { style: { fontSize: 28 } }, '🤖'),
+              React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: 'var(--text)' } }, 'Ask me anything'),
+              React.createElement('div', { style: { fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 200, lineHeight: 1.5 } }, 'Charts, setups, risk sizing, journal analysis — I have your data.')
+            ),
             ...messages.map((m, i) =>
               React.createElement('div', { key: i, style: { display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-start' } },
                 m.role === 'assistant' && React.createElement('div', { style: { width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg,#4B44C8,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, marginRight: 6, marginTop: 2, color: '#fff' } }, '✦'),
