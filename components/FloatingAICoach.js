@@ -511,14 +511,34 @@ export default function FloatingAICoach() {
   }
 
   async function ingestUrl_fn() {
-    if (!ingestUrl.trim()) return;
+    const val = ingestUrl.trim();
+    if (!val) return;
+    // If it's a URL, try to fetch it. Otherwise treat as raw pasted text/transcript.
+    const isUrl = /^https?:\/\//.test(val);
+    if (!isUrl) {
+      // Raw text paste — use directly as context
+      setIngestedContent({ type: 'text', title: 'Pasted content', content: val });
+      setIngestUrl(''); setShowIngest(false);
+      return;
+    }
     setIngestLoading(true);
     try {
-      const res = await fetch('/api/ai-coach/ingest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: ingestUrl.trim() }) });
+      const res = await fetch('/api/ai-coach/ingest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: val }) });
       const data = await res.json();
-      if (!res.ok || data.error) { alert('Could not load: ' + (data.error || 'Unknown error')); return; }
+      if (!res.ok || data.error) {
+        // URL failed — ask user to paste transcript text instead
+        setIngestUrl('');
+        const isYT = /youtube|youtu\.be/.test(val);
+        const hint = isYT
+          ? 'YouTube blocked automatic transcript fetch. On YouTube, click the three dots ··· under the video → Show transcript → copy it and paste it here.'
+          : 'Could not load that URL. Try copying the page text and pasting it here instead.';
+        // Insert hint as placeholder so user knows what to do
+        setIngestUrl(hint.startsWith('YouTube') ? '' : '');
+        alert(hint);
+        return;
+      }
       setIngestedContent(data); setIngestUrl(''); setShowIngest(false);
-    } catch (e) { alert('Failed: ' + e.message); } finally { setIngestLoading(false); }
+    } catch (e) { alert('Network error. Paste the transcript text directly instead.'); } finally { setIngestLoading(false); }
   }
 
   async function loadHistory() {
@@ -629,8 +649,8 @@ export default function FloatingAICoach() {
             next[next.length - 1] = {
               role: 'assistant',
               content: isYT
-                ? 'I tried to load that YouTube video automatically but could not retrieve the transcript. The video may not have captions enabled. Try the link button below the chat to paste the URL and click Load.'
-                : 'I tried to load that link automatically but it failed. Try the link button below the chat to paste the URL and click Load.',
+                ? 'YouTube blocks automatic transcript fetching from servers. Use the 🔗 button below to load content — paste the video URL there, click Load, and if it still fails, open the video on YouTube, click the three dots ··· → Show transcript, copy it, then paste the transcript text into that same box and click Load.'
+                : 'Could not automatically load that page. Use the 🔗 button below — paste the URL or copy the page text directly into the box and click Load.',
               streaming: false,
             };
             return next;
@@ -931,8 +951,8 @@ export default function FloatingAICoach() {
 
           // URL ingest input
           showIngest && React.createElement('div', { style: { padding: '0 12px 6px', flexShrink: 0, display: 'flex', gap: 5 } },
-            React.createElement('input', { value: ingestUrl, onChange: e => setIngestUrl(e.target.value), onKeyDown: e => { if (e.key === 'Enter') ingestUrl_fn(); if (e.key === 'Escape') setShowIngest(false); }, placeholder: 'Paste YouTube URL or article link…', style: { flex: 1, padding: '7px 10px', borderRadius: 7, border: '0.5px solid var(--border)', background: 'var(--surface2)', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', outline: 'none' }, onFocus: e => { e.target.style.borderColor = PURPLE; }, onBlur: e => { e.target.style.borderColor = 'var(--border)'; } }),
-            React.createElement('button', { onClick: ingestUrl_fn, disabled: ingestLoading || !ingestUrl.trim(), style: { padding: '7px 12px', borderRadius: 7, border: 'none', background: PURPLE, color: '#fff', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: ingestLoading || !ingestUrl.trim() ? 0.5 : 1 } }, ingestLoading ? '…' : 'Load')
+            React.createElement('textarea', { value: ingestUrl, onChange: e => setIngestUrl(e.target.value), onKeyDown: e => { if (e.key === 'Escape') setShowIngest(false); }, placeholder: 'Paste a URL — or paste a YouTube transcript / article text directly', rows: 3, style: { flex: 1, padding: '7px 10px', borderRadius: 7, border: '0.5px solid var(--border)', background: 'var(--surface2)', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text)', outline: 'none', resize: 'vertical', lineHeight: 1.5 }, onFocus: e => { e.target.style.borderColor = PURPLE; }, onBlur: e => { e.target.style.borderColor = 'var(--border)'; } }),
+            React.createElement('button', { onClick: ingestUrl_fn, disabled: ingestLoading || !ingestUrl.trim(), style: { padding: '7px 12px', borderRadius: 7, border: 'none', background: PURPLE, color: '#fff', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: ingestLoading || !ingestUrl.trim() ? 0.5 : 1, alignSelf: 'flex-start' } }, ingestLoading ? '…' : 'Load')
           ),
 
           // Input row
