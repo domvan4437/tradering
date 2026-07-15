@@ -146,6 +146,8 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
   const [countryFilter, setCountryFilter] = useState('')
   const [styleFilter, setStyleFilter] = useState('')
   const [meetupOnly, setMeetupOnly] = useState(false)
+  const [cityFilter, setCityFilter] = useState('')
+  const [assetFilter, setAssetFilter] = useState('')
   const [view, setView] = useState('list') // 'list' | 'map'
   useEffect(() => { if (externalView === 'list' || externalView === 'map') setView(externalView); }, [externalView])
   const [mapReady, setMapReady] = useState(false)
@@ -222,7 +224,7 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
         .on('click', () => setSelected(t))
       markersRef.current.push(marker)
     })
-  }, [traders, search, countryFilter, styleFilter, meetupOnly, mapInited])
+  }, [traders, search, countryFilter, cityFilter, styleFilter, assetFilter, meetupOnly, mapInited])
 
   // Invalidate map size when switching to map view
   useEffect(() => {
@@ -234,7 +236,9 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
   const filtered = traders.filter(t => {
     if (meetupOnly && !t.openToMeetups) return false
     if (countryFilter && t.country !== countryFilter) return false
+    if (cityFilter && t.city !== cityFilter) return false
     if (styleFilter && t.tradingStyle !== styleFilter) return false
+    if (assetFilter && !(t.assets||[]).includes(assetFilter)) return false
     if (search) {
       const q = search.toLowerCase()
       return (
@@ -248,14 +252,16 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
   })
 
   const countries = [...new Set(traders.map(t => t.country).filter(Boolean))].sort()
+  const cities = [...new Set(traders.map(t => t.city).filter(Boolean))].sort()
   const styles = [...new Set(traders.map(t => t.tradingStyle).filter(Boolean))].sort()
+  const assets = [...new Set(traders.flatMap(t => t.assets||[]).filter(Boolean))].sort()
 
   const handleMessage = (userId) => {
     if (window.__openDM) window.__openDM(userId)
     if (onNavigate) onNavigate('dms')
   }
 
-  const sel = { padding:'6px 10px', borderRadius:8, border:'1px solid var(--border,#3f3f46)', background:'var(--surface2,#27272a)', color:'var(--text,#f4f4f5)', fontSize:12, fontFamily:'var(--font,system-ui)', cursor:'pointer', outline:'none' }
+  const pill = { padding:'4px 10px', borderRadius:20, border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text-muted)', fontSize:11, fontFamily:'var(--font,system-ui)', cursor:'pointer', outline:'none', appearance:'auto' }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', fontFamily:'var(--font,system-ui)', overflow:'hidden' }}>
@@ -276,26 +282,26 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
       />}
 
       {/* Top bar */}
-      <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border,#27272a)', flexShrink:0 }}>
+      <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
         {/* Search + toggle */}
-        <div style={{ display:'flex', gap:8, marginBottom:10 }}>
-          <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface,#ffffff)', border:'1px solid var(--border,#e2e4f0)', borderRadius:10, padding:'8px 12px' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted,#71717a)" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+          <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'7px 12px' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, city, or country…"
-              style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font,system-ui)', fontSize:13, color:'var(--text,#f4f4f5)', outline:'none' }}
+              style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font,system-ui)', fontSize:13, color:'var(--text)', outline:'none' }}
             />
-            {search && <button onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted,#71717a)', fontSize:18, lineHeight:1, padding:0 }}>×</button>}
+            {search && <button onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:16, lineHeight:1, padding:0 }}>×</button>}
           </div>
           {/* List / Map toggle */}
           <div style={{ display:'flex', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, padding:3, gap:2 }}>
             {[['list','☰ List'],['map','⊙ Map']].map(([v,label]) => (
               <button key={v} onClick={() => setView(v)}
-                style={{ padding:'6px 14px', borderRadius:7, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
+                style={{ padding:'5px 12px', borderRadius:7, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
                   background: view===v ? PURPLE : 'transparent',
-                  color: view===v ? '#fff' : 'var(--text-muted,#71717a)',
+                  color: view===v ? '#fff' : 'var(--text-muted)',
                   transition:'all .15s',
                 }}>
                 {label}
@@ -304,21 +310,29 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
           </div>
         </div>
 
-        {/* Filters */}
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-          <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)} style={sel}>
-            <option value="">All countries</option>
+        {/* Filter pills */}
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+          <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)} style={pill}>
+            <option value="">Country</option>
             {countries.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select value={styleFilter} onChange={e => setStyleFilter(e.target.value)} style={sel}>
-            <option value="">All styles</option>
+          <select value={cityFilter} onChange={e => setCityFilter(e.target.value)} style={pill}>
+            <option value="">City</option>
+            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select value={styleFilter} onChange={e => setStyleFilter(e.target.value)} style={pill}>
+            <option value="">Style</option>
             {styles.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          <select value={assetFilter} onChange={e => setAssetFilter(e.target.value)} style={pill}>
+            <option value="">Asset</option>
+            {assets.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
           <button onClick={() => setMeetupOnly(m => !m)}
-            style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border,#3f3f46)', background: meetupOnly ? 'rgba(16,185,129,0.15)' : 'var(--surface2,#27272a)', color: meetupOnly ? '#10b981' : 'var(--text-muted,#71717a)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-            📍 Open to meetups
+            style={{ ...pill, border:'1px solid var(--border)', background: meetupOnly ? 'rgba(16,185,129,0.12)' : 'var(--surface2)', color: meetupOnly ? '#10b981' : 'var(--text-muted)', fontWeight: meetupOnly ? 600 : 400, cursor:'pointer' }}>
+            📍 Meetups
           </button>
-          <span style={{ fontSize:12, color:'var(--text-muted,#71717a)', marginLeft:'auto' }}>
+          <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:'auto' }}>
             {loading ? 'Loading…' : `${filtered.length} trader${filtered.length!==1?'s':''}`}
           </span>
         </div>
