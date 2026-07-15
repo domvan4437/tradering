@@ -283,31 +283,16 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
 
       {/* Top bar */}
       <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-        {/* Search + toggle */}
-        <div style={{ display:'flex', gap:8, marginBottom:8 }}>
-          <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'7px 12px' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name, city, or country…"
-              style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font,system-ui)', fontSize:13, color:'var(--text)', outline:'none' }}
-            />
-            {search && <button onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:16, lineHeight:1, padding:0 }}>×</button>}
-          </div>
-          {/* List / Map toggle */}
-          <div style={{ display:'flex', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, padding:3, gap:2 }}>
-            {[['list','☰ List'],['map','⊙ Map']].map(([v,label]) => (
-              <button key={v} onClick={() => setView(v)}
-                style={{ padding:'5px 12px', borderRadius:7, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
-                  background: view===v ? PURPLE : 'transparent',
-                  color: view===v ? '#fff' : 'var(--text-muted)',
-                  transition:'all .15s',
-                }}>
-                {label}
-              </button>
-            ))}
-          </div>
+        {/* Search */}
+        <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'7px 12px', marginBottom:8 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, city, or country…"
+            style={{ flex:1, border:'none', background:'transparent', fontFamily:'var(--font,system-ui)', fontSize:13, color:'var(--text)', outline:'none' }}
+          />
+          {search && <button onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:16, lineHeight:1, padding:0 }}>×</button>}
         </div>
 
         {/* Filter pills */}
@@ -332,9 +317,7 @@ export default function LocalTradersTab({ currentUserId, onNavigate, externalVie
             style={{ ...pill, border:'1px solid var(--border)', background: meetupOnly ? 'rgba(16,185,129,0.12)' : 'var(--surface2)', color: meetupOnly ? '#10b981' : 'var(--text-muted)', fontWeight: meetupOnly ? 600 : 400, cursor:'pointer' }}>
             Meetups
           </button>
-          <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:'auto' }}>
-            {loading ? 'Loading…' : `${filtered.length} trader${filtered.length!==1?'s':''}`}
-          </span>
+
         </div>
       </div>
 
