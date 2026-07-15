@@ -436,7 +436,8 @@ const QUICK_CATS = [
   { label: 'Psychology', prompts: ['How do I stop revenge trading?', 'I keep moving my stop loss — how do I fix this?', 'How do I build unshakeable discipline?', 'I just had 3 losses in a row — what now?'] },
 ];
 
-const WELCOME = '**Welcome. I\'m your TradeZar AI Coach.**\n\nI have full access to your trade journal, performance stats, playbook, and notes. Ask me anything.\n\n- **Analyze your data** — win rates, setups, emotional patterns\n- **Live decision help** — "should I take this trade?" with your actual stats\n- **Chart analysis** — paste a screenshot and I\'ll break it down\n- **Risk & sizing** — position sizing, R:R, drawdown management\n- **Explain any concept** — liquidity, price action, support & resistance, trend analysis, Wyckoff, COT, risk management, market structure, momentum, volume\n\nWhat do you want to work on?';
+const WELCOME = '**Welcome. I\'m your TradeZar AI Coach.**\n\nI have full access to your trade journal, performance stats, playbook, and notes. Ask me anything.\n\n- **Analyze your data** — win rates, setups, emotional patterns\n- **Live decision help** — "should I take this trade?" with your actual stats\n- **Chart analysis** — paste a screenshot and I\'ll break it down\n- **Risk & sizing** — position sizing, R:R, drawdown management\n- **Explain any concept** — liquidity, price action, support & resistance, trend analysis, Wyckoff, COT, risk management, market structure, momentum, volume
+- **YouTube & articles** — paste the 🔗 link button to load any video or article and I\'ll break it down for you\n\nWhat do you want to work on?';
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function FloatingAICoach() {
