@@ -647,10 +647,10 @@ button, a, input, select {
 
 /* ── Light Theme ───────────────────────────────────── */
 [data-theme="light"] {
-  --bg:           #f5f6fa;
+  --bg:           #ffffff;
   --surface:      #ffffff;
-  --surface2:     #f0f2f8;
-  --surface3:     #e8eaf2;
+  --surface2:     #f0f2f5;
+  --surface3:     #e8eaed;
   --border:       #dde1f0;
   --border2:      #cdd2e8;
   --text:         #111827;
