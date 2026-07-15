@@ -1145,6 +1145,267 @@ function MonetizationTab() {
 }
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
+
+// ── Plan & Billing Tab ────────────────────────────────────────────────────────
+function PlanBillingTab({ user }) {
+  const [data, setData] = React.useState(null)
+  const [loading, setLoading] = React.useState(true)
+  const [upgrading, setUpgrading] = React.useState(false)
+  const [portalLoading, setPortalLoading] = React.useState(false)
+
+  React.useEffect(() => {
+    fetch('/api/stripe/billing')
+      .then(r => r.json())
+      .then(d => setData(d))
+      .catch(() => setData({ plan: user?.plan || 'free', invoices: [] }))
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function handleUpgrade() {
+    setUpgrading(true)
+    try {
+      const r = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: 'pro' }) })
+      const d = await r.json()
+      if (d.url) window.location.href = d.url
+    } catch { alert('Could not start checkout. Please try again.') }
+    finally { setUpgrading(false) }
+  }
+
+  async function handlePortal() {
+    setPortalLoading(true)
+    try {
+      const r = await fetch('/api/stripe/portal', { method: 'POST' })
+      const d = await r.json()
+      if (d.url) window.location.href = d.url
+      else alert('Could not open billing portal. Please contact support.')
+    } catch { alert('Could not open billing portal. Please try again.') }
+    finally { setPortalLoading(false) }
+  }
+
+  const plan = data?.plan || user?.plan || 'free'
+  const isPro = plan === 'pro' || plan === 'trader'
+  const renewDate = data?.currentPeriodEnd ? new Date(data.currentPeriodEnd * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
+  const cancelAtEnd = data?.cancelAtPeriodEnd
+
+  const card = { background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 12, padding: '16px 18px' }
+  const secHead = { fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }
+  const feat = (text, included = true) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, color: included ? 'var(--text-secondary)' : 'var(--text-muted)', marginBottom: 5 }}>
+      <i className={`ti ${included ? 'ti-check' : 'ti-x'}`} style={{ fontSize: 13, color: included ? 'var(--green)' : 'var(--text-muted)', flexShrink: 0 }} aria-hidden="true" />
+      {text}
+    </div>
+  )
+
+  const cardBrand = (brand) => {
+    const b = (brand || '').toUpperCase()
+    if (b === 'VISA') return 'VISA'
+    if (b === 'MASTERCARD') return 'MC'
+    if (b === 'AMEX') return 'AMEX'
+    return b.slice(0, 4)
+  }
+
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--text-muted)', fontSize: 13 }}>Loading billing info…</div>
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 700 }}>
+
+      {/* Current plan */}
+      <div>
+        <div style={secHead}>Current plan</div>
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)' }}>{isPro ? 'Pro' : 'Free'}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                {isPro ? '$20 / month · billed monthly' : 'Free forever · no credit card required'}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {isPro && !cancelAtEnd && (
+                <span style={{ fontSize: 10, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: 'rgba(22,163,74,0.1)', color: '#15803d', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <i className="ti ti-circle-check" style={{ fontSize: 11 }} aria-hidden="true" /> Active
+                </span>
+              )}
+              {isPro && cancelAtEnd && (
+                <span style={{ fontSize: 10, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: 'rgba(217,119,6,0.1)', color: '#b45309' }}>
+                  Cancels {renewDate}
+                </span>
+              )}
+              <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: isPro ? 'rgba(75,68,200,0.12)' : 'var(--surface2)', color: isPro ? PURPLE : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {isPro ? 'Pro' : 'Free'}
+              </span>
+            </div>
+          </div>
+          {isPro && renewDate && !cancelAtEnd && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', marginTop: 12, paddingTop: 12, borderTop: '0.5px solid var(--border)' }}>
+              <i className="ti ti-calendar" style={{ fontSize: 13 }} aria-hidden="true" />
+              Renews <strong style={{ color: 'var(--text)', margin: '0 4px' }}>{renewDate}</strong>
+              <button onClick={handlePortal} disabled={portalLoading} style={{ marginLeft: 4, fontSize: 12, color: PURPLE, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', padding: 0 }}>
+                {portalLoading ? 'Opening…' : 'Manage billing'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Plans */}
+      <div>
+        <div style={secHead}>Plans</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+          {/* Free */}
+          <div style={{ border: isPro ? '0.5px solid var(--border)' : `2px solid ${PURPLE}`, borderRadius: 12, padding: 18, background: 'var(--surface)', position: 'relative' }}>
+            {!isPro && <div style={{ position: 'absolute', top: 0, left: 14, fontSize: 10, fontWeight: 500, background: PURPLE, color: '#fff', padding: '2px 10px', borderRadius: '0 0 7px 7px' }}>Current plan</div>}
+            <div style={{ marginTop: !isPro ? 16 : 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', marginBottom: 4 }}>Free</div>
+              <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>$0 <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)' }}>/mo</span></div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 12px' }}>No credit card needed</div>
+              <div style={{ height: '0.5px', background: 'var(--border)', marginBottom: 12 }} />
+              {feat('Unlimited journal trades')}
+              {feat('Broker sync & trade import')}
+              {feat('Basic COT data')}
+              {feat('3 screeners per day')}
+              {feat('Community feed, groups & DMs')}
+              {feat('Traders map')}
+              {feat('Join competitions, leaderboard & leagues')}
+              {feat('Limited AI coach access')}
+              <div style={{ marginTop: 14 }}>
+                {isPro
+                  ? <button onClick={handlePortal} disabled={portalLoading} style={{ width: '100%', padding: '7px', borderRadius: 8, border: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                      {portalLoading ? 'Opening…' : 'Downgrade to Free'}
+                    </button>
+                  : <div style={{ padding: '7px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', background: 'var(--surface2)', borderRadius: 8 }}>Current plan</div>
+                }
+              </div>
+            </div>
+          </div>
+
+          {/* Pro */}
+          <div style={{ border: isPro ? `2px solid ${PURPLE}` : '0.5px solid var(--border)', borderRadius: 12, padding: 18, background: 'var(--surface)', position: 'relative' }}>
+            {isPro && <div style={{ position: 'absolute', top: 0, left: 14, fontSize: 10, fontWeight: 500, background: PURPLE, color: '#fff', padding: '2px 10px', borderRadius: '0 0 7px 7px' }}>Current plan</div>}
+            <div style={{ marginTop: isPro ? 16 : 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', marginBottom: 4 }}>Pro</div>
+              <div style={{ fontSize: 28, fontWeight: 500, color: PURPLE, lineHeight: 1 }}>$20 <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)' }}>/mo</span></div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 12px' }}>Everything, unlocked</div>
+              <div style={{ height: '0.5px', background: 'var(--border)', marginBottom: 12 }} />
+              {feat('Unlimited journal trades')}
+              {feat('Unlimited screeners')}
+              {feat('Full COT data + seasonal patterns')}
+              {feat('COT alerts')}
+              {feat('Host & create competitions')}
+              {feat('Extended AI coach usage')}
+              <div style={{ marginTop: 14 }}>
+                {isPro
+                  ? <div style={{ padding: '7px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', background: 'var(--surface2)', borderRadius: 8 }}>Current plan</div>
+                  : <button onClick={handleUpgrade} disabled={upgrading} style={{ width: '100%', padding: '8px', borderRadius: 8, border: 'none', background: PURPLE, color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                      {upgrading ? 'Redirecting…' : 'Upgrade to Pro — $20/mo'}
+                    </button>
+                }
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Payment method */}
+      <div>
+        <div style={secHead}>Payment method</div>
+        <div style={card}>
+          {data?.paymentMethod ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 40, height: 26, border: '0.5px solid var(--border)', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  {cardBrand(data.paymentMethod.brand)}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{(data.paymentMethod.brand || 'Card').charAt(0).toUpperCase() + (data.paymentMethod.brand || '').slice(1)} ending in {data.paymentMethod.last4}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Expires {String(data.paymentMethod.expMonth).padStart(2,'0')} / {data.paymentMethod.expYear}</div>
+                </div>
+              </div>
+              <button onClick={handlePortal} disabled={portalLoading} style={{ fontSize: 12, color: PURPLE, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                {portalLoading ? 'Opening…' : 'Update'}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No payment method on file</div>
+              {!isPro && (
+                <button onClick={handleUpgrade} disabled={upgrading} style={{ fontSize: 12, color: PURPLE, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                  {upgrading ? 'Redirecting…' : 'Add card'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Billing history */}
+      <div>
+        <div style={secHead}>Billing history</div>
+        <div style={{ ...card, padding: '14px 18px' }}>
+          {data?.invoices?.length > 0 ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr>
+                  {['Date', 'Description', 'Amount', 'Status', ''].map(h => (
+                    <th key={h} style={{ textAlign: 'left', fontWeight: 500, color: 'var(--text-muted)', fontSize: 11, paddingBottom: 8, borderBottom: '0.5px solid var(--border)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.invoices.map(inv => (
+                  <tr key={inv.id}>
+                    <td style={{ padding: '9px 0', borderBottom: '0.5px solid var(--border)', color: 'var(--text-muted)' }}>
+                      {new Date(inv.date * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </td>
+                    <td style={{ padding: '9px 0', borderBottom: '0.5px solid var(--border)', color: 'var(--text)' }}>{inv.description}</td>
+                    <td style={{ padding: '9px 0', borderBottom: '0.5px solid var(--border)', fontWeight: 500, color: 'var(--text)' }}>
+                      {inv.currency === 'USD' ? '$' : inv.currency}{inv.amount.toFixed(2)}
+                    </td>
+                    <td style={{ padding: '9px 0', borderBottom: '0.5px solid var(--border)' }}>
+                      <span style={{ background: inv.status === 'paid' ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', color: inv.status === 'paid' ? '#15803d' : '#dc2626', padding: '2px 7px', borderRadius: 20, fontSize: 10, fontWeight: 500 }}>
+                        {inv.status === 'paid' ? 'Paid' : inv.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '9px 0', borderBottom: '0.5px solid var(--border)', textAlign: 'right' }}>
+                      {inv.pdfUrl && (
+                        <a href={inv.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-muted)', background: 'none', border: '0.5px solid var(--border)', borderRadius: 5, padding: '3px 7px', textDecoration: 'none' }}>
+                          <i className="ti ti-download" style={{ fontSize: 11 }} aria-hidden="true" /> PDF
+                        </a>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>No invoices yet</div>
+          )}
+        </div>
+      </div>
+
+      {/* Danger zone — only for active pro */}
+      {isPro && !cancelAtEnd && (
+        <div>
+          <div style={secHead}>Danger zone</div>
+          <div style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Cancel anytime. You'll keep Pro access until {renewDate || 'the end of your billing period'}, then move to the free plan.
+              </div>
+              <button onClick={handlePortal} disabled={portalLoading} style={{ fontSize: 12, color: 'var(--text-muted)', background: 'none', border: '0.5px solid var(--border)', borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {portalLoading ? 'Opening…' : 'Cancel plan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  )
+}
+
 function SettingsPage({ user }) {
   const inp = { width: '100%', padding: '7px 10px', border: '0.5px solid var(--border2)', borderRadius: 6, background: 'var(--surface2)', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box' }
   const secHead = { fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 14, paddingBottom: 8, borderBottom: '0.5px solid var(--border)' }
@@ -1326,6 +1587,7 @@ const ACCOUNT_TABS = [
   { key: 'analytics',    label: 'Analytics',        icon: 'ti-chart-bar'       },
   { key: 'monetization', label: 'Monetization',     icon: 'ti-currency-dollar' },
   { key: 'broker',       label: 'Connect Broker',   icon: 'ti-building-bank'   },
+  { key: 'billing',      label: 'Plan & Billing',   icon: 'ti-credit-card'     },
   { key: 'settings',     label: 'Settings',         icon: 'ti-settings'        },
 ]
 
@@ -1337,19 +1599,16 @@ export default function AccountTab({ user, requestTab }) {
     <div style={{ fontFamily: 'var(--font)', display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
       {/* ── SIDEBAR ── */}
-      <div style={{ width: 240, flexShrink: 0, borderRight: '0.5px solid var(--border)', padding: '20px 14px 16px', display: 'flex', flexDirection: 'column', gap: 0, background: 'var(--surface)', overflowY: 'auto', alignSelf: 'stretch' }}>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Account</div>
-        <div style={{ fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Manage your profile & settings</div>
+      <div style={{ width: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 4, borderRight: '0.5px solid var(--border)', background: 'var(--surface)', flexShrink: 0, alignSelf: 'stretch' }}>
         {ACCOUNT_TABS.map(t => {
           const isActive = activeTab === t.key
           return (
-            <button key={t.key} onClick={() => setActiveTab(t.key)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: 'none', background: isActive ? 'var(--surface2)' : 'transparent', fontFamily: 'var(--font)', fontSize: 13, fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--text)' : 'var(--text-muted)', cursor: 'pointer', textAlign: 'left', marginBottom: 2 }}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--surface2)' }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}>
-              <i className={`ti ${t.icon}`} style={{ fontSize: 15, flexShrink: 0 }} aria-hidden="true" />
-              <span style={{ flex: 1 }}>{t.label}</span>
-            </button>
+            <div key={t.key} title={t.label} onClick={() => setActiveTab(t.key)}
+              style={{ width: 38, height: 38, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: isActive ? '#EEEDFE' : 'transparent', color: isActive ? '#534AB7' : 'var(--text-muted)', fontSize: 19, transition: 'all .15s', flexShrink: 0 }}
+              onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#EEEDFE'; e.currentTarget.style.color = '#534AB7' } }}
+              onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' } }}>
+              <i className={`ti ${t.icon}`} aria-hidden="true" />
+            </div>
           )
         })}
       </div>
@@ -1365,6 +1624,7 @@ export default function AccountTab({ user, requestTab }) {
             {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
             {activeTab === 'monetization' && <MonetizationTab />}
             {activeTab === 'broker'       && <BrokerTab />}
+            {activeTab === 'billing'      && <PlanBillingTab user={user} />}
             {activeTab === 'settings'     && <SettingsPage user={user} />}
           </div>
         )}
