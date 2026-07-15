@@ -1988,17 +1988,19 @@ function H2HTab({ currentUserId, onOpenProfile, onSwitchToGroup }) {
         <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Competitions</div>
         <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Compete & challenge traders</div>
 
-        {/* Main tabs — Singles (active) / Group */}
-        <button style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:'#111827', fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
-          <i className="ti ti-swords" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
-          <span style={{ flex:1 }}>Singles</span>
-        </button>
-        <button onClick={onSwitchToGroup} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight:400, color:'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}
-          onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
-          onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
-          <i className="ti ti-users" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
-          <span style={{ flex:1 }}>Group</span>
-        </button>
+        {/* Main tabs — Singles (active) / Group — side by side */}
+        <div style={{ display:'flex', gap:4, marginBottom:4 }}>
+          <button style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'6px 8px', borderRadius:8, border:'none', background:'#111827', fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'#fff', cursor:'pointer' }}>
+            <i className="ti ti-swords" style={{ fontSize:13 }} aria-hidden="true" />
+            Singles
+          </button>
+          <button onClick={onSwitchToGroup} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'6px 8px', borderRadius:8, border:'none', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, fontWeight:400, color:'var(--text-muted)', cursor:'pointer' }}
+            onMouseEnter={e=>{e.currentTarget.style.background='var(--border)';e.currentTarget.style.color='var(--text)';}}
+            onMouseLeave={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text-muted)';}}>
+            <i className="ti ti-users" style={{ fontSize:13 }} aria-hidden="true" />
+            Group
+          </button>
+        </div>
 
         <div style={{ height:'0.5px', background:'var(--border)', margin:'10px 0' }} />
 
@@ -2932,17 +2934,19 @@ function GroupTab({ currentUserId, onOpenProfile, onSwitchToSingles }) {
         <div style={{ fontFamily:'var(--font)', fontSize:18, fontWeight:700, color:'var(--text)', marginBottom:2 }}>Competitions</div>
         <div style={{ fontFamily:'var(--font)', fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>Compete & challenge traders</div>
 
-        {/* Main tabs — Singles / Group (active) */}
-        <button onClick={onSwitchToSingles} style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:'transparent', fontFamily:'var(--font)', fontSize:13, fontWeight:400, color:'var(--text-muted)', cursor:'pointer', textAlign:'left', marginBottom:2 }}
-          onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
-          onMouseLeave={e=>e.currentTarget.style.color='var(--text-muted)'}>
-          <i className="ti ti-swords" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
-          <span style={{ flex:1 }}>Singles</span>
-        </button>
-        <button style={{ width:'100%', display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'none', background:'#111827', fontFamily:'var(--font)', fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', textAlign:'left', marginBottom:2 }}>
-          <i className="ti ti-users" style={{ fontSize:15, flexShrink:0 }} aria-hidden="true" />
-          <span style={{ flex:1 }}>Group</span>
-        </button>
+        {/* Main tabs — Singles / Group (active) — side by side */}
+        <div style={{ display:'flex', gap:4, marginBottom:4 }}>
+          <button onClick={onSwitchToSingles} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'6px 8px', borderRadius:8, border:'none', background:'var(--surface2)', fontFamily:'var(--font)', fontSize:12, fontWeight:400, color:'var(--text-muted)', cursor:'pointer' }}
+            onMouseEnter={e=>{e.currentTarget.style.background='var(--border)';e.currentTarget.style.color='var(--text)';}}
+            onMouseLeave={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text-muted)';}}>
+            <i className="ti ti-swords" style={{ fontSize:13 }} aria-hidden="true" />
+            Singles
+          </button>
+          <button style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'6px 8px', borderRadius:8, border:'none', background:'#111827', fontFamily:'var(--font)', fontSize:12, fontWeight:600, color:'#fff', cursor:'pointer' }}>
+            <i className="ti ti-users" style={{ fontSize:13 }} aria-hidden="true" />
+            Group
+          </button>
+        </div>
 
         <div style={{ height:'0.5px', background:'var(--border)', margin:'10px 0' }} />
 

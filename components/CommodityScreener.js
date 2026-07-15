@@ -459,16 +459,7 @@ export default function App() {
 
           {/* RIGHT — Icons + Account */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:2 }}>
-            <button style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
-              onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
-              onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
-              <i className="ti ti-search" style={{fontSize:16}}/>
-            </button>
-            <button style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)' }}
-              onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';e.currentTarget.style.color='var(--text)';}}
-              onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text-muted)';}}>
-              <i className="ti ti-help-circle" style={{fontSize:16}}/>
-            </button>
+
             <button onClick={toggle} style={{ all:'unset', cursor:'pointer', width:32, height:32, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', fontSize:13 }}
               onMouseEnter={e=>{e.currentTarget.style.background='var(--surface2)';}}
               onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}>
