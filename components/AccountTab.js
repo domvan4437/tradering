@@ -1624,4 +1624,14 @@ export default function AccountTab({ user, requestTab }) {
           </div>
         ) : (
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
-            {activeTab === 'analytics'    &
+            {activeTab === 'analytics'    && <AnalyticsCommunityTab />}
+            {activeTab === 'monetization' && <MonetizationTab />}
+            {activeTab === 'broker'       && <BrokerTab />}
+            {activeTab === 'billing'      && <PlanBillingTab user={user} />}
+            {activeTab === 'settings'     && <SettingsPage user={user} />}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
