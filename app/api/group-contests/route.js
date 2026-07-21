@@ -30,7 +30,7 @@ export async function GET(request) {
         where: {
           type: 'group',
           status: { in: ['open', 'active'] },
-          OR: [{ endDate: null }, { endDate: { gt: cutoff } }],
+          endDate: { gt: cutoff },
         },
         include: {
           creator: { select: { id: true, name: true, username: true, displayName: true, profileSlug: true } },
@@ -44,7 +44,7 @@ export async function GET(request) {
         where: {
           AND: [
             { type: 'group' },
-            { OR: [{ endDate: null }, { endDate: { gt: cutoff } }] },
+            { endDate: { gt: cutoff } },
             { OR: [
               { entries: { some: { userId: uid } } },
               { creatorId: uid },
@@ -113,7 +113,7 @@ export async function POST(request) {
   try {
     const session = await getSession()
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const { action, contestId, name, description, asset, allowedSymbols, duration, buyIn, teamFormat, teamSize, teamNameA, teamNameB } = await request.json()
+    const { action, contestId, name, description, asset, allowedSymbols, duration, buyIn, teamFormat, teamSize, maxTeams, teamNameA, teamNameB } = await request.json()
 
     if (action === 'join') {
       const existing = await prisma.tournamentEntry.findFirst({ where: { tournamentId: contestId, userId: session.user.id } })
@@ -126,6 +126,7 @@ export async function POST(request) {
       const now = new Date()
       const endDate = new Date(now.getTime() + parseDuration(duration))
       const parsedTeamSize = teamSize ? parseInt(teamSize) : null
+      const parsedMaxTeams = maxTeams ? Math.max(2, parseInt(maxTeams) || 2) : (parsedTeamSize ? 2 : null)
 
       const tournament = await prisma.tournament.create({
         data: {
@@ -142,17 +143,27 @@ export async function POST(request) {
           prizePool: 0,
           teamFormat: teamFormat || null,
           teamSize: parsedTeamSize,
-          maxTeams: null,
+          maxTeams: parsedMaxTeams,
         },
       })
 
       if (teamFormat && parsedTeamSize) {
-        await prisma.contestTeam.createMany({
-          data: [
-            { contestId: tournament.id, captainId: session.user.id, name: teamNameA?.trim() || 'Team Alpha', emoji: '🔵', color: '#3B82F6' },
-            { contestId: tournament.id, captainId: session.user.id, name: teamNameB?.trim() || 'Team Beta', emoji: '🔴', color: '#EF4444' },
-          ],
-        })
+        const TEAM_COLORS = ['#3B82F6','#EF4444','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#84CC16']
+        const TEAM_EMOJIS = ['🔵','🔴','🟢','🟡','🟣','🩷','🩵','🟩']
+        const teamCount = parsedMaxTeams || 2
+        const teamData = teamCount === 2
+          ? [
+              { contestId: tournament.id, captainId: session.user.id, name: teamNameA?.trim() || 'Team Alpha', emoji: '🔵', color: '#3B82F6' },
+              { contestId: tournament.id, captainId: session.user.id, name: teamNameB?.trim() || 'Team Beta', emoji: '🔴', color: '#EF4444' },
+            ]
+          : Array.from({ length: teamCount }, (_, i) => ({
+              contestId: tournament.id,
+              captainId: session.user.id,
+              name: `Team ${i + 1}`,
+              emoji: TEAM_EMOJIS[i % TEAM_EMOJIS.length],
+              color: TEAM_COLORS[i % TEAM_COLORS.length],
+            }))
+        await prisma.contestTeam.createMany({ data: teamData })
       } else {
         await prisma.tournamentEntry.create({ data: { tournamentId: tournament.id, userId: session.user.id, score: 0 } })
       }
